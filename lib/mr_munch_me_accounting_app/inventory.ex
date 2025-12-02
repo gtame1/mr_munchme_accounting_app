@@ -10,7 +10,7 @@ defmodule MrMunchMeAccountingApp.Inventory do
   alias MrMunchMeAccountingApp.Accounting.JournalEntry
   alias MrMunchMeAccountingApp.Orders
   alias MrMunchMeAccountingApp.Orders.Order
-  alias __MODULE__.{Ingredient, Location, InventoryItem, InventoryMovement, PurchaseForm, PurchaseListForm, MovementForm, MovementListForm, Recepies, Recipe, RecipeLine, PurchaseItemForm, MovementItemForm}
+  alias __MODULE__.{Ingredient, Location, InventoryItem, InventoryMovement, PurchaseForm, PurchaseListForm, MovementForm, MovementListForm, Recepies, PurchaseItemForm, MovementItemForm}
 
 
   # ---------- Lookups ----------
@@ -643,14 +643,6 @@ defmodule MrMunchMeAccountingApp.Inventory do
       Logger.error("❌ PurchaseListForm INVALID: #{inspect(changeset.errors)}")
       {:error, changeset}
     end
-  end
-
-  defp format_currency(cents) do
-    pesos =
-      Decimal.new(cents)
-      |> Decimal.div(Decimal.new(100))
-      |> Decimal.round(2)
-    "$#{Decimal.to_string(pesos)}"
   end
 
   def ingredient_quick_infos do

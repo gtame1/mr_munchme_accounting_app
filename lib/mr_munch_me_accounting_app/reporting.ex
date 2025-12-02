@@ -8,7 +8,7 @@ defmodule MrMunchMeAccountingApp.Reporting do
 
   alias MrMunchMeAccountingApp.Orders.{Order, Product}
   alias MrMunchMeAccountingApp.Accounting
-  alias MrMunchMeAccountingApp.Accounting.{Account, JournalEntry, JournalLine}
+  alias MrMunchMeAccountingApp.Accounting.JournalEntry
 
   @doc """
   Returns metrics for the dashboard for a date range.

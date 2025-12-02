@@ -31,7 +31,7 @@ defmodule MrMunchMeAccountingAppWeb.RecipeController do
 
   def create(conn, %{"recipe" => recipe_params}) do
     case Recepies.create_recipe(recipe_params) do
-      {:ok, recipe} ->
+      {:ok, _recipe} ->
         conn
         |> put_flash(:info, "Recipe created successfully.")
         |> redirect(to: ~p"/recipes")
@@ -110,7 +110,7 @@ defmodule MrMunchMeAccountingAppWeb.RecipeController do
     original_recipe = Recepies.get_recipe!(original_id)
 
     case Recepies.create_recipe(recipe_params) do
-      {:ok, new_recipe} ->
+      {:ok, _new_recipe} ->
         conn
         |> put_flash(:info, "New recipe version created successfully. The original recipe remains unchanged for historical accuracy.")
         |> redirect(to: ~p"/recipes")

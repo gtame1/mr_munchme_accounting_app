@@ -5,7 +5,7 @@ defmodule MrMunchMeAccountingApp.Inventory.Recepies do
   import Ecto.Query
   alias MrMunchMeAccountingApp.Repo
   alias MrMunchMeAccountingApp.Orders.Product
-  alias MrMunchMeAccountingApp.Inventory.{Recipe, RecipeLine}
+  alias MrMunchMeAccountingApp.Inventory.{Recipe}
 
   @packaging_codes ~w(
     PACKING_PLASTICO

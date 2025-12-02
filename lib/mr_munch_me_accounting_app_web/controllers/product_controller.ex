@@ -16,7 +16,7 @@ defmodule MrMunchMeAccountingAppWeb.ProductController do
 
   def create(conn, %{"product" => product_params}) do
     case Orders.create_product(product_params) do
-      {:ok, product} ->
+      {:ok, _product} ->
         conn
         |> put_flash(:info, "Product created successfully.")
         |> redirect(to: ~p"/products")
@@ -37,7 +37,7 @@ defmodule MrMunchMeAccountingAppWeb.ProductController do
     product = Orders.get_product!(id)
 
     case Orders.update_product(product, product_params) do
-      {:ok, product} ->
+      {:ok, _product} ->
         conn
         |> put_flash(:info, "Product updated successfully.")
         |> redirect(to: ~p"/products")
@@ -49,8 +49,9 @@ defmodule MrMunchMeAccountingAppWeb.ProductController do
   end
 
   def delete(conn, %{"id" => id}) do
-    product = Orders.get_product!(id)
-    {:ok, _} = Orders.delete_product(product)
+    {:ok, _} =
+      Orders.get_product!(id)
+      |> Orders.delete_product()
 
     conn
     |> put_flash(:info, "Product deleted successfully.")

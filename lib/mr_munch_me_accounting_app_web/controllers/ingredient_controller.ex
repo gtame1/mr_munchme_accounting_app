@@ -16,7 +16,7 @@ defmodule MrMunchMeAccountingAppWeb.IngredientController do
 
   def create(conn, %{"ingredient" => ingredient_params}) do
     case Inventory.create_ingredient(ingredient_params) do
-      {:ok, ingredient} ->
+      {:ok, _ingredient} ->
         conn
         |> put_flash(:info, "Ingredient created successfully.")
         |> redirect(to: ~p"/ingredients")
@@ -37,7 +37,7 @@ defmodule MrMunchMeAccountingAppWeb.IngredientController do
     ingredient = Inventory.get_ingredient!(id)
 
     case Inventory.update_ingredient(ingredient, ingredient_params) do
-      {:ok, ingredient} ->
+      {:ok, _ingredient} ->
         conn
         |> put_flash(:info, "Ingredient updated successfully.")
         |> redirect(to: ~p"/ingredients")

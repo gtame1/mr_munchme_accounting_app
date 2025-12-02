@@ -911,7 +911,7 @@ defmodule MrMunchMeAccountingApp.Accounting do
     # 4) Split expenses into COGS vs Opex using @cogs_codes
     {cogs_accounts, operating_expense_accounts} =
       Enum.split_with(expense_accounts, fn acc ->
-        acc.code == @ingredients_cogs_code or acc.code == @packaging_cogs_code
+        acc.code == @ingredients_cogs_code
       end)
 
     total_revenue_cents = Enum.reduce(revenue_accounts, 0, fn acc, sum -> sum + acc.net_cents end)
