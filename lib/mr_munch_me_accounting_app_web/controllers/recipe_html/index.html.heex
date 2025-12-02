@@ -1,0 +1,42 @@
+<section class="card">
+  <div class="card-header">
+    <h2 class="card-title">Recipes</h2>
+    <p class="card-subtitle">
+      Manage recipes for your products. Recipes are versioned by date - editing a recipe creates a new version to preserve historical accuracy.
+    </p>
+  </div>
+
+  <div class="actions" style="margin-bottom: 0.75rem;">
+    <.link navigate={~p"/recipes/new"} class="btn primary">
+      + New Recipe
+    </.link>
+  </div>
+
+  <table class="table">
+    <thead>
+      <tr>
+        <th>Product</th>
+        <th>Name</th>
+        <th>Effective Date</th>
+        <th>Recipe Lines</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      <%= for recipe <- @recipes do %>
+        <tr>
+          <td><%= recipe.product.name %></td>
+          <td><%= recipe.name || "—" %></td>
+          <td><%= Calendar.strftime(recipe.effective_date, "%Y-%m-%d") %></td>
+          <td><%= length(recipe.recipe_lines || []) %></td>
+          <td>
+            <.link navigate={~p"/recipes/#{recipe.id}/edit"} class="btn btn-sm">
+              Create New Version
+            </.link>
+          </td>
+        </tr>
+      <% end %>
+    </tbody>
+  </table>
+</section>
+

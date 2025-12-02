@@ -1,0 +1,42 @@
+<section class="card">
+  <div class="card-header">
+    <h2 class="card-title">Ingredients</h2>
+    <p class="card-subtitle">
+      Manage your ingredient catalog.
+    </p>
+  </div>
+
+  <div class="actions" style="margin-bottom: 0.75rem;">
+    <.link navigate={~p"/ingredients/new"} class="btn primary">
+      + New Ingredient
+    </.link>
+  </div>
+
+  <table class="table">
+    <thead>
+      <tr>
+        <th>Code</th>
+        <th>Name</th>
+        <th>Unit</th>
+        <th>Cost per Unit</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      <%= for ingredient <- @ingredients do %>
+        <tr>
+          <td><%= ingredient.code %></td>
+          <td><%= ingredient.name %></td>
+          <td><%= ingredient.unit %></td>
+          <td><%= format_currency(ingredient.cost_per_unit_cents || 0) %></td>
+          <td>
+            <.link navigate={~p"/ingredients/#{ingredient.id}/edit"} class="btn btn-sm">
+              Edit
+            </.link>
+          </td>
+        </tr>
+      <% end %>
+    </tbody>
+  </table>
+</section>
+

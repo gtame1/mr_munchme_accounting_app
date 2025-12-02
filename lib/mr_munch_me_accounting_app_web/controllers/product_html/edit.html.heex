@@ -1,0 +1,52 @@
+<section class="card">
+  <h2 class="card-title">Edit Product</h2>
+  <p class="card-subtitle">
+    Update product details.
+  </p>
+
+  <.form :let={f} for={@changeset} as={:product} action={~p"/products/#{@product.id}"} method="patch" class="form-grid">
+    <%= if @changeset.action do %>
+      <div class="alert alert-error">
+        <p>There were problems updating this product. Please review the fields below.</p>
+        <ul>
+          <%= for {field, {message, _}} <- @changeset.errors do %>
+            <li><%= humanize(field) %>: <%= message %></li>
+          <% end %>
+        </ul>
+      </div>
+    <% end %>
+
+    <div class="form-block">
+      <div class="field">
+        <.input field={f[:name]} type="text" label="Product Name" />
+      </div>
+
+      <div class="field">
+        <.input field={f[:sku]} type="text" label="SKU (optional)" />
+      </div>
+
+      <div class="field">
+        <.input field={f[:price_cents]} type="number" label="Price (cents)" />
+        <p class="field-help">Enter price in cents (e.g., 5000 for $50.00)</p>
+      </div>
+
+      <div class="field">
+        <.input
+          field={f[:active]}
+          type="checkbox"
+          label="Active"
+        />
+      </div>
+    </div>
+
+    <div class="actions">
+      <button class="btn primary" type="submit">
+        Save Changes
+      </button>
+      <.link navigate={~p"/products"} class="btn">
+        Cancel
+      </.link>
+    </div>
+  </.form>
+</section>
+
