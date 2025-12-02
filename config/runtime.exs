@@ -5,7 +5,7 @@ if System.get_env("PHX_SERVER") do
 end
 
 if config_env() == :prod do
-  # ---------- Repo (DB) ----------
+  # ---------- Repo (database) ----------
 
   database_url =
     System.get_env("DATABASE_URL") ||
@@ -13,6 +13,8 @@ if config_env() == :prod do
       environment variable DATABASE_URL is missing.
       For example: ecto://USER:PASS@HOST/DATABASE
       """
+
+  db_uri = URI.parse(database_url)
 
   maybe_ipv6 =
     if System.get_env("ECTO_IPV6") in ~w(true 1),
@@ -22,10 +24,14 @@ if config_env() == :prod do
   config :mr_munch_me_accounting_app, MrMunchMeAccountingApp.Repo,
     url: database_url,
     ssl: true,
-    pool_size: String.to_integer(System.get_env("POOL_SIZE") || "5"),
+    ssl_opts: [
+      verify: :verify_none,
+      server_name_indication: to_charlist(db_uri.host || "")
+    ],
+    pool_size: String.to_integer(System.get_env("POOL_SIZE") || "10"),
     socket_options: maybe_ipv6
 
-  # ---------- Endpoint (HTTP) ----------
+  # ---------- Endpoint ----------
 
   secret_key_base =
     System.get_env("SECRET_KEY_BASE") ||
@@ -45,13 +51,11 @@ if config_env() == :prod do
     ],
     secret_key_base: secret_key_base
 
-  # ---------- Mailer / Logger ----------
+  # ---------- Misc ----------
+
+  config :mr_munch_me_accounting_app, :dns_cluster_query, System.get_env("DNS_CLUSTER_QUERY")
 
   config :swoosh, api_client: Swoosh.ApiClient.Req
   config :swoosh, local: false
-
   config :logger, level: :info
-
-  # If you use DNS clustering:
-  config :mr_munch_me_accounting_app, :dns_cluster_query, System.get_env("DNS_CLUSTER_QUERY")
 end
