@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="csrf-token" content={get_csrf_token()} />
+    <.live_title default="MrMunchMeAccountingApp" suffix="">
+      {assigns[:page_title]}
+    </.live_title>
+    <link phx-track-static rel="stylesheet" href={~p"/assets/css/app.css"} />
+    <script defer phx-track-static type="text/javascript" src={~p"/assets/js/app.js"}>
+    </script>
+    <script>
+      (() => {
+        const setTheme = (theme) => {
+          if (theme === "system") {
+            localStorage.removeItem("phx:theme");
+            document.documentElement.removeAttribute("data-theme");
+          } else {
+            localStorage.setItem("phx:theme", theme);
+            document.documentElement.setAttribute("data-theme", theme);
+          }
+        };
+        if (!document.documentElement.hasAttribute("data-theme")) {
+          setTheme(localStorage.getItem("phx:theme") || "system");
+        }
+        window.addEventListener("storage", (e) => e.key === "phx:theme" && setTheme(e.newValue || "system"));
+        
+        window.addEventListener("phx:set-theme", (e) => setTheme(e.target.dataset.phxTheme));
+      })();
+    </script>
+  </head>
+  <body>
+    <div class="app-layout">
+      <aside class="sidebar">
+        <.link navigate={~p"/"}>
+          <div class="sidebar-header" >
+            <span class="app-logo">🍪</span>
+            <span class="app-title">Mr Munch Me</span>
+          </div>
+        </.link>
+
+        <nav class="nav">
+          <strong>Main Menu</strong>
+          <.link navigate={~p"/"} class="nav-link">Dashboard</.link>
+          <.link navigate={~p"/orders"} class="nav-link">All Orders</.link>
+          <.link navigate={~p"/inventory"} class="nav-link">Inventory</.link>
+          <.link navigate={~p"/inventory/requirements"} class="nav-link">Shopping List</.link>
+          <.link navigate={~p"/expenses"} class="nav-link">Expenses</.link>
+
+          <strong style="margin-top: 1rem;">Reports</strong>
+          <.link navigate={~p"/reports/pnl"} class="nav-link">P&L</.link>
+          <.link navigate={~p"/reports/balance_sheet"} class="nav-link">Balance Sheet</.link>
+          <.link navigate={~p"/reports/unit_economics"} class="nav-link">Unit Economics</.link>
+          <.link navigate={~p"/reports/cash_flow"} class="nav-link">Cash Flow</.link>
+          <.link navigate={~p"/transactions"} class="nav-link">All Transactions</.link>
+
+          <strong style="margin-top: 1rem;">Other</strong>
+          <.link navigate={~p"/investments"} class="nav-link">Investments</.link>
+          <.link navigate={~p"/transfers"} class="nav-link">Money Transfers</.link>
+        </nav>
+      </aside>
+
+      <main class="content">
+        <section class="content-body">
+          <%= @inner_content %>
+        </section>
+      </main>
+    </div>
+  </body>
+</html>

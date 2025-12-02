@@ -1,0 +1,48 @@
+<section class="card">
+  <div style="display:flex; justify-content:space-between; align-items:center; gap:1rem;">
+    <div>
+      <h2 class="card-title">Transaction Details</h2>
+      <p class="card-subtitle">
+        Journal entry #<%= @entry.id %>
+      </p>
+    </div>
+    <.link navigate={~p"/transactions"} class="btn">
+      ← Back to list
+    </.link>
+  </div>
+
+  <ul class="nice-list">
+    <li><strong>Date:</strong> <%= @entry.date %></li>
+    <li><strong>Type:</strong> <%= @entry.entry_type %></li>
+    <li><strong>Description:</strong> <%= @entry.description %></li>
+    <li><strong>Reference:</strong> <%= @entry.reference || "-" %></li>
+    <li><strong>Total:</strong> <%= @entry.total_amount_formatted %></li>
+  </ul>
+
+  <div class="table-wrapper" style="margin-top:1rem;">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Account</th>
+          <th>Description</th>
+          <th class="numeric">Debit</th>
+          <th class="numeric">Credit</th>
+        </tr>
+      </thead>
+      <tbody>
+        <%= for line <- @entry.journal_lines do %>
+          <tr>
+            <td><%= line.account.name %></td>
+            <td><%= line.description %></td>
+            <td class="numeric">
+              <%= if line.debit_cents > 0, do: MrMunchMeAccountingApp.Accounting.format_cents(line.debit_cents) %>
+            </td>
+            <td class="numeric">
+              <%= if line.credit_cents > 0, do: MrMunchMeAccountingApp.Accounting.format_cents(line.credit_cents) %>
+            </td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  </div>
+</section>

@@ -1,0 +1,132 @@
+<section class="content">
+  <header class="content-header">
+    <h1 class="page-title">Partner Investments</h1>
+
+    
+  </header>
+
+  <div class="content-body">
+    <!-- Summary -->
+    <section class="card">
+      <h2 class="card-title">Overview</h2>
+      <p class="card-subtitle">
+        Total capital invested and each partner's share.
+      </p>
+
+      <div class="dashboard-metrics">
+        <div class="metric-card">
+          <div class="metric-label">Total Invested</div>
+          <div class="metric-value">
+            <%= format_currency(@total_invested_cents) %>
+          </div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">Number of Partners</div>
+          <div class="metric-value">
+            <%= Enum.count(@partner_totals) %>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Partner breakdown -->
+    <section class="card">
+      <h2 class="card-title">By Partner</h2>
+      <p class="card-subtitle">
+        Contributions and ownership percentage (based on capital invested).
+      </p>
+
+      <div class="header-actions" style="margin-bottom: 1rem;">
+        <.link navigate={~p"/investments/new"} class="btn primary">
+            + New Investment
+        </.link>
+        <.link navigate={~p"/investments/withdrawal"} class="btn">
+            Withdrawal
+        </.link>
+      </div>
+
+      <div class="table-wrapper">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Partner</th>
+              <th>Email</th>
+              <th class="numeric">Invested</th>
+              <th class="numeric">% of Total</th>
+            </tr>
+          </thead>
+          <tbody>
+            <%= if @partner_totals == [] do %>
+              <tr>
+                <td colspan="4">No investments recorded yet.</td>
+              </tr>
+            <% else %>
+              <% total = @total_invested_cents %>
+              <%= for %{partner: p, total_cents: cents} <- @partner_totals do %>
+                <% pct =
+                  if total > 0 do
+                    cents * 100.0 / total
+                  else
+                    0.0
+                  end %>
+
+                <tr>
+                  <td><%= p.name %></td>
+                  <td><%= p.email %></td>
+                  <td class="numeric"><%= format_currency(cents) %></td>
+                  <td class="numeric"><%= :erlang.float_to_binary(pct, decimals: 2) %>%</td>
+                </tr>
+              <% end %>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Recent contributions -->
+    <section class="card">
+      <h2 class="card-title">Recent Contributions</h2>
+      <p class="card-subtitle">
+        Latest capital contributions into the business.
+      </p>
+
+      <div class="table-wrapper">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Partner</th>
+              <th class="numeric">Amount</th>
+              <th>Note</th>
+            </tr>
+          </thead>
+          <tbody>
+            <%= if @recent_contributions == [] do %>
+              <tr>
+                <td colspan="4">No contributions yet.</td>
+              </tr>
+            <% else %>
+              <%= for c <- @recent_contributions do %>
+                <tr>
+                  <td><%= c.date %></td>
+                  <td><%= c.partner && c.partner.name %></td>
+                  <td class="numeric">
+                    <% signed_cents =
+                        if c.direction == "out",
+                          do: -c.amount_cents,
+                          else: c.amount_cents %>
+
+                    <span class={if c.direction == "out", do: "amount-negative", else: "amount-positive"}>
+                      <%= format_currency(signed_cents) %>
+                    </span>
+                  </td>
+                  <td><%= c.note %></td>
+                </tr>
+              <% end %>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+</section>

@@ -1,0 +1,99 @@
+defmodule MrMunchMeAccountingApp.Expenses do
+  @moduledoc """
+  Manages business expenses (OPEX, generic costs).
+  """
+
+  import Ecto.Query, warn: false
+  alias MrMunchMeAccountingApp.Repo
+
+  alias MrMunchMeAccountingApp.Expenses.Expense
+  alias MrMunchMeAccountingApp.Accounting
+  alias MrMunchMeAccountingApp.Accounting.JournalEntry
+
+  # ---------- PUBLIC API ----------
+
+  def list_expenses() do
+    query =
+      from e in Expense,
+        preload: [:expense_account, :paid_from_account],
+        order_by: [desc: e.date, desc: e.inserted_at]
+
+    Repo.all(query)
+  end
+
+  def get_expense!(id) do
+    Expense
+    |> Repo.get!(id)
+    |> Repo.preload([:expense_account, :paid_from_account])
+  end
+
+  def change_expense(%Expense{} = expense, attrs \\ %{}), do: Expense.changeset(expense, attrs)
+
+  def create_expense(attrs), do: create_expense_with_journal(attrs)
+
+  def update_expense(%Expense{} = expense, attrs) do
+    expense
+    |> Expense.changeset(attrs)
+    |> Repo.update()
+  end
+
+  def create_expense_with_journal(attrs) do
+    IO.inspect(attrs, label: "Attrs before conversion")
+
+    attrs =
+      case Map.pop(attrs, "amount_cents") do
+        {nil, attrs} ->
+          # No amount field, use amount_cents as-is
+          attrs
+
+        {amount, attrs} ->
+          # Convert amount (decimal) to amount_cents (integer)
+          amount_cents =
+            amount
+            |> Decimal.new()
+            |> Decimal.mult(Decimal.new(100))
+            |> Decimal.round(0)
+            |> Decimal.to_integer()
+
+          Map.put(attrs, "amount_cents", amount_cents)
+      end
+
+    IO.inspect(attrs, label: "Attrs after conversion")
+
+    Repo.transaction(fn ->
+      with {:ok, expense} <-
+             %Expense{}
+             |> Expense.changeset(attrs)
+             |> Repo.insert(),
+           {:ok, _entry} <- Accounting.record_expense(expense) do
+        expense
+      else
+        {:error, changeset = %Ecto.Changeset{}} ->
+          Repo.rollback(changeset)
+
+        {:error, reason} ->
+          Repo.rollback(reason)
+      end
+    end)
+  end
+
+  # you can keep a simple create_expense if you want it without accounting
+
+  def delete_expense(%Expense{} = expense) do
+    Repo.transaction(fn ->
+      # Find and delete the related journal entry
+      reference = "Expense ##{expense.id}"
+
+      journal_entry =
+        from(je in JournalEntry, where: je.reference == ^reference)
+        |> Repo.one()
+
+      if journal_entry do
+        Repo.delete!(journal_entry)
+      end
+
+      # Delete the expense
+      Repo.delete!(expense)
+    end)
+  end
+end

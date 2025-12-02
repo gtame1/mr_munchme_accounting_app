@@ -1,0 +1,83 @@
+<section class="content">
+  <header class="content-header">
+    <h1 class="page-title">New Investment</h1>
+  </header>
+
+  <div class="content-body">
+    <section class="card">
+      <h2 class="card-title">Register Capital Contribution</h2>
+      <p class="card-subtitle">
+        Record a new cash investment into the business by a partner.
+      </p>
+
+      <.form
+        for={@changeset}
+        as={:contribution}
+        action={~p"/investments"}
+        class="form-grid"
+        :let={f}
+      >
+        <div class="form-block">
+          <div class="field">
+            <.input
+              field={f[:partner_id]}
+              type="select"
+              label="Partner"
+              prompt="Select partner"
+              options={@partner_options}
+            />
+          </div>
+
+          <div class="field">
+            <.input
+              field={f[:date]}
+              type="date"
+              label="Date"
+            />
+          </div>
+        </div>
+
+        <div class="form-block">
+          <div class="field">
+            <.input
+              field={f[:amount_pesos]}
+              type="number"
+              label="Amount (MXN)"
+              step="0.01"
+              min="0"
+            />
+          </div>
+
+          <div class="field">
+            <.input
+              field={f[:cash_account_id]}
+              type="select"
+              label="Deposit account"
+              prompt="Select account"
+              options={@cash_account_options}
+            />
+          </div>
+        </div>
+
+        <div class="form-block">
+          <div class="field">
+            <.input
+              field={f[:note]}
+              type="text"
+              label="Note (optional)"
+            />
+          </div>
+        </div>
+
+        <div class="actions">
+          <button type="submit" class="btn primary">
+            Save Investment
+          </button>
+          <.link navigate={~p"/investments"} class="btn">
+            Cancel
+          </.link>
+        </div>
+      </.form>
+    </section>
+  </div>
+</section>

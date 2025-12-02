@@ -1,0 +1,47 @@
+<section class="content">
+  <header class="content-header">
+    <h1 class="page-title">Internal Transfers</h1>
+  </header>
+
+  <div class="content-body">
+    <section class="card">
+      <div class="card-header">
+        <h2 class="card-title">Recent Transfers</h2>
+        <p class="card-subtitle">
+          Movements between internal accounts (cash, bank, etc.).
+        </p>
+      </div>
+
+      <div class="actions" style="margin-bottom: 0.75rem;">
+        <.link navigate={~p"/transfers/new"} class="btn primary">
+          + New Transfer
+        </.link>
+      </div>
+
+      <div class="table-wrapper">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>From</th>
+              <th>To</th>
+              <th class="numeric">Amount</th>
+              <th>Note</th>
+            </tr>
+          </thead>
+          <tbody>
+            <%= for t <- @transfers do %>
+              <tr>
+                <td><%= t.date %></td>
+                <td><%= "#{t.from_account.code} – #{t.from_account.name}" %></td>
+                <td><%= "#{t.to_account.code} – #{t.to_account.name}" %></td>
+                <td class="numeric"><%= format_currency(t.amount_cents) %></td>
+                <td><%= t.note %></td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+</section>

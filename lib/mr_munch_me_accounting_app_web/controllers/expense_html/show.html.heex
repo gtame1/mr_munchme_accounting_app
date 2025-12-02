@@ -1,0 +1,38 @@
+<section class="card">
+  <div style="display:flex; justify-content:space-between; align-items:center; gap:1rem;">
+    <div>
+      <h2 class="card-title">Expense Details</h2>
+      <p class="card-subtitle">
+        Full information for this expense.
+      </p>
+    </div>
+    <div style="display: flex; gap: 0.5rem;">
+      <.link navigate={~p"/expenses"} class="btn">
+        ←  Back to Expenses
+      </.link>
+      <.link
+        href={~p"/expenses/#{@expense.id}"}
+        method="delete"
+        data-confirm="Are you sure you want to delete this expense?"
+        class="btn"
+        style="background-color: #dc2626; color: white;"
+      >
+        Delete
+      </.link>
+    </div>
+  </div>
+
+  <ul class="nice-list" style="margin-top: 1rem;">
+    <li><strong>Date:</strong> <%= @expense.date %></li>
+    <li><strong>Description:</strong> <%= @expense.description %></li>
+
+    <%= if @expense.category do %>
+      <li><strong>Category:</strong> <%= @expense.category %></li>
+    <% end %>
+
+    <li><strong>Expense Account:</strong> <%= @expense.expense_account && @expense.expense_account.name %></li>
+    <li><strong>Paid From:</strong> <%= @expense.paid_from_account && @expense.paid_from_account.name %></li>
+    <li><strong>Amount:</strong> <%= format_currency(@expense.amount_cents) %></li>
+  </ul>
+
+</section>

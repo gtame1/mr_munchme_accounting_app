@@ -1,0 +1,113 @@
+<section class="content">
+  <header class="content-header">
+    <h1 class="page-title">Profit &amp; Loss</h1>
+  </header>
+
+  <div class="content-body">
+
+    <!-- Period selector -->
+    <section class="card">
+      <h2 class="card-title">Period</h2>
+      <p class="card-subtitle">
+        Default is current month. Adjust dates to see another period.
+      </p>
+
+      <.form for={%{}} method="get" action={~p"/reports/pnl"} class="form-grid" :let={_f}>
+        <div class="form-block">
+          <div class="field">
+            <label>Start date</label>
+            <input type="date" name="start_date" value={@start_date} />
+          </div>
+
+          <div class="field">
+            <label>End date</label>
+            <input type="date" name="end_date" value={@end_date} />
+          </div>
+
+          <div class="field">
+            <label>&nbsp;</label>
+            <button type="submit" class="btn primary">
+              Update period
+            </button>
+          </div>
+        </div>
+      </.form>
+    </section>
+
+    <!-- Current period summary card -->
+    <section class="card">
+      <h2 class="card-title">
+        P&amp;L for <%= @start_date %> to <%= @end_date %>
+      </h2>
+
+      <p class="card-subtitle">
+        High-level view of revenue, COGS, and expenses for the selected period.
+      </p>
+
+      <div class="nice-list" style="margin-top: 1rem;">
+        <li>
+          <strong>Total Revenue:</strong>
+          <%= format_currency(@summary.total_revenue_cents) %>
+        </li>
+        <li>
+          <strong>Total COGS:</strong>
+          <%= format_currency(@summary.total_cogs_cents) %>
+        </li>
+        <li>
+          <strong>Gross Profit:</strong>
+          <%= format_currency(@summary.gross_profit_cents) %>
+        </li>
+        <li>
+          <strong>Operating Expenses:</strong>
+          <%= format_currency(@summary.total_opex_cents) %>
+        </li>
+        <li>
+          <strong>Operating Income:</strong>
+          <%= format_currency(@summary.operating_income_cents) %>
+        </li>
+        <li>
+          <strong>Net Income:</strong>
+          <%= format_currency(@summary.net_income_cents) %>
+        </li>
+      </div>
+    </section>
+
+    <!-- Monthly trend card -->
+    <section class="card" :if={@monthly && @monthly != []}>
+      <h2 class="card-title">Monthly Trend (last 6 months)</h2>
+      <p class="card-subtitle">
+        Each row is one calendar month. Amounts are totals for that month.
+      </p>
+
+      <div class="table-wrapper" style="margin-top: 1rem;">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Month</th>
+              <th>Revenue</th>
+              <th>COGS</th>
+              <th>Gross Profit</th>
+              <th>Operating Expenses</th>
+              <th>Operating Income</th>
+              <th>Net Income</th>
+            </tr>
+          </thead>
+          <tbody>
+            <%= for month <- Enum.sort_by(@monthly, & &1.label, :desc) do %>
+              <tr>
+                <td><%= month.label %></td>
+                <td><%= format_currency(month.total_revenue_cents) %></td>
+                <td><%= format_currency(month.total_cogs_cents) %></td>
+                <td><%= format_currency(month.gross_profit_cents) %></td>
+                <td><%= format_currency(month.total_opex_cents) %></td>
+                <td><%= format_currency(month.operating_income_cents) %></td>
+                <td><%= format_currency(month.net_income_cents) %></td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+  </div>
+</section>

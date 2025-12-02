@@ -1,0 +1,90 @@
+<section class="card">
+  <h2 class="card-title">New Order</h2>
+  <p class="card-subtitle">
+    Register a new cake order. Customer details and delivery info are required for scheduling.
+  </p>
+
+  <.form :let={f} for={@changeset} as={:order} action={@action}  class="form-grid">
+    <%= if @changeset.action do %>
+      <div class="alert alert-error">
+        <p>There were problems with your order. Please review the fields below.</p>
+      </div>
+    <% end %>
+
+
+    <div class="form-block">
+      <div class="field">
+        <.input field={f[:customer_name]} type="text" label="Customer Name"/>
+      </div>
+
+      <div class="field">
+        <.input field={f[:customer_email]} type="email" label="Customer Email (optional)" />
+      </div>
+
+      <div class="field">
+        <.input field={f[:customer_phone]} type="text" label="Customer Phone" />
+      </div>
+
+      <div class="field">
+        <.input
+          field={f[:delivery_type]}
+          type="select"
+          label="Delivery Type"
+          prompt="Select delivery type"
+          options={[{"Pickup", "pickup"}, {"Delivery", "delivery"}]}
+        />
+      </div>
+
+      <div class="field">
+        <.input
+          field={f[:delivery_address]}
+          type="textarea"
+          label="Delivery Address (if delivery)"
+          rows="3"
+        />
+      </div>
+
+      <div class="field">
+        <.input field={f[:delivery_date]} type="date" label="Delivery Date" />
+      </div>
+
+      <div class="field">
+        <.input field={f[:delivery_time]} type="time" label="Delivery Time (optional)" />
+      </div>
+      
+      <div class="field">
+        <.input
+          field={f[:customer_paid_shipping]}
+          type="checkbox"
+          label="Customer paid shipping?"
+        />
+      </div>
+
+      <div class="field">
+        <.input
+          field={f[:product_id]}
+          type="select"
+          label="Product"
+          prompt="Select a product"
+          options={@product_options}
+        />
+      </div>
+
+      <div class="field">
+        <.input
+          field={f[:prep_location_id]}
+          type="select"
+          label="Preparation location"
+          prompt="Select preparation location"
+          options={@location_options}
+        />
+      </div>
+    </div>
+
+    <div class="actions">
+      <button class="btn primary" type="submit">
+        Save Order
+      </button>
+    </div>
+  </.form>
+</section>

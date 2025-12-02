@@ -1,0 +1,145 @@
+<section class="card">
+  <div class="card-header">
+    <h2 class="card-title">Orders</h2>
+    <p class="card-subtitle">
+      Overview of all orders and their current status.
+    </p>
+  </div>
+
+  <div class="actions" style="margin-bottom: 0.75rem;">
+    <.link navigate={~p"/orders/new"} class="btn primary">
+      + New Order
+    </.link>
+  </div>
+
+  <!-- Filters -->
+  <.form for={%{}} method="get" action={~p"/orders"} class="form-grid" :let={_f}>
+    <div class="form-block">
+      <div class="field">
+        <label>Status</label>
+        <select name="status">
+          <option value="">All</option>
+          <option value="new_order" selected={@filters.status == "new_order"}>New order</option>
+          <option value="in_prep" selected={@filters.status == "in_prep"}>In prep</option>
+          <option value="ready" selected={@filters.status == "ready"}>Ready</option>
+          <option value="delivered" selected={@filters.status == "delivered"}>Delivered</option>
+          <option value="canceled" selected={@filters.status == "canceled"}>Canceled</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <label>Delivery type</label>
+        <select name="delivery_type">
+          <option value="">All</option>
+          <option value="pickup" selected={@filters.delivery_type == "pickup"}>Pickup</option>
+          <option value="delivery" selected={@filters.delivery_type == "delivery"}>Delivery</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <label>Product</label>
+        <select name="product_id">
+          <option value="">All</option>
+          <%= for {label, id} <- @product_filter_options do %>
+            <option value={id} selected={to_string(id) == @filters.product_id}><%= label %></option>
+          <% end %>
+        </select>
+      </div>
+
+<!--
+      <div class="field">
+        <label>Delivery date from</label>
+        <input type="date" name="date_from" value={@filters.date_from} />
+      </div>
+
+      <div class="field">
+        <label>Delivery date to</label>
+        <input type="date" name="date_to" value={@filters.date_to} />
+      </div>
+-->
+      <div class="field">
+        <label>Prep Location</label>
+        <select name="prep_location_id">
+          <option value="">All</option>
+
+          <%= for {label, id} <- @location_filter_options do %>
+            <option value={id} selected={to_string(id) == @filters.prep_location_id}>
+              <%= label %>
+            </option>
+          <% end %>
+        </select>
+      </div>
+      
+      <div class="field">
+        <label>&nbsp;</label>
+
+        <%= if filters_active?(@filters) do %>
+          <.link navigate={~p"/orders"} class="btn">
+            Clear filters
+          </.link>
+        <% else %>
+          <button class="btn" type="submit">
+            Apply filters
+          </button>
+        <% end %>
+      </div>
+    </div>
+  </.form>
+
+  <div class="table-wrapper">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>
+            <.link navigate={~p"/orders?#{Map.merge(@filters, %{sort_by: "customer_name", sort_dir: next_dir(@filters, "customer_name")})}"}>
+              Customer <span class="sort-arrow"><%= sort_arrow(@filters, "customer_name") %></span>
+            </.link>
+          </th>
+          <th>
+            <.link navigate={~p"/orders?#{Map.merge(@filters, %{sort_by: "product", sort_dir: next_dir(@filters, "product")})}"}>
+              Product <span class="sort-arrow"><%= sort_arrow(@filters, "product") %></span>
+            </.link>
+          </th>
+          <th>
+            <.link navigate={~p"/orders?#{Map.merge(@filters, %{sort_by: "delivery_date", sort_dir: next_dir(@filters, "delivery_date")})}"}>
+              Delivery Date <span class="sort-arrow"><%= sort_arrow(@filters, "delivery_date") %></span>
+            </.link>
+          </th>
+          <th>Type</th>
+          <th>
+            <.link navigate={~p"/orders?#{Map.merge(@filters, %{sort_by: "status", sort_dir: next_dir(@filters, "status")})}"}>
+              Status <span class="sort-arrow"><%= sort_arrow(@filters, "status") %></span>
+            </.link>
+          </th>
+          <th>Prep Location</th>
+        </tr>
+      </thead>
+
+      <tbody>
+        <%= for order <- @orders do %>
+          <tr>
+            <td>
+              <.link navigate={~p"/orders/#{order.id}"} class="link-text">
+                <%= order.id %>
+              </.link>
+            </td>
+            <td><%= order.customer_name %></td>
+            <td><%= order.product && order.product.name %></td>
+            <td><%= order.delivery_date %></td>
+            <td><%= String.capitalize(order.delivery_type || "") %></td>
+
+            <td>
+              <.status_badge status={order.status} />
+            </td>
+
+            <td><.location_badge location={order.prep_location} /></td>
+            <td>
+              
+            </td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  </div>
+</section>

@@ -1,0 +1,22 @@
+defmodule MrMunchMeAccountingApp.Inventory.InventoryItem do
+  use Ecto.Schema
+  import Ecto.Changeset
+
+  alias MrMunchMeAccountingApp.Inventory.{Ingredient, Location}
+
+  schema "inventories" do
+    field :quantity_on_hand, :integer, default: 0
+    field :avg_cost_per_unit_cents, :integer, default: 0
+
+    belongs_to :ingredient, Ingredient
+    belongs_to :location, Location
+
+    timestamps()
+  end
+
+  def changeset(stock, attrs) do
+    stock
+    |> cast(attrs, [:quantity_on_hand, :avg_cost_per_unit_cents, :ingredient_id, :location_id])
+    |> validate_required([:quantity_on_hand, :avg_cost_per_unit_cents, :ingredient_id, :location_id])
+  end
+end

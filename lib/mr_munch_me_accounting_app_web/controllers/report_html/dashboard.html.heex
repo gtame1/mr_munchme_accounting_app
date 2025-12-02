@@ -1,0 +1,121 @@
+<section class="content">
+  <header class="content-header">
+    <h1 class="page-title">Dashboard</h1>
+    <p class="card-subtitle">
+      High-level view of operations and financials for the selected period.
+    </p>
+  </header>
+
+  <div class="content-body">
+    <!-- Period selector -->
+    <section class="card">
+      <h2 class="card-title">Period</h2>
+      <p class="card-subtitle">
+        Default is current month. Adjust dates to see another period.
+      </p>
+
+      <.form for={%{}} method="get" action={~p"/"} class="form-grid" :let={_f}>
+        <div class="form-block">
+          <div class="field">
+            <label>Start date</label>
+            <input type="date" name="start_date" value={@start_date} />
+          </div>
+
+          <div class="field">
+            <label>End date</label>
+            <input type="date" name="end_date" value={@end_date} />
+          </div>
+
+          <div class="field">
+            <label>&nbsp;</label>
+            <button type="submit" class="btn primary">
+              Update period
+            </button>
+          </div>
+        </div>
+      </.form>
+    </section>
+
+    <% m = @metrics %>
+
+    <!-- Operational Summary -->
+    <section class="card">
+      <h2 class="card-title">Operational Summary</h2>
+      <p class="card-subtitle">
+        Orders and basic commercial performance for this period.
+      </p>
+
+      <div class="dashboard-metrics">
+        <div class="metric-card">
+          <div class="metric-label">Total Orders</div>
+          <div class="metric-value"><%= m.total_orders %></div>
+        </div>
+
+        <div class="metric-card">
+          <div class="metric-label">Delivered Orders</div>
+          <div class="metric-value"><%= m.delivered_orders %></div>
+        </div>
+
+        <div class="metric-card">
+          <div class="metric-label">Revenue (Orders)</div>
+          <div class="metric-value">
+            <%= format_currency(m.revenue_cents) %>
+          </div>
+        </div>
+
+        <div class="metric-card">
+          <div class="metric-label">Avg Order Value</div>
+          <div class="metric-value">
+            <%= format_currency(m.avg_order_value_cents) %>
+          </div>
+        </div>
+      </div>
+
+      <div style="margin-top: 1rem;">
+        <h3 class="card-title" style="font-size: 1rem;">Orders by Status</h3>
+        <ul class="nice-list">
+          <li><strong>New:</strong> <%= Map.get(m.orders_by_status, "new_order", 0) %></li>
+          <li><strong>In prep:</strong> <%= Map.get(m.orders_by_status, "in_prep", 0) %></li>
+          <li><strong>Ready:</strong> <%= Map.get(m.orders_by_status, "ready", 0) %></li>
+          <li><strong>Delivered:</strong> <%= Map.get(m.orders_by_status, "delivered", 0) %></li>
+          <li><strong>Canceled:</strong> <%= Map.get(m.orders_by_status, "canceled", 0) %></li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- Financial Summary (P&L) -->
+    <section class="card">
+      <h2 class="card-title">Financial Summary (P&amp;L)</h2>
+      <p class="card-subtitle">
+        Based on accounting journal entries for the same period.
+      </p>
+
+      <% pnl = m.pnl %>
+
+      <div class="dashboard-metrics">
+        <div class="metric-card">
+          <div class="metric-label">Total Revenue</div>
+          <div class="metric-value">
+            <%= format_currency(pnl.total_revenue_cents || 0) %>
+          </div>
+        </div>
+
+        <div class="metric-card">
+          <div class="metric-label">Total Expenses</div>
+          <div class="metric-value">
+            <%= format_currency(pnl.total_cogs_cents || 0) %>
+          </div>
+        </div>
+
+        <div class="metric-card">
+          <div class="metric-label">Net Income</div>
+          <div class="metric-value">
+            <%= format_currency(pnl.net_income_cents || 0) %>
+          </div>
+        </div>
+      </div>
+
+      
+    </section>
+  </div>
+</section>

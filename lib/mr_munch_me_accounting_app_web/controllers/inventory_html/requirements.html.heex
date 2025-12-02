@@ -1,0 +1,118 @@
+<section class="content">
+  <header class="content-header">
+    <h1 class="page-title">Inventory Requirements</h1>
+    <p class="text-muted">
+      Ingredients required to fulfill all <strong>new</strong> orders.
+    </p>
+  </header>
+
+  <div class="content-body">
+    <!-- 🛒 SHOPPING LIST (SHORTAGES ONLY) -->
+    <section class="card">
+      <h2 class="card-title">Shopping List</h2>
+      <p class="card-subtitle">
+        Ingredients where current stock at each location is <strong>not enough</strong> to fulfill upcoming new orders.
+      </p>
+
+      <% shortage_items =
+        @requirements
+        |> Enum.filter(&(&1.shortage > 0))
+        |> Enum.sort_by(fn r ->
+          {r.needed_by || r.location_name, ~D[9999-12-31],  r.ingredient_name}
+        end)
+      %>
+
+      <div class="table-wrapper">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Location</th>
+              <th>Ingredient</th>
+              <th class="numeric">Shortage</th>
+              <th>Unit</th>
+              <th>Needed By</th>
+            </tr>
+          </thead>
+
+          <tbody>
+            <%= if shortage_items == [] do %>
+              <tr>
+                <td colspan="5">
+                  ✅ No shortages right now. You have enough inventory to fulfill all new orders.
+                </td>
+              </tr>
+            <% else %>
+              <%= for r <- shortage_items do %>
+                <tr class="alert-row">
+                  <td><.location_badge location={r.location} /></td>
+                  <td><strong><%= r.ingredient_name %></strong></td>
+                  <td class={["numeric", "text-danger"]}>
+                    <%= r.shortage %>
+                  </td>
+                  <td><%= r.unit %></td>
+                  <td>
+                    <%= if r.needed_by do %>
+                      <%= r.needed_by %>
+                    <% else %>
+                      –
+                    <% end %>
+                  </td>
+                </tr>
+              <% end %>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2 class="card-title">Upcoming Order Requirements</h2>
+      <p class="card-subtitle">
+        Based on all orders with status <code>new_order</code>.
+      </p>
+
+      <div class="table-wrapper">
+        <table class="table">
+          <thead>
+            <tr>
+                <th>Location</th>
+                <th>Ingredient</th>
+                <th class="numeric">On Hand</th>
+                <th class="numeric">Required</th>
+                <th class="numeric">Shortage</th>
+                <th>Unit</th>
+                <th>Needed By</th>
+            </tr>
+            </thead>
+
+            <tbody>
+                <%= if @requirements == [] do %>
+                    <tr>
+                    <td colspan="6">✅ No new orders require inventory right now.</td>
+                    </tr>
+                <% else %>
+                    <%= for r <- @requirements |> Enum.sort_by(fn r -> {r.location_name, r.needed_by || ~D[9999-12-31], r.ingredient_name} end) do %>                    <tr class={r.shortage > 0 && "alert-row"}>
+                        <td><.location_badge location={r.location} /></td>
+                        <td><strong><%= r.ingredient_name %></strong></td>
+                        <td class="numeric"><%= r.on_hand %></td>
+                        <td class="numeric"><%= r.total_required %></td>
+                        <td class={["numeric", r.shortage > 0 && "text-danger"]}>
+                        <%= r.shortage %>
+                        </td>
+                        <td><%= r.unit %></td>
+                        <td>
+                            <%= if r.needed_by do %>
+                                <%= r.needed_by %>
+                            <% else %>
+                                –
+                            <% end %>
+                        </td>
+                    </tr>
+                    <% end %>
+                <% end %>
+            </tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+</section>

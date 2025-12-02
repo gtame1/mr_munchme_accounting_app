@@ -1,0 +1,132 @@
+<section class="card">
+  <h2 class="card-title">New Transaction</h2>
+  <p class="card-subtitle">
+    Record a sale, expense, or owner investment/withdrawal. Debits and credits must balance.
+  </p>
+
+  <!-- Phoenix.Component form: handles CSRF + method for us -->
+  <.form :let={f} for={@changeset}  as={:journal_entry} action={@action} class="form-grid">
+    
+    <!-- Global error banner -->
+    <%= if @changeset.action do %>
+      <div class="alert alert-error">
+        <p>Oops, something went wrong. Please review the errors below:</p>
+        <% base_errors = Keyword.get_values(@changeset.errors, :base) %>
+        <%= if base_errors != [] do %>
+          <ul class="pretty-list">
+            <%= for {msg, _opts} <- base_errors do %>
+              <li><%= msg %></li>
+            <% end %>
+          </ul>
+        <% end %>
+      </div>
+    <% end %>
+    
+    <!-- JOURNAL ENTRY HEADER -->
+    <div class="form-block">
+      <div class="field">
+        <.input field={f[:date]} type="date" label="Date"/>
+      </div>
+
+      <div class="field">
+        <.input field={f[:entry_type]} type="select" label="Type" prompt="Select a Transaction Type" options={@entry_types} />
+      </div>
+
+      <div class="field">
+        <.input field={f[:reference]} type="text" label="Reference (optional)" />
+      </div>
+
+      <div class="field">
+        <.input field={f[:description]} type="text" label="Description" />
+      </div>
+    </div>
+
+    <!-- Lines section -->
+    <h2 class="section-title">Lines</h2>
+    <p class="section-help">
+      Start with one debit line and one credit line for simple transactions.
+    </p>
+
+    <% params = @changeset.params || %{} %>
+
+    <div class="lines-grid">
+        <!-- Debit line -->
+        <div class="line-card">
+            <h4>Debit</h4>
+            <.error_tag changeset={@changeset} field={:journal_lines} />            
+
+            <div class="field">
+                <.input
+                    type="select"
+                    name="journal_entry[journal_lines][0][account_id]"
+                    label="Account"
+                    prompt="Select an Account"
+                    options={@account_options}
+                    value={get_in(params, ["journal_lines", "0", "account_id"]) || ""}
+                />
+            </div>
+
+            <div class="field">
+                <.input
+                    type="number"
+                    name="journal_entry[journal_lines][0][debit_cents]"
+                    label="Amount (in cents)"
+                    min="0"
+                    value={get_in(params, ["journal_lines", "0", "debit_cents"]) || ""}
+                />
+            </div>
+
+            <div class="field">
+                <.input
+                    type="text"
+                    name="journal_entry[journal_lines][0][description]"
+                    label="Line description (optional)"
+                    value={get_in(params, ["journal_lines", "0", "description"]) || ""}
+                />
+            </div>
+        </div>
+
+        <!-- Credit line -->
+        <div class="line-card">
+            <h4>Credit</h4>
+            <.error_tag changeset={@changeset} field={:journal_lines} />            
+
+            <div class="field">
+                <.input
+                    type="select"
+                    name="journal_entry[journal_lines][1][account_id]"
+                    label="Account"
+                    prompt="Select an Account"
+                    options={@account_options}
+                    value={get_in(params, ["journal_lines", "1", "account_id"]) || ""}
+                />
+            </div>
+
+            <div class="field">
+                <.input
+                    type="number"
+                    name="journal_entry[journal_lines][1][credit_cents]"
+                    label="Amount (in cents)"
+                    min="0"
+                    value={get_in(params, ["journal_lines", "1", "credit_cents"]) || ""}
+                />
+            </div>
+
+            <div class="field">
+                <.input
+                    type="text"
+                    name="journal_entry[journal_lines][1][description]"
+                    label="Line description (optional)"
+                    value={get_in(params, ["journal_lines", "1", "description"]) || ""}
+                />
+            </div>
+        </div>
+    </div>
+
+    <div class="actions">
+      <button class="btn primary" type="submit">
+        Save Transaction
+      </button>
+    </div>
+  </.form>
+</section>

@@ -1,0 +1,130 @@
+<section class="content">
+  <header class="content-header">
+    <h1 class="page-title">Unit Economics</h1>
+  </header>
+
+  <div class="content-body">
+    <!-- Product selector and period -->
+    <section class="card">
+      <h2 class="card-title">Product &amp; Period</h2>
+      <p class="card-subtitle">
+        Select a product and date range to view unit economics.
+      </p>
+
+      <.form for={%{}} method="get" action={~p"/reports/unit_economics"} class="form-grid" :let={_f}>
+        <div class="form-block">
+          <div class="field">
+            <label>Product</label>
+            <select name="product_id" id="product-select" onchange="this.form.submit()">
+              <option value="">Select a product</option>
+              <%= for {label, id} <- @product_options do %>
+                <option value={id} selected={id == @selected_product_id}>
+                  <%= label %>
+                </option>
+              <% end %>
+            </select>
+          </div>
+
+          <div class="field">
+            <label>Start date</label>
+            <input type="date" name="start_date" value={@start_date} />
+          </div>
+
+          <div class="field">
+            <label>End date</label>
+            <input type="date" name="end_date" value={@end_date} />
+          </div>
+
+          <div class="field">
+            <label>&nbsp;</label>
+            <button type="submit" class="btn primary">
+              Update
+            </button>
+          </div>
+        </div>
+      </.form>
+    </section>
+
+    <%= if @unit_economics do %>
+      <!-- Unit Economics Table -->
+      <section class="card">
+        <h2 class="card-title">
+          Unit Economics: <%= @unit_economics.product.name %>
+        </h2>
+        <p class="card-subtitle">
+          Period: <%= @unit_economics.period.start_date %> to <%= @unit_economics.period.end_date %>
+        </p>
+
+        <div class="table-wrapper" style="margin-top: 1rem;">
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Metric</th>
+                <th class="numeric">Total</th>
+                <th class="numeric">Per Unit</th>
+                <th class="numeric">% of Revenue</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>Units Sold</strong></td>
+                <td class="numeric"><%= @unit_economics.units_sold %></td>
+                <td class="numeric">—</td>
+                <td class="numeric">—</td>
+              </tr>
+              <tr>
+                <td><strong>Revenue</strong></td>
+                <td class="numeric"><%= format_currency(@unit_economics.revenue_cents) %></td>
+                <td class="numeric"><%= format_currency(@unit_economics.revenue_per_unit_cents) %></td>
+                <td class="numeric">100.00%</td>
+              </tr>
+              <tr>
+                <td><strong>Cost of Goods Sold (COGS)</strong></td>
+                <td class="numeric"><%= format_currency(@unit_economics.cogs_cents) %></td>
+                <td class="numeric"><%= format_currency(@unit_economics.cogs_per_unit_cents) %></td>
+                <td class="numeric">
+                  <%= if @unit_economics.revenue_cents > 0 do %>
+                    <%= Float.round(@unit_economics.cogs_cents / @unit_economics.revenue_cents * 100, 2) %>%
+                  <% else %>
+                    —
+                  <% end %>
+                </td>
+              </tr>
+              <tr style="background-color: #f0f9ff; font-weight: 600;">
+                <td><strong>Gross Margin</strong></td>
+                <td class="numeric"><%= format_currency(@unit_economics.gross_margin_cents) %></td>
+                <td class="numeric"><%= format_currency(@unit_economics.gross_margin_per_unit_cents) %></td>
+                <td class="numeric"><%= @unit_economics.gross_margin_percent %>%</td>
+              </tr>
+              <tr>
+                <td><strong>Total Expenses</strong></td>
+                <td class="numeric"><%= format_currency(@unit_economics.total_expenses_cents) %></td>
+                <td class="numeric"><%= format_currency(@unit_economics.expenses_per_unit_cents) %></td>
+                <td class="numeric">
+                  <%= if @unit_economics.revenue_cents > 0 do %>
+                    <%= Float.round(@unit_economics.total_expenses_cents / @unit_economics.revenue_cents * 100, 2) %>%
+                  <% else %>
+                    —
+                  <% end %>
+                </td>
+              </tr>
+              <tr style="background-color: #f0fdf4; font-weight: 600;">
+                <td><strong>Net Profit</strong></td>
+                <td class="numeric"><%= format_currency(@unit_economics.net_profit_cents) %></td>
+                <td class="numeric"><%= format_currency(@unit_economics.net_profit_per_unit_cents) %></td>
+                <td class="numeric"><%= @unit_economics.net_margin_percent %>%</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    <% else %>
+      <section class="card">
+        <p class="card-subtitle">
+          Please select a product to view unit economics.
+        </p>
+      </section>
+    <% end %>
+  </div>
+</section>
+

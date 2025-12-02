@@ -1,0 +1,187 @@
+<section class="content">
+  <header class="content-header">
+    <h1 class="page-title">Edit Inventory Purchase</h1>
+  </header>
+
+  <div class="content-body">
+    <section class="card">
+      <h2 class="card-title">Edit Purchase</h2>
+      <p class="card-subtitle">
+        Update purchase details. This will reverse the old purchase and create a new one with updated values.
+      </p>
+
+      <.form
+        for={@changeset}
+        as={:purchase}
+        action={~p"/inventory/purchases/#{@movement.id}"}
+        method="put"
+        class="form-grid"
+        :let={f}
+      >
+        <div class="form-block">
+          <div class="field">
+            <.input
+              field={f[:ingredient_code]}
+              id="purchase_ingredient_code"
+              type="select"
+              label="Ingredient"
+              prompt="Choose an ingredient"
+              options={@ingredient_options}
+            />
+            <p class="field-help" id="ingredient-info">
+              Unit: –, current avg cost: –
+            </p>
+          </div>
+
+          <div class="field">
+            <.input
+              field={f[:location_code]}
+              type="select"
+              label="Location"
+              prompt="Choose a location"
+              options={@location_options}
+            />
+          </div>
+
+          <div class="field">
+            <.input
+              field={f[:paid_from_account_id]}
+              type="select"
+              label="Paid from Account"
+              prompt="Select payment account"
+              options={@paid_from_account_options}
+            />
+          </div>
+        </div>
+
+        <div class="form-block">
+          <div class="field">
+            <!-- Custom label so we can change the unit via JS -->
+            <label for="purchase_quantity">
+              Quantity (<span id="quantity-unit-label">units</span>)
+            </label>
+            <.input
+              field={f[:quantity]}
+              id="purchase_quantity"
+              type="number"
+              label=""
+              min="1"
+            />
+            <p class="field-help">
+              Use the same unit as configured for the ingredient (e.g. g, ml, units).
+            </p>
+          </div>
+
+          <div class="field">
+            <.input
+              field={f[:total_cost_pesos]}
+              id="purchase_total_cost_pesos"
+              type="number"
+              label="Total cost (MXN)"
+              step="0.01"
+              min="0"
+            />
+            <p class="field-help" id="unit-price-display">
+              Unit price: –
+            </p>
+          </div>
+
+          <div class="field">
+            <.input
+              field={f[:purchase_date]}
+              type="date"
+              label="Purchase Date"
+            />
+          </div>
+        </div>
+
+        <div class="actions">
+          <button type="submit" class="btn primary">
+            Update Purchase
+          </button>
+          <.link navigate={~p"/inventory"} class="btn">
+            Cancel
+          </.link>
+        </div>
+      </.form>
+    </section>
+  </div>
+</section>
+
+<script>
+  // Make ingredient quick infos available to JS
+  const INGREDIENT_INFOS = <%= Phoenix.HTML.raw(Jason.encode!(@ingredient_infos)) %>;
+
+  document.addEventListener("DOMContentLoaded", function () {
+    const ingredientSelect = document.getElementById("purchase_ingredient_code");
+    const qtyInput         = document.getElementById("purchase_quantity");
+    const totalInput       = document.getElementById("purchase_total_cost_pesos");
+    const unitLabelSpan    = document.getElementById("quantity-unit-label");
+    const ingredientInfo   = document.getElementById("ingredient-info");
+    const unitPriceDisplay = document.getElementById("unit-price-display");
+
+    function formatPesosPerUnit(cents) {
+      if (cents == null) return "–";
+      const pesos = cents / 100.0;
+      return "$" + pesos.toFixed(4);
+    }
+
+    function updateIngredientInfo() {
+      if (!ingredientSelect || !unitLabelSpan || !ingredientInfo) return;
+
+      const code = ingredientSelect.value;
+      const info = INGREDIENT_INFOS[code];
+
+      if (info) {
+        const unit = info.unit || "units";
+        const avgCents = info.avg_cost_cents || 0;
+
+        unitLabelSpan.textContent = unit;
+
+        ingredientInfo.textContent =
+          "Unit: " + unit +
+          ", current avg cost: " +
+          formatPesosPerUnit(avgCents) +
+          " per " + unit;
+      } else {
+        unitLabelSpan.textContent = "units";
+        ingredientInfo.textContent = "Unit: –, current avg cost: –";
+      }
+
+      // Also refresh the calculated unit price display since
+      // the "per unit" text should match the unit
+      updateUnitPrice();
+    }
+
+    function updateUnitPrice() {
+      if (!qtyInput || !totalInput || !unitPriceDisplay) return;
+
+      const qty   = parseFloat(qtyInput.value || "0");
+      const total = parseFloat(totalInput.value || "0");
+
+      const unit = unitLabelSpan ? unitLabelSpan.textContent : "unit";
+
+      if (qty > 0 && total >= 0) {
+        const perUnit = total / qty;
+        unitPriceDisplay.textContent =
+          "Unit price: $" + perUnit.toFixed(4) + " per " + unit;
+      } else {
+        unitPriceDisplay.textContent = "Unit price: –";
+      }
+    }
+
+    if (ingredientSelect) {
+      ingredientSelect.addEventListener("change", updateIngredientInfo);
+    }
+    if (qtyInput) {
+      qtyInput.addEventListener("input", updateUnitPrice);
+    }
+    if (totalInput) {
+      totalInput.addEventListener("input", updateUnitPrice);
+    }
+
+    // Initialize on page load
+    updateIngredientInfo();
+  });
+</script>
+
