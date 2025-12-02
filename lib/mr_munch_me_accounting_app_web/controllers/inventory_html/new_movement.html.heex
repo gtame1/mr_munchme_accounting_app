@@ -12,11 +12,25 @@
 
       <.form
         for={@form}
-        as={:movement_list_form}
         action={~p"/inventory/movements"}
         class="form-grid"
         id="movement-form"
       >
+
+        <%!-- Global error banner --%>
+        <%= if @form.source.action do %>
+          <div class="alert alert-error">
+            <p>Oops, something went wrong. Please review the errors below:</p>
+            <% base_errors = Keyword.get_values(@form.source.errors, :base) %>
+            <%= if base_errors != [] do %>
+              <ul class="pretty-list">
+                <%= for {msg, _opts} <- base_errors do %>
+                  <li><%= msg %></li>
+                <% end %>
+              </ul>
+            <% end %>
+          </div>
+        <% end %>
 
         <%!-- Shared fields: movement type, locations, date, note --%>
         <div class="form-block">
@@ -102,7 +116,7 @@
                           class="ingredient-select"
                         />
                         <p class="field-help item-ingredient-info" style="margin-top: 0.25rem; font-size: 0.8rem; color: var(--text-muted);">
-                          Unit: –
+                          Unit: –, Available: –
                         </p>
                       </div>
 
@@ -159,17 +173,21 @@
 
 <script>
   // Make ingredient quick infos available to JS
-  const FORM_NAME = "movement_list_form";
+  const FORM_NAME = "<%= @form.name %>";
   const INGREDIENT_INFOS = <%= Phoenix.HTML.raw(Jason.encode!(@ingredient_infos)) %>;
-  const INGREDIENT_OPTIONS_JSON = <%= Phoenix.HTML.raw(@ingredient_options_json) %>;
-  const INGREDIENT_OPTIONS = JSON.parse(INGREDIENT_OPTIONS_JSON);
+  const INGREDIENT_LOCATION_STOCK = <%= Phoenix.HTML.raw(Jason.encode!(@ingredient_location_stock)) %>;
+  const INGREDIENT_OPTIONS_RAW = <%= Phoenix.HTML.raw(@ingredient_options_json) %>;
+  const INGREDIENT_OPTIONS = typeof INGREDIENT_OPTIONS_RAW === 'string' ? JSON.parse(INGREDIENT_OPTIONS_RAW) : INGREDIENT_OPTIONS_RAW;
 
   document.addEventListener("DOMContentLoaded", function () {
+    console.log("Movement form script loaded", { FORM_NAME, INGREDIENT_OPTIONS });
     const container = document.getElementById("movement-items-container");
     const addBtn = document.getElementById("add-item-btn");
 
+    console.log("Container:", container, "AddBtn:", addBtn);
+
     if (!container || !addBtn) {
-      console.error("Movement form: container or addBtn not found");
+      console.error("Movement form: container or addBtn not found", { container, addBtn });
       return;
     }
 
@@ -177,19 +195,41 @@
       const select = row.querySelector(".ingredient-select");
       const quantityUnit = row.querySelector(".item-quantity-unit");
       const ingredientInfo = row.querySelector(".item-ingredient-info");
+      const fromLocationSelect = document.querySelector('select[name*="[from_location_code]"]');
 
       if (!select || !quantityUnit || !ingredientInfo) return;
 
       const code = select.value;
       const info = INGREDIENT_INFOS[code];
+      const fromLocationCode = fromLocationSelect ? fromLocationSelect.value : null;
 
       if (info) {
         const unit = info.unit || "units";
         quantityUnit.textContent = unit;
-        ingredientInfo.textContent = "Unit: " + unit;
+        
+        // Get available inventory for this ingredient in the from location
+        let availableQty = 0;
+        if (fromLocationCode && INGREDIENT_LOCATION_STOCK[code]) {
+          availableQty = INGREDIENT_LOCATION_STOCK[code][fromLocationCode] || 0;
+        }
+        
+        ingredientInfo.textContent = "Unit: " + unit + ", Available: " + availableQty;
       } else {
         quantityUnit.textContent = "units";
-        ingredientInfo.textContent = "Unit: –";
+        ingredientInfo.textContent = "Unit: –, Available: –";
+      }
+    }
+
+    // Update item info when from location changes
+    function setupFromLocationListener() {
+      const fromLocationSelect = document.querySelector('select[name*="[from_location_code]"]');
+      if (fromLocationSelect) {
+        fromLocationSelect.addEventListener("change", function() {
+          // Update all item rows when from location changes
+          container.querySelectorAll(".movement-item-row").forEach(function(row) {
+            updateItemInfo(row);
+          });
+        });
       }
     }
 
@@ -220,7 +260,11 @@
 
     // Add new item row
     if (addBtn) {
-      addBtn.addEventListener("click", function() {
+      addBtn.addEventListener("click", function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        console.log("Add item button clicked");
+        
         // Get the last item index
         const existingRows = container.querySelectorAll(".movement-item-row");
         const lastRow = existingRows[existingRows.length - 1];
@@ -235,6 +279,8 @@
             }
           }
         }
+        
+        console.log("Next index:", nextIndex);
 
         // Create new row HTML
         const newRow = document.createElement("div");
@@ -290,5 +336,8 @@
 
     // Initialize existing rows
     initializeRows();
+    
+    // Setup from location listener
+    setupFromLocationListener();
   });
 </script>

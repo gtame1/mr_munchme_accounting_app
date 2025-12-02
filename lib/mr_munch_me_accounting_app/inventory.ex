@@ -652,6 +652,37 @@ defmodule MrMunchMeAccountingApp.Inventory do
     end)
   end
 
+  @doc """
+  Get inventory quantities by ingredient code and location code.
+  Returns a map of %{ingredient_code => %{location_code => quantity}}
+  """
+  def ingredient_location_stock do
+    query =
+      from i in Ingredient,
+        left_join: inv in InventoryItem,
+        on: inv.ingredient_id == i.id,
+        left_join: loc in Location,
+        on: inv.location_id == loc.id,
+        select: %{
+          ingredient_code: i.code,
+          location_code: loc.code,
+          quantity: inv.quantity_on_hand
+        }
+
+    query
+    |> Repo.all()
+    |> Enum.reduce(%{}, fn row, acc ->
+      ingredient_code = row.ingredient_code
+      location_code = row.location_code || ""
+      quantity = row.quantity || 0
+
+      acc
+      |> Map.update(ingredient_code, %{location_code => quantity}, fn locations ->
+        Map.put(locations, location_code, quantity)
+      end)
+    end)
+  end
+
 
   # --- Movement form helpers ---
 
@@ -744,6 +775,7 @@ defmodule MrMunchMeAccountingApp.Inventory do
       tx_result =
         Repo.transaction(fn ->
           Enum.each(form.items, fn item ->
+            # This variable definition was missing in the previous snippet:
             item_attrs = %{
               "movement_type" => form.movement_type,
               "ingredient_code" => item.ingredient_code,
@@ -763,6 +795,7 @@ defmodule MrMunchMeAccountingApp.Inventory do
 
               {:error, item_changeset = %Ecto.Changeset{}} ->
                 Logger.error("❌ create_movement/1 returned changeset error: #{inspect(item_changeset.errors)}")
+                # Rollback with the inner error so the transaction stops
                 Repo.rollback(item_changeset)
 
               {:error, other} ->
@@ -780,16 +813,27 @@ defmodule MrMunchMeAccountingApp.Inventory do
         {:ok, _} ->
           {:ok, :ok}
 
-        {:error, %Ecto.Changeset{} = item_changeset} ->
-          Logger.error("❌ Transaction rolled back with item changeset: #{inspect(item_changeset.errors)}")
-          {:error, item_changeset}
+        # 🚨 THE CRITICAL FIX:
+        # If the transaction fails with an inner item error, extract the error message
+        # and add it to the parent changeset so it displays in the form.
+        {:error, %Ecto.Changeset{} = inner_item_changeset} ->
+          Logger.error("❌ Transaction rolled back with item changeset: #{inspect(inner_item_changeset.errors)}")
+
+          # Extract base errors from the inner changeset
+          base_errors = Keyword.get_values(inner_item_changeset.errors, :base)
+
+          # Add the error to the parent changeset
+          failed_changeset =
+            Enum.reduce(base_errors, changeset, fn {msg, _opts}, acc ->
+              Ecto.Changeset.add_error(acc, :base, msg)
+            end)
+            |> Map.put(:action, :insert)
+
+          {:error, failed_changeset}
 
         {:error, reason} ->
           Logger.error("❌ Transaction rolled back with generic reason: #{inspect(reason)}")
-
-          {:error,
-           changeset
-           |> Ecto.Changeset.add_error(:base, "Inventory movement failed: #{inspect(reason)}")}
+          {:error, Ecto.Changeset.add_error(changeset, :base, "Inventory movement failed: #{inspect(reason)}")}
       end
     else
       Logger.error("❌ MovementListForm INVALID: #{inspect(changeset.errors)}")

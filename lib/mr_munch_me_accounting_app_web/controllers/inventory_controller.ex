@@ -105,8 +105,27 @@ defmodule MrMunchMeAccountingAppWeb.InventoryController do
   # -------- New manual movement (usage / transfer) --------
 
   def new_movement(conn, _params) do
+    require Logger
+    Logger.info("=== new_movement called ===")
+
     changeset = Inventory.change_movement_list_form(%{})
+
+    # Debug: verify changeset structure
+    Logger.info("Changeset data struct: #{inspect(changeset.data.__struct__)}")
+    Logger.info("Changeset data module: #{inspect(changeset.data.__struct__.__struct__)}")
+    Logger.info("Changeset has items field?: #{Map.has_key?(changeset.data, :items)}")
+    Logger.info("Changeset data keys: #{inspect(Map.keys(changeset.data))}")
+    Logger.info("Changeset changes keys: #{inspect(Map.keys(changeset.changes))}")
+
+    if Map.has_key?(changeset.data, :items) do
+      Logger.info("Items in data: #{inspect(changeset.data.items)}")
+      Logger.info("Items type: #{inspect(Enum.at(changeset.data.items, 0) && Enum.at(changeset.data.items, 0).__struct__)}")
+    end
+
     form = Phoenix.Component.to_form(changeset)
+    Logger.info("Form name: #{inspect(form.name)}")
+    Logger.info("Form source: #{inspect(form.source)}")
+    Logger.info("=== end new_movement ===")
     ingredient_options = Inventory.ingredient_select_options()
     # Convert tuples to lists for JSON encoding
     ingredient_options_list = Enum.map(ingredient_options, fn {name, code} -> [name, code] end)
@@ -117,6 +136,7 @@ defmodule MrMunchMeAccountingAppWeb.InventoryController do
       ingredient_options_json: Jason.encode!(ingredient_options_list),
       location_options: Inventory.location_select_options(),
       ingredient_infos: Inventory.ingredient_quick_infos(),
+      ingredient_location_stock: Inventory.ingredient_location_stock(),
       movement_date: Date.utc_today()
     )
   end
@@ -163,6 +183,7 @@ defmodule MrMunchMeAccountingAppWeb.InventoryController do
           ingredient_options_json: Jason.encode!(ingredient_options_list),
           location_options: Inventory.location_select_options(),
           ingredient_infos: Inventory.ingredient_quick_infos(),
+          ingredient_location_stock: Inventory.ingredient_location_stock(),
           movement_date: movement_params["movement_date"] || Date.utc_today()
         )
 
