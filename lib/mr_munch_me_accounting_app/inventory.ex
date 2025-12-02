@@ -10,13 +10,41 @@ defmodule MrMunchMeAccountingApp.Inventory do
   alias MrMunchMeAccountingApp.Accounting.JournalEntry
   alias MrMunchMeAccountingApp.Orders
   alias MrMunchMeAccountingApp.Orders.Order
-  alias __MODULE__.{Ingredient, Location, InventoryItem, InventoryMovement, PurchaseForm, PurchaseListForm, MovementForm, MovementListForm, Recepies, PurchaseItemForm, MovementItemForm}
+  alias __MODULE__.{Ingredient, Location, InventoryItem, InventoryMovement, PurchaseForm, PurchaseListForm, MovementForm, MovementListForm, Recepies, Recipe, RecipeLine, PurchaseItemForm, MovementItemForm}
 
 
   # ---------- Lookups ----------
 
   def get_ingredient_by_code!(code), do: Repo.get_by!(Ingredient, code: code)
   def get_location_by_code!(code), do: Repo.get_by!(Location, code: code)
+
+  # ---------- INGREDIENTS ----------
+
+  def list_ingredients do
+    Repo.all(from i in Ingredient, order_by: i.name)
+  end
+
+  def get_ingredient!(id), do: Repo.get!(Ingredient, id)
+
+  def change_ingredient(%Ingredient{} = ingredient, attrs \\ %{}) do
+    Ingredient.changeset(ingredient, attrs)
+  end
+
+  def create_ingredient(attrs) do
+    %Ingredient{}
+    |> Ingredient.changeset(attrs)
+    |> Repo.insert()
+  end
+
+  def update_ingredient(%Ingredient{} = ingredient, attrs) do
+    ingredient
+    |> Ingredient.changeset(attrs)
+    |> Repo.update()
+  end
+
+  def delete_ingredient(%Ingredient{} = ingredient) do
+    Repo.delete(ingredient)
+  end
 
   def get_or_create_stock!(ingredient_id, location_id) do
     case Repo.get_by(InventoryItem, ingredient_id: ingredient_id, location_id: location_id) do
@@ -195,7 +223,9 @@ defmodule MrMunchMeAccountingApp.Inventory do
   def consume_for_order(%Order{} = order) do
     order = Repo.preload(order, :product)
 
-    recipe_lines = Recepies.recipe_for_product(order.product)
+    # Use the order's delivery_date (or in_prep date) to get the active recipe
+    recipe_date = order.delivery_date || Date.utc_today()
+    recipe_lines = Recepies.recipe_for_product(order.product, recipe_date)
     location_code =
       case order.prep_location do
         %Location{code: code} when is_binary(code) -> code
@@ -203,7 +233,10 @@ defmodule MrMunchMeAccountingApp.Inventory do
       end
 
     Enum.reduce(recipe_lines, 0, fn %{ingredient_code: code, quantity: qty}, acc ->
-      case record_usage(code, location_code, qty, order.delivery_date, "order", order.id) do
+      # Convert float quantity to integer (round to nearest)
+      qty_int = round(qty)
+
+      case record_usage(code, location_code, qty_int, order.delivery_date, "order", order.id) do
         {:ok, {:ok, result}} ->
           acc + result.movement.total_cost_cents
 
@@ -249,7 +282,9 @@ defmodule MrMunchMeAccountingApp.Inventory do
     # 2) Expand orders into per-ingredient, per-location requirements
     raw_needs =
       Enum.flat_map(orders, fn %Order{} = order ->
-        recipe = Recepies.recipe_for_product(order.product)
+        # Use the order's delivery_date to get the active recipe at that time
+        recipe_date = order.delivery_date || Date.utc_today()
+        recipe = Recepies.recipe_for_product(order.product, recipe_date)
 
         prep_location_id = order.prep_location_id || @production_location_code
 

@@ -16,7 +16,7 @@ defmodule MrMunchMeAccountingAppWeb.InventoryController do
         Inventory.inventory_type(stock.ingredient.code)
       end)
 
-    recent_movements = Inventory.list_recent_movements(10)
+    recent_movements = Inventory.list_recent_movements(25)
     total_value_cents = Inventory.total_inventory_value_cents()
 
     render(conn, :index,

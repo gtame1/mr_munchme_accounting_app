@@ -2,7 +2,7 @@ alias MrMunchMeAccountingApp.Repo
 alias MrMunchMeAccountingApp.Accounting.Account
 alias MrMunchMeAccountingApp.Orders.Product
 
-alias MrMunchMeAccountingApp.Inventory.{Ingredient, Location}
+alias MrMunchMeAccountingApp.Inventory.{Ingredient, Location, Recipe, RecipeLine}
 alias MrMunchMeAccountingApp.Partners.Partner
 
 
@@ -70,6 +70,41 @@ defmodule SeedHelper do
         |> Partner.changeset(attrs)
         |> Repo.insert!()
       _existing -> :ok
+    end
+  end
+
+  def upsert_recipe(product_sku, effective_date, recipe_lines) do
+    product = Repo.get_by!(Product, sku: product_sku)
+
+    recipe_attrs = %{
+      product_id: product.id,
+      effective_date: effective_date,
+      name: "#{product.name} Recipe",
+      description: "Initial recipe for #{product.name}"
+    }
+
+    case Repo.get_by(Recipe, product_id: product.id, effective_date: effective_date) do
+      nil ->
+        recipe =
+          %Recipe{}
+          |> Recipe.changeset(recipe_attrs)
+          |> Repo.insert!()
+
+        # Insert recipe lines
+        Enum.each(recipe_lines, fn line ->
+          %RecipeLine{}
+          |> RecipeLine.changeset(%{
+            recipe_id: recipe.id,
+            ingredient_code: line.ingredient_code,
+            quantity: Decimal.new(to_string(line.quantity))
+          })
+          |> Repo.insert!()
+        end)
+
+        recipe
+
+      existing ->
+        existing
     end
   end
 end
@@ -235,3 +270,114 @@ partners
 |> Enum.each(&SeedHelper.upsert_partner/1)
 
 IO.puts("✅ Seeded #{length(partners)} partners")
+
+
+# -------------------------
+# RECIPES
+# -------------------------
+
+# Initial recipe date: November 1st, 2025
+initial_recipe_date = ~D[2025-11-01]
+
+# Helper function to get recipe lines for a product SKU
+get_recipe_lines = fn sku ->
+  main_ingredients =
+    case sku do
+      "TAKIS-GRANDE" -> [%{ingredient_code: "TAKIS_FUEGO", quantity: 1020}]
+      "TAKIS-MEDIANA" -> [%{ingredient_code: "TAKIS_FUEGO", quantity: 517}]
+      "RUNNERS-GRANDE" -> [%{ingredient_code: "RUNNERS", quantity: 840}]
+      "RUNNERS-MEDIANA" -> [%{ingredient_code: "RUNNERS", quantity: 447}]
+      "MIXTA-GRANDE" -> [
+        %{ingredient_code: "TAKIS_FUEGO", quantity: 340},
+        %{ingredient_code: "RUNNERS", quantity: 280},
+        %{ingredient_code: "CHIPS_FUEGO", quantity: 160},
+      ]
+      "MIXTA-MEDIANA" -> [
+        %{ingredient_code: "TAKIS_FUEGO", quantity: 225},
+        %{ingredient_code: "RUNNERS", quantity: 124},
+        %{ingredient_code: "CHIPS_FUEGO", quantity: 77},
+      ]
+      "SALSA-NEGRAS-GRANDE" -> [
+        %{ingredient_code: "CRUJIENTES_INGLESA", quantity: 240},
+        %{ingredient_code: "DORITOS_INCOGNITA", quantity: 223},
+        %{ingredient_code: "CACAHUATES_INGLESA", quantity: 160},
+      ]
+      "SALSA-NEGRAS-MEDIANA" -> [
+        %{ingredient_code: "CRUJIENTES_INGLESA", quantity: 160},
+        %{ingredient_code: "DORITOS_INCOGNITA", quantity: 178},
+        %{ingredient_code: "CACAHUATES_INGLESA", quantity: 160},
+      ]
+      _ -> []
+    end
+
+  extra_ingredients =
+    cond do
+      sku == "SALSA-NEGRAS-GRANDE" -> [
+        %{ingredient_code: "MIEL_KARO", quantity: 180},
+        %{ingredient_code: "MAGGI", quantity: 5},
+        %{ingredient_code: "TAJIN", quantity: 30},
+        %{ingredient_code: "LIMON", quantity: 1},
+        %{ingredient_code: "PULPARINDIO", quantity: 2},
+      ]
+      sku == "SALSA-NEGRAS-MEDIANA" -> [
+        %{ingredient_code: "MIEL_KARO", quantity: 100},
+        %{ingredient_code: "MAGGI", quantity: 5},
+        %{ingredient_code: "TAJIN", quantity: 15},
+        %{ingredient_code: "LIMON", quantity: 0.5},
+        %{ingredient_code: "PULPARINDIO", quantity: 1},
+      ]
+      sku in ["TAKIS-GRANDE", "RUNNERS-GRANDE", "MIXTA-GRANDE"] -> [
+        %{ingredient_code: "MIEL_KARO", quantity: 180},
+        %{ingredient_code: "SIRILO", quantity: 120},
+        %{ingredient_code: "MIGUELITO", quantity: 30},
+        %{ingredient_code: "TAJIN", quantity: 30},
+        %{ingredient_code: "LIMON", quantity: 1},
+        %{ingredient_code: "PULPARINDIO", quantity: 2},
+      ]
+      sku in ["TAKIS-MEDIANA", "RUNNERS-MEDIANA", "MIXTA-MEDIANA"] -> [
+        %{ingredient_code: "MIEL_KARO", quantity: 100},
+        %{ingredient_code: "SIRILO", quantity: 30},
+        %{ingredient_code: "MIGUELITO", quantity: 15},
+        %{ingredient_code: "TAJIN", quantity: 15},
+        %{ingredient_code: "LIMON", quantity: 0.5},
+        %{ingredient_code: "PULPARINDIO", quantity: 1},
+      ]
+      true -> []
+    end
+
+  packing_ingredients = [
+    %{ingredient_code: "BOLSA_CELOFAN", quantity: 1},
+    %{ingredient_code: "ESTAMPAS", quantity: 1},
+    %{ingredient_code: "LISTONES", quantity: 15},
+  ] ++
+    cond do
+      String.contains?(sku, "GRANDE") -> [%{ingredient_code: "BASE_GRANDE", quantity: 1}]
+      String.contains?(sku, "MEDIANA") -> [%{ingredient_code: "BASE_MEDIANA", quantity: 1}]
+      true -> []
+    end
+
+  main_ingredients ++ extra_ingredients ++ packing_ingredients
+end
+
+# Seed recipes for all products (except ENVIO which doesn't have a recipe)
+recipe_skus = [
+  "TAKIS-GRANDE",
+  "TAKIS-MEDIANA",
+  "RUNNERS-GRANDE",
+  "RUNNERS-MEDIANA",
+  "MIXTA-GRANDE",
+  "MIXTA-MEDIANA",
+  "SALSA-NEGRAS-GRANDE",
+  "SALSA-NEGRAS-MEDIANA"
+]
+
+recipe_count =
+  recipe_skus
+  |> Enum.map(fn sku ->
+    recipe_lines = get_recipe_lines.(sku)
+    SeedHelper.upsert_recipe(sku, initial_recipe_date, recipe_lines)
+    length(recipe_lines)
+  end)
+  |> Enum.sum()
+
+IO.puts("✅ Seeded #{length(recipe_skus)} recipes with #{recipe_count} total recipe lines")

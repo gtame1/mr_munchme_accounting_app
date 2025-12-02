@@ -2,7 +2,10 @@ defmodule MrMunchMeAccountingApp.Inventory.Recepies do
   @moduledoc """
   Recepies context: recipes for products.
   """
+  import Ecto.Query
+  alias MrMunchMeAccountingApp.Repo
   alias MrMunchMeAccountingApp.Orders.Product
+  alias MrMunchMeAccountingApp.Inventory.{Recipe, RecipeLine}
 
   @packaging_codes ~w(
     PACKING_PLASTICO
@@ -16,8 +19,120 @@ defmodule MrMunchMeAccountingApp.Inventory.Recepies do
   @doc """
   Return the recipe for a given product as a list of maps.
   Quantities are in the ingredient's unit (e.g. g, ml, units).
+
+  If a date is provided, returns the active recipe for that date.
+  If no date is provided or no recipe is found, falls back to hardcoded recipes.
   """
-  def recipe_for_product(%Product{} = product) do
+  def recipe_for_product(%Product{} = product, date \\ nil) do
+    # Try to get recipe from database first
+    case get_active_recipe(product, date) do
+      nil ->
+        # Fallback to hardcoded recipes for backward compatibility
+        fallback_recipe_for_product(product)
+
+      recipe ->
+        # Convert recipe lines to the expected format
+        recipe
+        |> Repo.preload(:recipe_lines)
+        |> Map.get(:recipe_lines, [])
+        |> Enum.map(fn line ->
+          %{
+            ingredient_code: line.ingredient_code,
+            quantity: Decimal.to_float(line.quantity)
+          }
+        end)
+    end
+  end
+
+  @doc """
+  Get the active recipe for a product on a given date.
+  Returns the recipe with the most recent effective_date <= date.
+  If date is nil, returns the most recent recipe.
+  """
+  def get_active_recipe(%Product{} = product, date \\ nil) do
+    query =
+      from r in Recipe,
+        where: r.product_id == ^product.id,
+        order_by: [desc: r.effective_date],
+        limit: 1
+
+    query =
+      if date do
+        from r in query,
+          where: r.effective_date <= ^date
+      else
+        query
+      end
+
+    Repo.one(query)
+  end
+
+  @doc """
+  List all recipes, ordered by effective_date descending.
+  """
+  def list_recipes do
+    from(r in Recipe,
+      order_by: [desc: r.effective_date],
+      preload: [:product, :recipe_lines]
+    )
+    |> Repo.all()
+  end
+
+  @doc """
+  List all recipes for a product, ordered by effective_date descending.
+  """
+  def list_recipes_for_product(%Product{} = product) do
+    from(r in Recipe,
+      where: r.product_id == ^product.id,
+      order_by: [desc: r.effective_date],
+      preload: :recipe_lines
+    )
+    |> Repo.all()
+  end
+
+  @doc """
+  Get a recipe by ID with preloaded recipe lines.
+  """
+  def get_recipe!(id) do
+    Recipe
+    |> Repo.get!(id)
+    |> Repo.preload(:recipe_lines)
+  end
+
+  @doc """
+  Create a new recipe with its lines.
+  """
+  def create_recipe(attrs \\ %{}) do
+    %Recipe{}
+    |> Recipe.changeset(attrs)
+    |> Repo.insert()
+  end
+
+  @doc """
+  Update a recipe and its lines.
+  """
+  def update_recipe(%Recipe{} = recipe, attrs) do
+    recipe
+    |> Recipe.changeset(attrs)
+    |> Repo.update()
+  end
+
+  @doc """
+  Delete a recipe.
+  """
+  def delete_recipe(%Recipe{} = recipe) do
+    Repo.delete(recipe)
+  end
+
+  @doc """
+  Returns a changeset for a recipe.
+  """
+  def change_recipe(%Recipe{} = recipe, attrs \\ %{}) do
+    Recipe.changeset(recipe, attrs)
+  end
+
+  # Fallback to hardcoded recipes (original implementation)
+  defp fallback_recipe_for_product(%Product{} = product) do
     main_ingredients =
       case product.sku do
         "TAKIS-GRANDE" -> [%{ingredient_code: "TAKIS_FUEGO", quantity: 1020}]
