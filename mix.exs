@@ -11,7 +11,16 @@ defmodule MrMunchMeAccountingApp.MixProject do
       aliases: aliases(),
       deps: deps(),
       compilers: [:phoenix_live_view] ++ Mix.compilers(),
-      listeners: [Phoenix.CodeReloader]
+      listeners: [Phoenix.CodeReloader],
+      releases: [
+        mr_munch_me_accounting_app: [
+          include_executables_for: [:unix],
+          applications: [runtime_tools: :permanent],
+          commands: [
+            migrate: "rel/commands/migrate.sh"
+          ]
+        ]
+      ]
     ]
   end
 
