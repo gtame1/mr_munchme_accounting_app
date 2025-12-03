@@ -25,10 +25,12 @@ defmodule MrMunchMeAccountingApp.Release do
     end
 
     IO.puts("✅ Migrations complete")
+
+    run_seeds()
   end
 
   # Run priv/repo/seeds.exs (if present)
-  def seed() do
+  defp run_seeds() do
     IO.puts("🌱 Running seeds...")
 
     load_app()
