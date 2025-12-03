@@ -1,32 +1,57 @@
 defmodule MrMunchMeAccountingApp.Release do
+  @moduledoc """
+  Release tasks for running migrations and seeds in production.
+  These are meant to be invoked via:
+
+      bin/mr_munch_me_accounting_app eval "MrMunchMeAccountingApp.Release.migrate"
+      bin/mr_munch_me_accounting_app eval "MrMunchMeAccountingApp.Release.seed"
+  """
+
   @app :mr_munch_me_accounting_app
 
+  # Run all pending migrations for all repos
   def migrate do
     IO.puts("🚀 Running migrations...")
 
     load_app()
 
     for repo <- repos() do
-      {:ok, _, _} = Ecto.Migrator.with_repo(repo, &Ecto.Migrator.run(&1, :up, all: true))
+      IO.puts("➡ Migrating #{inspect(repo)}")
+
+      {:ok, _pid, _apps} =
+        Ecto.Migrator.with_repo(repo, fn repo ->
+          Ecto.Migrator.run(repo, :up, all: true)
+        end)
     end
 
     IO.puts("✅ Migrations complete")
   end
 
+  # Run priv/repo/seeds.exs (if present)
   def seed do
-    {:ok, _} = Application.ensure_all_started(@app)
+    IO.puts("🌱 Running seeds...")
+
+    load_app()
 
     seed_path = Application.app_dir(@app, "priv/repo/seeds.exs")
 
     if File.exists?(seed_path) do
-      IO.puts("🌱 Running seeds...")
+      IO.puts("➡ Executing #{seed_path}")
       Code.eval_file(seed_path)
+      IO.puts("✅ Seeds complete")
     else
-      IO.puts("⚠️ No seeds.exs found")
+      IO.puts("⚠️ No seeds.exs found, skipping")
     end
   end
 
-  defp repos, do: Application.fetch_env!(@app, :ecto_repos)
+  # --- Helpers ---
 
-  defp load_app, do: Application.load(@app)
+  defp repos do
+    Application.fetch_env!(@app, :ecto_repos)
+  end
+
+  defp load_app do
+    # Make sure the application and its config are loaded
+    :ok = Application.load(@app)
+  end
 end
