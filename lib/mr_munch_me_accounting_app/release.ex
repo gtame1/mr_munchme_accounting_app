@@ -28,7 +28,7 @@ defmodule MrMunchMeAccountingApp.Release do
   end
 
   # Run priv/repo/seeds.exs (if present)
-  def seed do
+  def seed() do
     IO.puts("🌱 Running seeds...")
 
     load_app()
