@@ -7,7 +7,12 @@ defmodule MrMunchMeAccountingAppWeb.RecipeController do
 
   def index(conn, _params) do
     recipes = Recepies.list_recipes()
-    render(conn, :index, recipes: recipes)
+    recipe_versions_by_product = Recepies.list_all_recipe_versions_by_product()
+
+    render(conn, :index,
+      recipes: recipes,
+      recipe_versions_by_product: recipe_versions_by_product
+    )
   end
 
   def new(conn, _params) do
@@ -52,6 +57,11 @@ defmodule MrMunchMeAccountingAppWeb.RecipeController do
           ingredient_options_json: ingredient_options_json
         )
     end
+  end
+
+  def show(conn, %{"id" => id}) do
+    recipe = Recepies.get_recipe!(id)
+    render(conn, :show, recipe: recipe)
   end
 
   def edit(conn, %{"id" => id}) do
@@ -122,7 +132,9 @@ defmodule MrMunchMeAccountingAppWeb.RecipeController do
         ingredient_options = MrMunchMeAccountingApp.Inventory.ingredient_select_options()
         ingredient_options_json = Jason.encode!(Enum.map(ingredient_options, fn {name, code} -> [name, code] end))
 
-        render(conn, :edit,
+        conn
+        |> put_flash(:error, "Please fix the errors below and try again.")
+        |> render(:edit,
           original_recipe: original_recipe,
           changeset: changeset,
           form: form,

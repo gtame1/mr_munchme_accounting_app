@@ -68,10 +68,23 @@ defmodule MrMunchMeAccountingApp.Inventory.Recepies do
   end
 
   @doc """
-  List all recipes, ordered by effective_date descending.
+  List the most recent recipe for each product, ordered by effective_date descending.
+  Only shows the latest version of each recipe (hides deprecated/older versions).
   """
   def list_recipes do
+    # Find the most recent effective_date for each product
+    latest_dates =
+      from r in Recipe,
+        group_by: r.product_id,
+        select: %{
+          product_id: r.product_id,
+          max_date: max(r.effective_date)
+        }
+
+    # Get recipes that match the latest date for each product
     from(r in Recipe,
+      inner_join: latest in subquery(latest_dates),
+      on: r.product_id == latest.product_id and r.effective_date == latest.max_date,
       order_by: [desc: r.effective_date],
       preload: [:product, :recipe_lines]
     )
@@ -91,12 +104,25 @@ defmodule MrMunchMeAccountingApp.Inventory.Recepies do
   end
 
   @doc """
-  Get a recipe by ID with preloaded recipe lines.
+  Get all recipe versions grouped by product_id.
+  Returns a map where keys are product_ids and values are lists of recipes.
+  """
+  def list_all_recipe_versions_by_product do
+    from(r in Recipe,
+      order_by: [r.product_id, desc: r.effective_date],
+      preload: [:product, :recipe_lines]
+    )
+    |> Repo.all()
+    |> Enum.group_by(& &1.product_id)
+  end
+
+  @doc """
+  Get a recipe by ID with preloaded recipe lines and product.
   """
   def get_recipe!(id) do
     Recipe
     |> Repo.get!(id)
-    |> Repo.preload(:recipe_lines)
+    |> Repo.preload([:recipe_lines, :product])
   end
 
   @doc """

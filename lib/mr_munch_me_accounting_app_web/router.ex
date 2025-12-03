@@ -46,7 +46,7 @@ defmodule MrMunchMeAccountingAppWeb.Router do
 
     resources "/products", ProductController, only: [:index, :new, :create, :edit, :update, :delete]
     resources "/ingredients", IngredientController, only: [:index, :new, :create, :edit, :update, :delete]
-    resources "/recipes", RecipeController, only: [:index, :new, :create, :edit, :delete]
+    resources "/recipes", RecipeController, only: [:index, :new, :create, :show, :edit, :delete]
     post "/recipes/new_version/:id", RecipeController, :create_new_version
 
     get  "/investments",        InvestmentController, :index

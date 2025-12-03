@@ -6,7 +6,6 @@ defmodule MrMunchMeAccountingApp.Repo do
   @impl true
   def init(_type, config) do
     require Logger
-    Logger.info("📦 Repo init config: #{inspect(config, pretty: true)}")
     {:ok, config}
   end
 end

@@ -21,13 +21,26 @@
         id="recipe-form"
       >
         <%= if @changeset.action do %>
-          <div class="alert alert-error">
-            <p>There were problems creating the new recipe version. Please review the fields below.</p>
-            <ul>
-              <%= for {field, {message, _}} <- @changeset.errors do %>
-                <li><%= humanize(field) %>: <%= message %></li>
-              <% end %>
-            </ul>
+          <div class="alert alert-error" style="margin-bottom: 1.5rem;">
+            <p><strong>⚠️ There were problems creating the new recipe version. Please review the errors below:</strong></p>
+            <%= if @changeset.errors != [] do %>
+              <ul style="margin-top: 0.75rem; padding-left: 1.5rem; list-style-type: disc;">
+                <%= for {field, {message, _}} <- @changeset.errors do %>
+                  <li style="margin-bottom: 0.5rem;"><strong><%= humanize(field) %>:</strong> <%= message %></li>
+                <% end %>
+              </ul>
+            <% end %>
+            <%= if @form[:recipe_lines].errors != [] do %>
+              <div style="margin-top: 0.75rem;">
+                <p><strong>Recipe Lines errors:</strong></p>
+                <ul style="margin-top: 0.5rem; padding-left: 1.5rem; list-style-type: disc;">
+                  <%= for {field, {message, _}} <- @form[:recipe_lines].errors do %>
+                    <li style="margin-bottom: 0.5rem;"><strong><%= humanize(field) %>:</strong> <%= message %></li>
+                  <% end %>
+                </ul>
+              </div>
+            <% end %>
+            <p style="margin-top: 0.75rem; font-size: 0.9rem;">Please check the fields highlighted in red below for specific errors.</p>
           </div>
         <% end %>
 
@@ -132,7 +145,12 @@
 
             <%= if @form[:recipe_lines].errors != [] do %>
               <div class="alert alert-error mt-2">
-                <p>Please fix the errors in the recipe lines above.</p>
+                <p><strong>⚠️ Recipe Lines Errors:</strong></p>
+                <ul style="margin-top: 0.5rem; padding-left: 1.5rem; list-style-type: disc;">
+                  <%= for {field, {message, _}} <- @form[:recipe_lines].errors do %>
+                    <li style="margin-bottom: 0.25rem;"><strong><%= humanize(field) %>:</strong> <%= message %></li>
+                  <% end %>
+                </ul>
               </div>
             <% end %>
           </div>

@@ -33,10 +33,89 @@
             <.link navigate={~p"/recipes/#{recipe.id}/edit"} class="btn btn-sm">
               Create New Version
             </.link>
+            <%= if Map.has_key?(@recipe_versions_by_product, recipe.product_id) do %>
+              <% versions = @recipe_versions_by_product[recipe.product_id] %>
+              <%= if length(versions) > 1 do %>
+                <button
+                  type="button"
+                  class="btn btn-sm toggle-versions-btn"
+                  data-recipe-id={recipe.id}
+                  data-version-count={length(versions)}
+                  style="margin-left: 0.5rem;"
+                >
+                  View Versions (<%= length(versions) %>)
+                </button>
+              <% end %>
+            <% end %>
           </td>
         </tr>
+        <%= if Map.has_key?(@recipe_versions_by_product, recipe.product_id) do %>
+          <% versions = @recipe_versions_by_product[recipe.product_id] %>
+          <%= if length(versions) > 1 do %>
+            <tr id={"versions-#{recipe.id}"} style="display: none;">
+              <td colspan="5">
+                <div style="padding: 1rem; background: #f9fafb; border-radius: 0.5rem; margin-top: 0.5rem;">
+                  <h3 style="font-size: 0.95rem; font-weight: 600; margin-bottom: 0.75rem;">
+                    Previous Versions (<%= length(versions) - 1 %>)
+                  </h3>
+                  <table class="table" style="margin: 0;">
+                    <thead>
+                      <tr>
+                        <th>Effective Date</th>
+                        <th>Name</th>
+                        <th>Recipe Lines</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <%= for version <- versions do %>
+                        <tr style={version.id == recipe.id && "background: #e0f2fe;"}>
+                          <td><%= Calendar.strftime(version.effective_date, "%Y-%m-%d") %></td>
+                          <td><%= version.name || "—" %></td>
+                          <td><%= length(version.recipe_lines || []) %></td>
+                          <td>
+                            <%= if version.id == recipe.id do %>
+                              <span style="color: #059669; font-weight: 600;">Current</span>
+                            <% else %>
+                              <span style="color: #6b7280;">Deprecated</span>
+                            <% end %>
+                          </td>
+                          <td>
+                            <.link navigate={~p"/recipes/#{version.id}"} class="btn btn-sm">
+                              View Details
+                            </.link>
+                          </td>
+                        </tr>
+                      <% end %>
+                    </tbody>
+                  </table>
+                </div>
+              </td>
+            </tr>
+          <% end %>
+        <% end %>
       <% end %>
     </tbody>
   </table>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      document.querySelectorAll('.toggle-versions-btn').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+          const recipeId = this.getAttribute('data-recipe-id');
+          const versionCount = this.getAttribute('data-version-count');
+          const row = document.getElementById('versions-' + recipeId);
+          if (row) {
+            const isHidden = row.style.display === 'none';
+            row.style.display = isHidden ? 'table-row' : 'none';
+            this.textContent = isHidden 
+              ? 'Hide Versions' 
+              : 'View Versions (' + versionCount + ')';
+          }
+        });
+      });
+    });
+  </script>
 </section>
 
