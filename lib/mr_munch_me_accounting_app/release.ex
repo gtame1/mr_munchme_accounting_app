@@ -9,50 +9,38 @@ defmodule MrMunchMeAccountingApp.Release do
 
   @app :mr_munch_me_accounting_app
 
-  # Run all pending migrations for all repos
+  # This is what Render calls via `eval` before starting the app.
   def migrate do
-    IO.puts("🚀 Running migrations (and seeds)...")
+    IO.puts("🚀 Starting application and running migrations + seeds...")
 
-    load_app()
+    # Start the app and all its deps (including Repo + Ecto registry)
+    {:ok, _} = Application.ensure_all_started(@app)
 
+    # 1) Run migrations for all repos
     for repo <- repos() do
-      {:ok, _, _} =
-        Ecto.Migrator.with_repo(repo, fn repo ->
-          # 1) Run all migrations
-          Ecto.Migrator.run(repo, :up, all: true)
-
-          # 2) Run seeds WHILE this repo is started
-          run_seeds_for_repo(repo)
-        end)
+      IO.puts("➡ Migrating #{inspect(repo)}...")
+      Ecto.Migrator.run(repo, :up, all: true)
     end
+
+    # 2) Run seeds once migrations are done
+    run_seeds()
 
     IO.puts("✅ Migrations and seeds complete")
   end
-
-  defp run_seeds_for_repo(repo) do
-    seed_path = Application.app_dir(@app, "priv/repo/seeds.exs")
-
-    if File.exists?(seed_path) do
-      IO.puts("🌱 Running seeds for #{inspect(repo)} from #{seed_path}...")
-      Code.eval_file(seed_path)
-      IO.puts("✅ Seeds done for #{inspect(repo)}")
-    else
-      IO.puts("⚠️ No seeds.exs found, skipping")
-    end
-  end
-
-  # --- Helpers ---
 
   defp repos do
     Application.fetch_env!(@app, :ecto_repos)
   end
 
-  defp load_app do
-    # Make sure the application and its config are loaded
-    case Application.load(@app) do
-      :ok -> :ok
-      {:error, {:already_loaded, _}} -> :ok
-      error -> raise "Failed to load application: #{inspect(error)}"
+  defp run_seeds do
+    seed_path = Application.app_dir(@app, "priv/repo/seeds.exs")
+
+    if File.exists?(seed_path) do
+      IO.puts("🌱 Running seeds from #{seed_path}...")
+      Code.eval_file(seed_path)
+      IO.puts("🌱 Seeds finished successfully")
+    else
+      IO.puts("⚠️ No seeds.exs found, skipping")
     end
   end
 end
