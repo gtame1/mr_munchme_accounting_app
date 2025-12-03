@@ -11,36 +11,31 @@ defmodule MrMunchMeAccountingApp.Release do
 
   # Run all pending migrations for all repos
   def migrate do
-    IO.puts("🚀 Running migrations...")
+    IO.puts("🚀 Running migrations (and seeds)...")
 
     load_app()
 
     for repo <- repos() do
-      IO.puts("➡ Migrating #{inspect(repo)}")
-
-      {:ok, _pid, _apps} =
+      {:ok, _, _} =
         Ecto.Migrator.with_repo(repo, fn repo ->
+          # 1) Run all migrations
           Ecto.Migrator.run(repo, :up, all: true)
+
+          # 2) Run seeds WHILE this repo is started
+          run_seeds_for_repo(repo)
         end)
     end
 
-    IO.puts("✅ Migrations complete")
-
-    run_seeds()
+    IO.puts("✅ Migrations and seeds complete")
   end
 
-  # Run priv/repo/seeds.exs (if present)
-  defp run_seeds() do
-    IO.puts("🌱 Running seeds...")
-
-    load_app()
-
+  defp run_seeds_for_repo(repo) do
     seed_path = Application.app_dir(@app, "priv/repo/seeds.exs")
 
     if File.exists?(seed_path) do
-      IO.puts("➡ Executing #{seed_path}")
+      IO.puts("🌱 Running seeds for #{inspect(repo)} from #{seed_path}...")
       Code.eval_file(seed_path)
-      IO.puts("✅ Seeds complete")
+      IO.puts("✅ Seeds done for #{inspect(repo)}")
     else
       IO.puts("⚠️ No seeds.exs found, skipping")
     end
