@@ -52,6 +52,10 @@ defmodule MrMunchMeAccountingApp.Release do
 
   defp load_app do
     # Make sure the application and its config are loaded
-    :ok = Application.load(@app)
+    case Application.load(@app) do
+      :ok -> :ok
+      {:error, {:already_loaded, _}} -> :ok
+      error -> raise "Failed to load application: #{inspect(error)}"
+    end
   end
 end
