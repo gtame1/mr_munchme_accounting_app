@@ -195,7 +195,7 @@
     <section class="card" id="recent_movements_card">
       <h2 class="card-title">Recent Inventory Movements</h2>
       <p class="card-subtitle">
-        Last 25 movements across all locations (purchases, usage, transfers, adjustments).
+        Recent movements across all locations (purchases, usage, transfers, adjustments).
       </p>
 
       <div class="header-actions" style="margin-bottom: 1rem;">
@@ -296,6 +296,49 @@
           </tbody>
         </table>
       </div>
+
+      <%= if @has_more_movements do %>
+        <div style="margin-top: 1rem; text-align: center;">
+          <button
+            id="load-more-movements-btn"
+            class="btn"
+            data-current-limit={@movements_limit}
+          >
+            Load More...
+          </button>
+        </div>
+      <% end %>
     </section>
   </div>
 </section>
+
+<script>
+  document.addEventListener("DOMContentLoaded", function () {
+    const loadMoreBtn = document.getElementById("load-more-movements-btn");
+    
+    if (loadMoreBtn) {
+      loadMoreBtn.addEventListener("click", function() {
+        const currentLimit = parseInt(loadMoreBtn.getAttribute("data-current-limit")) || 10;
+        const newLimit = currentLimit + 10;
+        const url = new URL(window.location.href);
+        url.searchParams.set("movements_limit", newLimit.toString());
+        url.searchParams.set("scroll", "bottom"); // Add flag to scroll after page load
+        window.location.href = url.toString();
+      });
+    }
+
+    // Scroll to bottom of page after loading more movements
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get("scroll") === "bottom") {
+      setTimeout(function() {
+        window.scrollTo({ top: document.documentElement.scrollHeight, behavior: "smooth" });
+        // Remove scroll parameter from URL without reload
+        urlParams.delete("scroll");
+        const newUrl = window.location.pathname + 
+          (urlParams.toString() ? "?" + urlParams.toString() : "") + 
+          window.location.hash;
+        window.history.replaceState({}, "", newUrl);
+      }, 100);
+    }
+  });
+</script>

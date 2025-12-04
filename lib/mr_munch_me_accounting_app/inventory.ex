@@ -640,6 +640,17 @@ defmodule MrMunchMeAccountingApp.Inventory do
   end
 
   @doc """
+  Check if there are more movements beyond the current limit.
+  """
+  def has_more_movements?(current_limit) do
+    total_count =
+      from(m in InventoryMovement, select: count(m.id))
+      |> Repo.one()
+
+    total_count > current_limit
+  end
+
+  @doc """
   Get a single inventory movement by id, preloaded with associations.
   """
   def get_movement!(id) do

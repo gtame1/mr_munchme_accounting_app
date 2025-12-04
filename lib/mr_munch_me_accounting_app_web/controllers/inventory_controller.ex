@@ -21,13 +21,22 @@ defmodule MrMunchMeAccountingAppWeb.InventoryController do
         Inventory.inventory_type(stock.ingredient.code)
       end)
 
-    recent_movements = Inventory.list_recent_movements(10)
+    # Get limit from query params, default to 10
+    limit = case Integer.parse(conn.params["movements_limit"] || "10") do
+      {parsed_limit, _} when parsed_limit > 0 -> parsed_limit
+      _ -> 10
+    end
+
+    recent_movements = Inventory.list_recent_movements(limit)
+    has_more = Inventory.has_more_movements?(limit)
     total_value_cents = Inventory.total_inventory_value_cents()
 
     render(conn, :index,
       stock_items: stock_items,
       stock_by_type: stock_by_type,
       recent_movements: recent_movements,
+      movements_limit: limit,
+      has_more_movements: has_more,
       total_value_cents: total_value_cents
     )
   end
