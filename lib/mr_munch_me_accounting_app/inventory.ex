@@ -181,6 +181,7 @@ defmodule MrMunchMeAccountingApp.Inventory do
       #   Repo.rollback({:error, :insufficient_stock})
       # end
 
+      # Use current average cost
       unit_cost_cents = stock.avg_cost_per_unit_cents
       total_cost_cents = quantity * unit_cost_cents
 
@@ -364,7 +365,7 @@ defmodule MrMunchMeAccountingApp.Inventory do
 
       if from_stock.quantity_on_hand < quantity, do: Repo.rollback({:error, :insufficient_stock})
 
-
+      # Use average cost from origin location
       unit_cost_cents = from_stock.avg_cost_per_unit_cents
       total_cost_cents = quantity * unit_cost_cents
 
@@ -802,7 +803,6 @@ defmodule MrMunchMeAccountingApp.Inventory do
       tx_result =
         Repo.transaction(fn ->
           Enum.each(form.items, fn item ->
-            # This variable definition was missing in the previous snippet:
             item_attrs = %{
               "movement_type" => form.movement_type,
               "ingredient_code" => item.ingredient_code,
@@ -871,7 +871,7 @@ defmodule MrMunchMeAccountingApp.Inventory do
   @doc """
   Write-off / waste: remove quantity from a location.
 
-  This is similar to usage but semantically “thrown out”.
+  This is similar to usage but semantically "thrown out".
   Later we can hook this to an accounting expense.
   """
   def record_write_off(

@@ -47,6 +47,47 @@ defmodule MrMunchMeAccountingAppWeb.ExpenseController do
     render(conn, :show, expense: expense)
   end
 
+  def edit(conn, %{"id" => id}) do
+    expense = Expenses.get_expense!(id)
+
+    # Convert amount_cents to decimal for form display
+    attrs = %{
+      "amount_cents" => Decimal.div(Decimal.new(expense.amount_cents), Decimal.new(100)) |> Decimal.to_float()
+    }
+
+    changeset = Expenses.change_expense(expense, attrs)
+
+    render(conn, :edit,
+      expense: expense,
+      changeset: changeset,
+      action: ~p"/expenses/#{expense.id}",
+      expense_account_options: Accounting.expense_account_options(),
+      paid_from_account_options: Accounting.cash_or_payable_account_options()
+    )
+  end
+
+  def update(conn, %{"id" => id, "expense" => expense_params}) do
+    expense = Expenses.get_expense!(id)
+
+    case Expenses.update_expense_with_journal(expense, expense_params) do
+      {:ok, expense} ->
+        conn
+        |> put_flash(:info, "Expense updated successfully.")
+        |> redirect(to: ~p"/expenses/#{expense.id}")
+
+      {:error, %Ecto.Changeset{} = changeset} ->
+        changeset = Map.put(changeset, :action, :update)
+
+        render(conn, :edit,
+          expense: expense,
+          changeset: changeset,
+          action: ~p"/expenses/#{expense.id}",
+          expense_account_options: Accounting.expense_account_options(),
+          paid_from_account_options: Accounting.cash_or_payable_account_options()
+        )
+    end
+  end
+
   def delete(conn, %{"id" => id}) do
     expense = Expenses.get_expense!(id)
 

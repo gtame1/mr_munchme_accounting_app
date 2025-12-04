@@ -57,7 +57,7 @@ defmodule MrMunchMeAccountingAppWeb.Router do
 
     resources "/transfers", TransferController, only: [:index, :new, :create]
 
-    resources "/expenses", ExpenseController, only: [:index, :new, :create, :show, :delete]
+    resources "/expenses", ExpenseController, only: [:index, :new, :create, :show, :edit, :update, :delete]
   end
 
   # Other scopes may use custom stacks.

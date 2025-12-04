@@ -40,6 +40,9 @@
                 <.link navigate={~p"/expenses/#{expense.id}"} class="btn">
                   View
                 </.link>
+                <.link navigate={~p"/expenses/#{expense.id}/edit"} class="btn">
+                  Edit
+                </.link>
                 <.link
                   href={~p"/expenses/#{expense.id}"}
                   method="delete"

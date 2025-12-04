@@ -1,0 +1,66 @@
+<section class="card">
+  <h2 class="card-title">Edit Expense</h2>
+  <p class="card-subtitle">
+    Update expense details. This will automatically update the ledger entry.
+  </p>
+
+  <.form :let={f} for={@changeset} as={:expense} action={@action} method="patch" class="form-grid">
+    <%= if @changeset.action do %>
+      <div class="alert alert-error">
+        <p>There were problems updating your expense. Please review the fields below.</p>
+      </div>
+    <% end %>
+
+    <div class="form-block">
+
+      <div class="field">
+        <.input
+          field={f[:amount_cents]}
+          type="number"
+          min="0"
+          step="0.01"
+          label="Total Amount"
+        />
+      </div>
+
+      <div class="field">
+        <.input
+          field={f[:expense_account_id]}
+          type="select"
+          label="Expense account"
+          prompt="Select expense account"
+          options={@expense_account_options}
+        />
+      </div>
+
+      <div class="field">
+        <.input field={f[:date]} type="date" label="Date" />
+      </div>
+
+      <div class="field">
+        <.input field={f[:description]} type="text" label="Description" />
+      </div>
+
+      <div class="field">
+        <.input
+          field={f[:paid_from_account_id]}
+          type="select"
+          label="Paid from"
+          prompt="Select cash/bank/credit account"
+          options={@paid_from_account_options}
+        />
+      </div>
+    </div>
+
+    <div class="actions">
+      <button class="btn primary" type="submit">
+        Update Expense
+      </button>
+
+      <.link navigate={~p"/expenses/#{@expense.id}"} class="btn">
+        Cancel
+      </.link>
+    </div>
+  </.form>
+</section>
+

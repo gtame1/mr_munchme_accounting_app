@@ -136,6 +136,7 @@ assets = [
 
 liabilities = [
   %{code: "2000", name: "Accounts Payable", type: "liability", normal_balance: "credit"},
+  %{code: "2001", name: "Accounts Payable - Gaby Vera", type: "liability", normal_balance: "credit"},
   %{code: "2011", name: "NuBank AG (CC)", type: "liability", normal_balance: "credit"},
   %{code: "2012", name: "Plata AG (CC)", type: "liability", normal_balance: "credit"},
   %{code: "2013", name: "Nelo Guillo (CC)", type: "liability", normal_balance: "credit"},
@@ -179,6 +180,8 @@ expenses = [
   %{code: "6010", name: "Inventory Purchase Shipping Expense", type: "expense", normal_balance: "debit"},
   %{code: "6020", name: "Delivery Expense", type: "expense", normal_balance: "debit"},
   %{code: "6030", name: "Advertising & Marketing", type: "expense", normal_balance: "debit"},
+  %{code: "6040", name: "Test Inventory", type: "expense", normal_balance: "debit"},
+  %{code: "6050", name: "Parking", type: "expense", normal_balance: "debit"},
   %{code: "6099", name: "Other Expenses", type: "expense", normal_balance: "debit"},
 ]
 

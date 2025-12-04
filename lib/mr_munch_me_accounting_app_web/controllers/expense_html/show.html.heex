@@ -10,6 +10,9 @@
       <.link navigate={~p"/expenses"} class="btn">
         ←  Back to Expenses
       </.link>
+      <.link navigate={~p"/expenses/#{@expense.id}/edit"} class="btn primary">
+        Edit
+      </.link>
       <.link
         href={~p"/expenses/#{@expense.id}"}
         method="delete"

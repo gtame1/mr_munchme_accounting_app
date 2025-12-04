@@ -3,7 +3,7 @@ defmodule Mix.Tasks.ResetAllTables do
 
   alias MrMunchMeAccountingApp.Repo
   alias MrMunchMeAccountingApp.Accounting.{Account, JournalEntry, JournalLine, MoneyTransfer}
-  alias MrMunchMeAccountingApp.Inventory.{InventoryItem, InventoryMovement, Ingredient, Location}
+  alias MrMunchMeAccountingApp.Inventory.{InventoryItem, InventoryMovement, Ingredient, Location, Recipe, RecipeLine}
   alias MrMunchMeAccountingApp.Orders.{Order, Product, OrderPayment}
   alias MrMunchMeAccountingApp.Partners.{Partner, CapitalContribution}
   alias MrMunchMeAccountingApp.Expenses.Expense
@@ -23,8 +23,10 @@ defmodule Mix.Tasks.ResetAllTables do
       Repo.delete_all(InventoryItem)
       Repo.delete_all(CapitalContribution)
       Repo.delete_all(MoneyTransfer)
+      Repo.delete_all(RecipeLine)  # Depends on Recipe
 
       # 2) Mid-level dependents
+      Repo.delete_all(Recipe)      # Depends on Product, must be deleted before Product
       Repo.delete_all(Order)
       Repo.delete_all(Product)
       Repo.delete_all(Ingredient)

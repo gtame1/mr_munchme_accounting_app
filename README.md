@@ -9,12 +9,12 @@
 - Add notes to inventory purchases
 - Add shorcut to shipping expense in inventory purchase form in case the purchase involves shipping/delivery expenses.
 - Add CRUD to money transfers
-- Move add item button to bottom of list
-- Add "inventario de pruebas" as expense account
 - Split total inventory by inventory location
 - Change to last 10 movements, add "more..." button to load next 10.
 - Change forms that accept cents to full pesos.
 - Add accounts payable sub-accounts.
+- Add total to purchase list.
+- Edit specific inventory used in each order.
 
 ## Using github
 

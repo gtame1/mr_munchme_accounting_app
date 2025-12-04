@@ -598,6 +598,19 @@ defmodule MrMunchMeAccountingApp.Accounting do
     |> Repo.insert()
   end
 
+  def update_journal_entry_with_lines(%JournalEntry{} = entry, entry_attrs, lines_attrs) do
+    line_changesets =
+      Enum.map(lines_attrs, fn attrs ->
+        JournalLine.changeset(%JournalLine{}, attrs)
+      end)
+
+    entry
+    |> Repo.preload(:journal_lines)
+    |> JournalEntry.changeset(entry_attrs)
+    |> put_assoc(:journal_lines, line_changesets)
+    |> Repo.update()
+  end
+
 
 
   # -------- record_expense --------
@@ -632,6 +645,42 @@ defmodule MrMunchMeAccountingApp.Accounting do
     }
 
     create_journal_entry_with_lines(entry_attrs, lines)
+  end
+
+  def update_expense_journal_entry(%Expense{} = expense) do
+    reference = "Expense ##{expense.id}"
+
+    journal_entry =
+      from(je in JournalEntry, where: je.reference == ^reference)
+      |> Repo.one()
+
+    if journal_entry do
+      # Update the journal entry
+      entry_attrs = %{
+        date: expense.date,
+        description: expense.description
+      }
+
+      lines = [
+        %{
+          account_id: expense.expense_account_id,
+          debit_cents: expense.amount_cents,
+          credit_cents: 0,
+          description: "Expense: #{expense.description}"
+        },
+        %{
+          account_id: expense.paid_from_account_id,
+          debit_cents: 0,
+          credit_cents: expense.amount_cents,
+          description: "Paid from #{describe_account(expense.paid_from_account_id)}"
+        }
+      ]
+
+      update_journal_entry_with_lines(journal_entry, entry_attrs, lines)
+    else
+      # If journal entry doesn't exist, create it
+      record_expense(expense)
+    end
   end
 
   # ---------- Money Transfers ----------

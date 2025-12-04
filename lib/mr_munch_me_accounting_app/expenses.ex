@@ -31,10 +31,43 @@ defmodule MrMunchMeAccountingApp.Expenses do
 
   def create_expense(attrs), do: create_expense_with_journal(attrs)
 
-  def update_expense(%Expense{} = expense, attrs) do
-    expense
-    |> Expense.changeset(attrs)
-    |> Repo.update()
+  def update_expense(%Expense{} = expense, attrs), do: update_expense_with_journal(expense, attrs)
+
+  def update_expense_with_journal(%Expense{} = expense, attrs) do
+    # Convert amount to amount_cents if needed
+    attrs =
+      case Map.pop(attrs, "amount_cents") do
+        {nil, attrs} ->
+          # No amount field, use amount_cents as-is
+          attrs
+
+        {amount, attrs} ->
+          # Convert amount (decimal) to amount_cents (integer)
+          amount_cents =
+            amount
+            |> Decimal.new()
+            |> Decimal.mult(Decimal.new(100))
+            |> Decimal.round(0)
+            |> Decimal.to_integer()
+
+          Map.put(attrs, "amount_cents", amount_cents)
+      end
+
+    Repo.transaction(fn ->
+      with {:ok, updated_expense} <-
+             expense
+             |> Expense.changeset(attrs)
+             |> Repo.update(),
+           {:ok, _entry} <- Accounting.update_expense_journal_entry(updated_expense) do
+        updated_expense
+      else
+        {:error, changeset = %Ecto.Changeset{}} ->
+          Repo.rollback(changeset)
+
+        {:error, reason} ->
+          Repo.rollback(reason)
+      end
+    end)
   end
 
   def create_expense_with_journal(attrs) do
