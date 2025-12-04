@@ -24,6 +24,9 @@ defmodule MrMunchMeAccountingApp.Accounting do
   @sales_code "4000"
   @owners_equity_code "3000"
   @ingredients_cogs_code "5000"
+  @packaging_cogs_code "5010"
+  @inventory_waste_code "6060"
+  @other_expenses_code "6099"
 
   @shipping_product_sku "ENVIO"
 
@@ -643,6 +646,111 @@ defmodule MrMunchMeAccountingApp.Accounting do
       reference: "Expense ##{expense.id}",
       description: expense.description
     }
+
+    create_journal_entry_with_lines(entry_attrs, lines)
+  end
+
+  @doc """
+  Record inventory write-off (waste/shrinkage) as an expense:
+
+    Dr Inventory Waste & Shrinkage Expense (6060)
+    Cr Inventory Account (1200/1210/1300)
+  """
+  def record_inventory_write_off(total_cost_cents, opts \\ []) do
+    # 1) Decide which inventory account we're crediting
+    {inv_account, inventory_type} =
+      cond do
+        Keyword.get(opts, :packing, false) -> {get_account_by_code!(@packing_inventory_code), "Packing"}
+        Keyword.get(opts, :kitchen, false) -> {get_account_by_code!(@kitchen_inventory_code), "Kitchen"}
+        true -> {get_account_by_code!(@ingredients_inventory_code), "Ingredients"}
+      end
+
+    waste_expense_account = get_account_by_code!(@inventory_waste_code)
+
+    date = Keyword.get(opts, :write_off_date, Date.utc_today())
+    reference = Keyword.get(opts, :reference)
+
+    description =
+      Keyword.get(opts, :description,
+        "#{inventory_type} inventory write-off (waste/shrinkage)"
+      )
+
+    entry_attrs = %{
+      date: date,
+      entry_type: "expense",
+      reference: reference,
+      description: description
+    }
+
+    lines = [
+      %{
+        account_id: waste_expense_account.id,
+        debit_cents: total_cost_cents,
+        credit_cents: 0,
+        description: "Inventory waste: #{inventory_type}"
+      },
+      %{
+        account_id: inv_account.id,
+        debit_cents: 0,
+        credit_cents: total_cost_cents,
+        description: "Reduce #{inventory_type} inventory"
+      }
+    ]
+
+    create_journal_entry_with_lines(entry_attrs, lines)
+  end
+
+  @doc """
+  Record manual inventory usage as COGS (when not part of an order):
+
+    Dr COGS Account (5000/5010)
+    Cr Inventory Account (1200/1210/1300)
+  """
+  def record_inventory_usage(total_cost_cents, opts \\ []) do
+    # 1) Decide which inventory account we're crediting and which COGS account to debit
+    {inv_account, cogs_account, inventory_type} =
+      cond do
+        Keyword.get(opts, :packing, false) ->
+          {get_account_by_code!(@packing_inventory_code), get_account_by_code!(@packaging_cogs_code), "Packing"}
+
+        Keyword.get(opts, :kitchen, false) ->
+          # Kitchen equipment is typically not COGS, but expense
+          # For now, we'll use Other Expenses for kitchen usage
+          {get_account_by_code!(@kitchen_inventory_code), get_account_by_code!(@other_expenses_code), "Kitchen"}
+
+        true ->
+          {get_account_by_code!(@ingredients_inventory_code), get_account_by_code!(@ingredients_cogs_code), "Ingredients"}
+      end
+
+    date = Keyword.get(opts, :usage_date, Date.utc_today())
+    reference = Keyword.get(opts, :reference)
+
+    description =
+      Keyword.get(opts, :description,
+        "Manual #{inventory_type} inventory usage"
+      )
+
+    entry_attrs = %{
+      date: date,
+      entry_type: "expense",
+      reference: reference,
+      description: description
+    }
+
+    lines = [
+      %{
+        account_id: cogs_account.id,
+        debit_cents: total_cost_cents,
+        credit_cents: 0,
+        description: "#{inventory_type} used (manual)"
+      },
+      %{
+        account_id: inv_account.id,
+        debit_cents: 0,
+        credit_cents: total_cost_cents,
+        description: "Reduce #{inventory_type} inventory"
+      }
+    ]
 
     create_journal_entry_with_lines(entry_attrs, lines)
   end

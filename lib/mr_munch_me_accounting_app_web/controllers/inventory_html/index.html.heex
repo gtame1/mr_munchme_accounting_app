@@ -65,7 +65,7 @@
               <%= for stock <- Enum.sort_by(ingredients_stock, &[&1.ingredient.name, &1.location.name]) do %>
                 <% ingredient = stock.ingredient %>
                 <% location = stock.location %>
-                <% total_value_cents = stock.quantity_on_hand * stock.avg_cost_per_unit_cents %>
+                <% total_value_cents = stock.total_value_cents %>
 
                 <tr>
                   <td>
@@ -242,7 +242,13 @@
                     <%= m.quantity %> <%= m.ingredient && m.ingredient.unit %>
                   </td>
                   <td class="numeric">
-                    <%= format_currency(m.unit_cost_cents) %>
+                    <%= cond do %>
+                      <% m.movement_type == "purchase" and m.quantity > 0 and m.total_cost_cents -> %>
+                        <%!-- For purchases, calculate unit cost from total to ensure it matches exactly --%>
+                        <%= format_currency(round(m.total_cost_cents / m.quantity)) %>
+                      <% true -> %>
+                        <%= format_currency(m.unit_cost_cents) %>
+                    <% end %>
                   </td>
                   <td class="numeric">
                     <%= format_currency(m.total_cost_cents) %>

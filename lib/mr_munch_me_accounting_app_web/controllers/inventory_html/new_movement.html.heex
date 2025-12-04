@@ -58,13 +58,14 @@
             />
           </div>
 
-          <div class="field">
+          <div class="field" id="to-location-field">
             <.input
               field={@form[:to_location_code]}
               type="select"
-              label="To location (for transfers)"
+              label="To location (for transfers only)"
               prompt="Choose destination"
               options={@location_options}
+              id="to-location-select"
             />
           </div>
 
@@ -186,12 +187,53 @@
     console.log("Movement form script loaded", { FORM_NAME, INGREDIENT_OPTIONS });
     const container = document.getElementById("movement-items-container");
     const addBtn = document.getElementById("add-item-btn");
+    const movementTypeSelect = document.querySelector('select[name*="[movement_type]"]');
+    const toLocationField = document.getElementById("to-location-field");
+    // Try to find select by id first, then fallback to name attribute
+    const toLocationSelect = document.getElementById("to-location-select") || 
+                            document.querySelector('select[name*="[to_location_code]"]');
 
     console.log("Container:", container, "AddBtn:", addBtn);
 
     if (!container || !addBtn) {
       console.error("Movement form: container or addBtn not found", { container, addBtn });
       return;
+    }
+
+    // Function to toggle "to location" field based on movement type
+    function toggleToLocationField() {
+      if (!movementTypeSelect || !toLocationField || !toLocationSelect) {
+        console.warn("Movement form: Could not find required elements for to-location toggle", {
+          movementTypeSelect: !!movementTypeSelect,
+          toLocationField: !!toLocationField,
+          toLocationSelect: !!toLocationSelect
+        });
+        return;
+      }
+      
+      const movementType = movementTypeSelect.value;
+      const isTransfer = movementType === "transfer";
+      
+      if (isTransfer) {
+        // Show and enable for transfers
+        toLocationField.style.display = "block";
+        toLocationSelect.disabled = false;
+        toLocationSelect.removeAttribute("required");
+        // Note: We don't set required=true via JS as it's handled by the form validation
+      } else {
+        // Hide and disable for usage/write_off
+        toLocationField.style.display = "none";
+        toLocationSelect.disabled = true;
+        toLocationSelect.removeAttribute("required");
+        toLocationSelect.value = ""; // Clear value when hidden
+      }
+    }
+
+    // Set up movement type change listener
+    if (movementTypeSelect) {
+      movementTypeSelect.addEventListener("change", toggleToLocationField);
+      // Initialize on page load
+      toggleToLocationField();
     }
 
     function updateItemInfo(row) {

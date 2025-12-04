@@ -15,6 +15,7 @@
 - Add accounts payable sub-accounts.
 - Add total to purchase list.
 - Edit specific inventory used in each order.
+- Add consolidation tool
 
 ## Using github
 

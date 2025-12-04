@@ -13,6 +13,62 @@ defmodule MrMunchMeAccountingApp.Inventory do
   alias __MODULE__.{Ingredient, Location, InventoryItem, InventoryMovement, PurchaseForm, PurchaseListForm, MovementForm, MovementListForm, Recepies, PurchaseItemForm, MovementItemForm}
 
 
+  # ---------- Helper functions ----------
+
+  # Calculates the cumulative average cost from all purchase movements.
+  # Returns: total_spent / total_purchased = sum(purchase total_cost_cents) / sum(purchase quantities)
+  defp calculate_cumulative_avg_cost(ingredient_id, location_id) do
+    result =
+      from(m in InventoryMovement,
+        where: m.ingredient_id == ^ingredient_id,
+        where: m.to_location_id == ^location_id,
+        where: m.movement_type == "purchase",
+        select: %{
+          total_cost: fragment("COALESCE(SUM(?), 0)", m.total_cost_cents),
+          total_quantity: fragment("COALESCE(SUM(?), 0)", m.quantity)
+        }
+      )
+      |> Repo.one()
+
+    # Convert Decimal values from SQL SUM to integers
+    total_cost = case result do
+      %{total_cost: cost} when is_integer(cost) -> cost
+      %{total_cost: %Decimal{} = cost} -> Decimal.to_integer(cost)
+      _ -> 0
+    end
+
+    total_quantity = case result do
+      %{total_quantity: qty} when is_integer(qty) -> qty
+      %{total_quantity: %Decimal{} = qty} -> Decimal.to_integer(qty)
+      _ -> 0
+    end
+
+    case {total_cost, total_quantity} do
+      {0, 0} -> nil
+      {_, 0} -> nil
+      {cost, qty} when qty > 0 ->
+        exact_avg = cost / qty
+        round(exact_avg)
+      _ -> nil
+    end
+  end
+
+  # Calculates the weighted average cost per unit, rounded to the nearest cent.
+  # Uses floating point division and proper rounding to avoid precision loss.
+  # DEPRECATED: Use calculate_cumulative_avg_cost instead for actual purchase costs.
+  defp calculate_weighted_avg_cost(old_qty, old_cost_cents, new_qty_added, new_unit_cost_cents, total_new_qty) do
+    if total_new_qty <= 0 do
+      new_unit_cost_cents
+    else
+      # Calculate exact average using floating point division
+      total_cost = old_qty * old_cost_cents + new_qty_added * new_unit_cost_cents
+      exact_avg = total_cost / total_new_qty
+      # Round to nearest cent
+      round(exact_avg)
+    end
+  end
+
+
   # ---------- Lookups ----------
 
   def get_ingredient_by_code!(code), do: Repo.get_by!(Ingredient, code: code)
@@ -85,7 +141,8 @@ defmodule MrMunchMeAccountingApp.Inventory do
       unit_cost_cents,
       purchase_date,
       source_type \\ nil,
-      source_id \\ nil
+      source_id \\ nil,
+      total_cost_cents \\ nil
     ) do
     Repo.transaction(fn ->
       do_record_purchase(
@@ -96,7 +153,8 @@ defmodule MrMunchMeAccountingApp.Inventory do
         unit_cost_cents,
         purchase_date,
         source_type,
-        source_id
+        source_id,
+        total_cost_cents
       )
     end)
   end
@@ -110,7 +168,8 @@ defmodule MrMunchMeAccountingApp.Inventory do
          unit_cost_cents,
          purchase_date,
          source_type,
-         source_id
+         source_id,
+         total_cost_cents
        ) do
     ingredient = get_ingredient_by_code!(ingredient_code)
     location   = get_location_by_code!(location_code)
@@ -119,20 +178,13 @@ defmodule MrMunchMeAccountingApp.Inventory do
     stock = get_or_create_stock!(ingredient.id, location.id)
 
     old_qty  = stock.quantity_on_hand
-    old_cost = stock.avg_cost_per_unit_cents
-
     new_qty  = old_qty + quantity
 
-    new_avg_cost =
-      if new_qty <= 0 do
-        unit_cost_cents
-      else
-        div(old_qty * old_cost + quantity * unit_cost_cents, new_qty)
-      end
+    # Use provided total_cost_cents if available (actual purchase cost),
+    # otherwise calculate from unit_cost_cents (for backward compatibility)
+    actual_total_cost_cents = total_cost_cents || (quantity * unit_cost_cents)
 
-    total_cost_cents = quantity * unit_cost_cents
-
-    # 1) Insert movement
+    # 1) Insert movement first
     {:ok, movement} =
       %InventoryMovement{}
       |> InventoryMovement.changeset(%{
@@ -143,7 +195,7 @@ defmodule MrMunchMeAccountingApp.Inventory do
         quantity: quantity,
         movement_type: "purchase",
         unit_cost_cents: unit_cost_cents,
-        total_cost_cents: total_cost_cents,
+        total_cost_cents: actual_total_cost_cents,
         source_type: source_type,
         source_id: source_id,
         note: "Purchase into #{location.code}",
@@ -151,7 +203,10 @@ defmodule MrMunchMeAccountingApp.Inventory do
       })
       |> Repo.insert()
 
-    # 2) Update stock
+    # 2) Calculate cumulative average from all purchase movements (including the one we just inserted)
+    new_avg_cost = calculate_cumulative_avg_cost(ingredient.id, location.id) || unit_cost_cents
+
+    # 3) Update stock with new quantity and cumulative average cost
     stock
     |> InventoryItem.changeset(%{
       quantity_on_hand: new_qty,
@@ -208,6 +263,23 @@ defmodule MrMunchMeAccountingApp.Inventory do
         stock
         |> InventoryItem.changeset(%{quantity_on_hand: new_qty})
         |> Repo.update!()
+
+      # Create journal entry for manual usage (not for orders, which go through WIP)
+      if source_type != "order" do
+        # Determine inventory type for accounting
+        inv_type = inventory_type(ingredient.code)
+        packing? = inv_type == :packing
+        kitchen? = inv_type == :kitchen
+
+        Accounting.record_inventory_usage(
+          total_cost_cents,
+          usage_date: movement_date,
+          reference: "Usage #{ingredient_code} @ #{location_code}",
+          packing: packing?,
+          kitchen: kitchen?,
+          description: "Manual usage of #{quantity} #{ingredient_code} from #{location_code}"
+        )
+      end
 
       {:ok, %{movement: movement, stock: stock, total_cost_cents: total_cost_cents}}
     end)
@@ -381,12 +453,7 @@ defmodule MrMunchMeAccountingApp.Inventory do
       old_to_cost = to_stock.avg_cost_per_unit_cents
       new_to_qty  = old_to_qty + quantity
 
-      new_to_avg_cost =
-        if new_to_qty <= 0 do
-          unit_cost_cents
-        else
-          div(old_to_qty * old_to_cost + quantity * unit_cost_cents, new_to_qty)
-        end
+      new_to_avg_cost = calculate_weighted_avg_cost(old_to_qty, old_to_cost, quantity, unit_cost_cents, new_to_qty)
 
       to_stock =
         to_stock
@@ -450,13 +517,115 @@ defmodule MrMunchMeAccountingApp.Inventory do
   end
 
   @doc """
-  Total inventory value (sum quantity * avg cost).
+  Calculate the actual inventory value for a specific ingredient+location pair
+  based on purchase costs minus consumption costs, accounting for transfers.
+  Returns the actual cost of remaining inventory for this ingredient+location.
+  """
+  def inventory_item_value_cents(ingredient_id, location_id) do
+    # Sum purchase costs for this ingredient+location
+    purchase_total =
+      from(m in InventoryMovement,
+        where: m.movement_type == "purchase",
+        where: m.ingredient_id == ^ingredient_id,
+        where: m.to_location_id == ^location_id,
+        select: coalesce(sum(m.total_cost_cents), 0)
+      )
+      |> Repo.one()
+
+    # Sum consumption costs (usage + write_off) for this ingredient+location
+    consumption_total =
+      from(m in InventoryMovement,
+        where: m.movement_type in ["usage", "write_off"],
+        where: m.ingredient_id == ^ingredient_id,
+        where: m.from_location_id == ^location_id,
+        select: coalesce(sum(m.total_cost_cents), 0)
+      )
+      |> Repo.one()
+
+    # Sum transfers OUT of this location (subtract)
+    transfer_out_total =
+      from(m in InventoryMovement,
+        where: m.movement_type == "transfer",
+        where: m.ingredient_id == ^ingredient_id,
+        where: m.from_location_id == ^location_id,
+        select: coalesce(sum(m.total_cost_cents), 0)
+      )
+      |> Repo.one()
+
+    # Sum transfers IN to this location (add)
+    transfer_in_total =
+      from(m in InventoryMovement,
+        where: m.movement_type == "transfer",
+        where: m.ingredient_id == ^ingredient_id,
+        where: m.to_location_id == ^location_id,
+        select: coalesce(sum(m.total_cost_cents), 0)
+      )
+      |> Repo.one()
+
+    # Convert Decimal to integer if needed
+    purchase_cents = case purchase_total do
+      %Decimal{} = dec -> Decimal.to_integer(dec)
+      int when is_integer(int) -> int
+      _ -> 0
+    end
+
+    consumption_cents = case consumption_total do
+      %Decimal{} = dec -> Decimal.to_integer(dec)
+      int when is_integer(int) -> int
+      _ -> 0
+    end
+
+    transfer_out_cents = case transfer_out_total do
+      %Decimal{} = dec -> Decimal.to_integer(dec)
+      int when is_integer(int) -> int
+      _ -> 0
+    end
+
+    transfer_in_cents = case transfer_in_total do
+      %Decimal{} = dec -> Decimal.to_integer(dec)
+      int when is_integer(int) -> int
+      _ -> 0
+    end
+
+    purchase_cents + transfer_in_cents - consumption_cents - transfer_out_cents
+  end
+
+  @doc """
+  Total inventory value calculated from actual purchase costs.
+  Formula: sum(all purchase total_cost_cents) - sum(all usage/write_off total_cost_cents)
+  This gives the actual cost of remaining inventory based on what was actually spent.
   """
   def total_inventory_value_cents do
-    from(ii in InventoryItem,
-      select: coalesce(sum(ii.quantity_on_hand * ii.avg_cost_per_unit_cents), 0)
-    )
-    |> Repo.one()
+    # Sum all purchase costs
+    purchase_total =
+      from(m in InventoryMovement,
+        where: m.movement_type == "purchase",
+        select: coalesce(sum(m.total_cost_cents), 0)
+      )
+      |> Repo.one()
+
+    # Sum all consumption costs (usage + write_off)
+    consumption_total =
+      from(m in InventoryMovement,
+        where: m.movement_type in ["usage", "write_off"],
+        select: coalesce(sum(m.total_cost_cents), 0)
+      )
+      |> Repo.one()
+
+    # Convert Decimal to integer if needed
+    purchase_cents = case purchase_total do
+      %Decimal{} = dec -> Decimal.to_integer(dec)
+      int when is_integer(int) -> int
+      _ -> 0
+    end
+
+    consumption_cents = case consumption_total do
+      %Decimal{} = dec -> Decimal.to_integer(dec)
+      int when is_integer(int) -> int
+      _ -> 0
+    end
+
+    purchase_cents - consumption_cents
   end
 
   @doc """
@@ -533,16 +702,19 @@ defmodule MrMunchMeAccountingApp.Inventory do
         |> Decimal.round(0)
         |> Decimal.to_integer()
 
-      # derive unit cost from total / quantity
+      # derive unit cost from total / quantity (for moving average calculation)
+      # Calculate with floating point and round to nearest cent to maintain precision
       unit_cost_cents =
         if form.quantity > 0 do
-          div(total_cost_cents, form.quantity)
+          exact_unit_cost = total_cost_cents / form.quantity
+          round(exact_unit_cost)
         else
           0
         end
 
 
       # 1) Record the inventory side (movement + stock update)
+      # Pass the actual total_cost_cents so it's stored correctly in the movement
       case record_purchase(
              form.ingredient_code,
              form.location_code,
@@ -551,7 +723,8 @@ defmodule MrMunchMeAccountingApp.Inventory do
              unit_cost_cents,
              form.purchase_date,
              "manual",
-             nil
+             nil,
+             total_cost_cents
            ) do
         {:ok, _movement} ->
           # 2) Record the accounting side
@@ -652,30 +825,44 @@ defmodule MrMunchMeAccountingApp.Inventory do
       from i in Ingredient,
         left_join: inv in InventoryItem,
         on: inv.ingredient_id == i.id,
-        group_by: [i.id, i.code, i.name, i.unit, i.cost_per_unit_cents],
+        group_by: [i.id, i.code, i.name, i.unit],
         select: %{
           code: i.code,
           unit: i.unit,
-          # weighted avg across locations, fallback to default if no stock
+          # weighted avg across locations based only on actual purchases
+          # returns NULL if no stock/purchases yet
+          # uses ROUND() to avoid truncation and maintain precision
           avg_cost_cents:
             fragment(
-              "COALESCE(CASE WHEN SUM(?) > 0 THEN SUM(? * ?) / SUM(?) ELSE ? END, ?)",
+              "CASE WHEN SUM(?) > 0 THEN ROUND(CAST(SUM(? * ?) AS NUMERIC) / SUM(?)) ELSE NULL END",
               inv.quantity_on_hand,
               inv.quantity_on_hand,
               inv.avg_cost_per_unit_cents,
-              inv.quantity_on_hand,
-              i.cost_per_unit_cents,
-              i.cost_per_unit_cents
+              inv.quantity_on_hand
             )
         }
 
     query
     |> Repo.all()
     |> Map.new(fn row ->
+      # Convert Decimal to integer for JSON encoding (ROUND() returns Decimal/NUMERIC type)
+      avg_cost_cents =
+        case row.avg_cost_cents do
+          nil -> nil
+          %Decimal{} = dec -> Decimal.to_integer(dec)
+          other when is_integer(other) -> other
+          other ->
+            # Fallback: try to convert to integer
+            case Integer.parse(to_string(other)) do
+              {int, _} -> int
+              :error -> nil
+            end
+        end
+
       {row.code,
        %{
          "unit" => row.unit,
-         "avg_cost_cents" => row.avg_cost_cents
+         "avg_cost_cents" => avg_cost_cents
        }}
     end)
   end
@@ -924,6 +1111,21 @@ defmodule MrMunchMeAccountingApp.Inventory do
       })
       |> Repo.update!()
 
+      # Determine inventory type for accounting
+      inv_type = inventory_type(ingredient.code)
+      packing? = inv_type == :packing
+      kitchen? = inv_type == :kitchen
+
+      # Create journal entry for write-off
+      Accounting.record_inventory_write_off(
+        total_cost_cents,
+        write_off_date: write_off_date,
+        reference: "Write-off #{ingredient_code} @ #{from_location_code}",
+        packing: packing?,
+        kitchen: kitchen?,
+        description: "Write-off of #{quantity} #{ingredient_code} from #{from_location_code} (waste/shrinkage)"
+      )
+
       movement
     end)
   end
@@ -1111,12 +1313,7 @@ defmodule MrMunchMeAccountingApp.Inventory do
         new_from_qty = old_from_qty + transfer_qty
 
         # Recalculate average cost for from_location
-        new_from_avg_cost =
-          if new_from_qty <= 0 do
-            unit_cost_cents
-          else
-            div(old_from_qty * old_from_cost + transfer_qty * unit_cost_cents, new_from_qty)
-          end
+        new_from_avg_cost = calculate_weighted_avg_cost(old_from_qty, old_from_cost, transfer_qty, unit_cost_cents, new_from_qty)
 
         from_stock
         |> InventoryItem.changeset(%{
@@ -1167,12 +1364,7 @@ defmodule MrMunchMeAccountingApp.Inventory do
         old_from_cost = from_stock.avg_cost_per_unit_cents
         new_from_qty = old_from_qty + transfer_qty
 
-        new_from_avg_cost =
-          if new_from_qty <= 0 do
-            unit_cost_cents
-          else
-            div(old_from_qty * old_from_cost + transfer_qty * unit_cost_cents, new_from_qty)
-          end
+        new_from_avg_cost = calculate_weighted_avg_cost(old_from_qty, old_from_cost, transfer_qty, unit_cost_cents, new_from_qty)
 
         from_stock
         |> InventoryItem.changeset(%{

@@ -8,6 +8,11 @@ defmodule MrMunchMeAccountingAppWeb.InventoryController do
     stock_items =
       Inventory.list_stock_items()
       |> Enum.filter(fn stock -> stock.quantity_on_hand > 0 end)
+      |> Enum.map(fn stock ->
+        # Calculate actual inventory value from purchase costs
+        total_value_cents = Inventory.inventory_item_value_cents(stock.ingredient_id, stock.location_id)
+        Map.put(stock, :total_value_cents, total_value_cents)
+      end)
 
     # Group stock items by inventory type
     stock_by_type =
@@ -16,7 +21,7 @@ defmodule MrMunchMeAccountingAppWeb.InventoryController do
         Inventory.inventory_type(stock.ingredient.code)
       end)
 
-    recent_movements = Inventory.list_recent_movements(25)
+    recent_movements = Inventory.list_recent_movements(10)
     total_value_cents = Inventory.total_inventory_value_cents()
 
     render(conn, :index,
@@ -105,27 +110,9 @@ defmodule MrMunchMeAccountingAppWeb.InventoryController do
   # -------- New manual movement (usage / transfer) --------
 
   def new_movement(conn, _params) do
-    require Logger
-    Logger.info("=== new_movement called ===")
-
     changeset = Inventory.change_movement_list_form(%{})
 
-    # Debug: verify changeset structure
-    Logger.info("Changeset data struct: #{inspect(changeset.data.__struct__)}")
-    Logger.info("Changeset data module: #{inspect(changeset.data.__struct__.__struct__)}")
-    Logger.info("Changeset has items field?: #{Map.has_key?(changeset.data, :items)}")
-    Logger.info("Changeset data keys: #{inspect(Map.keys(changeset.data))}")
-    Logger.info("Changeset changes keys: #{inspect(Map.keys(changeset.changes))}")
-
-    if Map.has_key?(changeset.data, :items) do
-      Logger.info("Items in data: #{inspect(changeset.data.items)}")
-      Logger.info("Items type: #{inspect(Enum.at(changeset.data.items, 0) && Enum.at(changeset.data.items, 0).__struct__)}")
-    end
-
     form = Phoenix.Component.to_form(changeset)
-    Logger.info("Form name: #{inspect(form.name)}")
-    Logger.info("Form source: #{inspect(form.source)}")
-    Logger.info("=== end new_movement ===")
     ingredient_options = Inventory.ingredient_select_options()
     # Convert tuples to lists for JSON encoding
     ingredient_options_list = Enum.map(ingredient_options, fn {name, code} -> [name, code] end)

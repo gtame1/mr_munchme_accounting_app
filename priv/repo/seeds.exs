@@ -182,6 +182,7 @@ expenses = [
   %{code: "6030", name: "Advertising & Marketing", type: "expense", normal_balance: "debit"},
   %{code: "6040", name: "Test Inventory", type: "expense", normal_balance: "debit"},
   %{code: "6050", name: "Parking", type: "expense", normal_balance: "debit"},
+  %{code: "6060", name: "Inventory Waste & Shrinkage", type: "expense", normal_balance: "debit"},
   %{code: "6099", name: "Other Expenses", type: "expense", normal_balance: "debit"},
 ]
 
