@@ -10,11 +10,9 @@
 - Add shorcut to shipping expense in inventory purchase form in case the purchase involves shipping/delivery expenses.
 - Add CRUD to money transfers
 - Split total inventory by inventory location
-- Change to last 10 movements, add "more..." button to load next 10.
 - Change forms that accept cents to full pesos.
-- Add accounts payable sub-accounts.
-- Add total to purchase list.
-- Edit specific inventory used in each order.
+- Edit specific inventory used in each order. Some orders (few) use a bit more or a bit less inventory, or some might use more ingredients or less. How can we add something that can allow us to edit the order used inventory?
+- Tune up order UI.
 - Add consolidation tool
 
 ## Using github

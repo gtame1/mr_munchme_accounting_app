@@ -1,90 +1,129 @@
-<section class="card">
-  <h2 class="card-title">New Order</h2>
-  <p class="card-subtitle">
-    Register a new cake order. Customer details and delivery info are required for scheduling.
-  </p>
+<section class="content">
+  <header class="content-header">
+    <h1 class="page-title">New Order</h1>
+  </header>
 
-  <.form :let={f} for={@changeset} as={:order} action={@action}  class="form-grid">
-    <%= if @changeset.action do %>
-      <div class="alert alert-error">
-        <p>There were problems with your order. Please review the fields below.</p>
-      </div>
-    <% end %>
+  <div class="content-body">
+    <section class="card">
+      <h2 class="card-title">Register New Order</h2>
+      <p class="card-subtitle">
+        Create a new cake order with customer details, delivery information, and product selection.
+      </p>
 
+      <.form :let={f} for={@changeset} as={:order} action={@action} class="form-grid">
+        <%= if @changeset.action do %>
+          <div class="alert alert-error">
+            <p>There were problems with your order. Please review the fields below.</p>
+          </div>
+        <% end %>
 
-    <div class="form-block">
-      <div class="field">
-        <.input field={f[:customer_name]} type="text" label="Customer Name"/>
-      </div>
+        <%!-- Customer Information Section --%>
+        <div class="form-section">
+          <h3 class="section-title">Customer Information</h3>
+          <p class="section-help">Contact details for the customer placing this order.</p>
+          
+          <div class="form-block">
+            <div class="field">
+              <.input field={f[:customer_name]} type="text" label="Customer Name" />
+            </div>
 
-      <div class="field">
-        <.input field={f[:customer_email]} type="email" label="Customer Email (optional)" />
-      </div>
+            <div class="field">
+              <.input field={f[:customer_phone]} type="tel" label="Customer Phone" />
+            </div>
 
-      <div class="field">
-        <.input field={f[:customer_phone]} type="text" label="Customer Phone" />
-      </div>
+            <div class="field">
+              <.input field={f[:customer_email]} type="email" label="Customer Email" />
+              <p class="field-help">Optional - for order confirmations</p>
+            </div>
+          </div>
+        </div>
 
-      <div class="field">
-        <.input
-          field={f[:delivery_type]}
-          type="select"
-          label="Delivery Type"
-          prompt="Select delivery type"
-          options={[{"Pickup", "pickup"}, {"Delivery", "delivery"}]}
-        />
-      </div>
+        <%!-- Delivery Information Section --%>
+        <div class="form-section">
+          <h3 class="section-title">Delivery Information</h3>
+          <p class="section-help">Delivery type, address, date, and time for order fulfillment.</p>
+          
+          <div class="form-block">
+            <div class="field">
+              <.input
+                field={f[:delivery_type]}
+                type="select"
+                label="Delivery Type"
+                prompt="Select delivery type"
+                options={[{"Pickup", "pickup"}, {"Delivery", "delivery"}]}
+              />
+            </div>
 
-      <div class="field">
-        <.input
-          field={f[:delivery_address]}
-          type="textarea"
-          label="Delivery Address (if delivery)"
-          rows="3"
-        />
-      </div>
+            <div class="field">
+              <.input field={f[:delivery_date]} type="date" label="Delivery Date" />
+            </div>
 
-      <div class="field">
-        <.input field={f[:delivery_date]} type="date" label="Delivery Date" />
-      </div>
+            <div class="field">
+              <.input field={f[:delivery_time]} type="time" label="Delivery Time" />
+              <p class="field-help">Optional - preferred time for delivery/pickup</p>
+            </div>
+          </div>
 
-      <div class="field">
-        <.input field={f[:delivery_time]} type="time" label="Delivery Time (optional)" />
-      </div>
-      
-      <div class="field">
-        <.input
-          field={f[:customer_paid_shipping]}
-          type="checkbox"
-          label="Customer paid shipping?"
-        />
-      </div>
+          <div class="form-block" style="width: 100%;">
+            <div class="field" style="width: 100%;">
+              <.input
+                field={f[:delivery_address]}
+                type="textarea"
+                label="Delivery Address"
+                rows="3"
+              />
+              <p class="field-help">Required only if delivery type is "Delivery"</p>
+            </div>
+          </div>
+        </div>
 
-      <div class="field">
-        <.input
-          field={f[:product_id]}
-          type="select"
-          label="Product"
-          prompt="Select a product"
-          options={@product_options}
-        />
-      </div>
+        <%!-- Order Details Section --%>
+        <div class="form-section">
+          <h3 class="section-title">Order Details</h3>
+          <p class="section-help">Product selection and preparation information.</p>
+          
+          <div class="form-block">
+            <div class="field">
+              <.input
+                field={f[:product_id]}
+                type="select"
+                label="Product"
+                prompt="Select a product"
+                options={@product_options}
+              />
+            </div>
 
-      <div class="field">
-        <.input
-          field={f[:prep_location_id]}
-          type="select"
-          label="Preparation location"
-          prompt="Select preparation location"
-          options={@location_options}
-        />
-      </div>
-    </div>
+            <div class="field">
+              <.input
+                field={f[:prep_location_id]}
+                type="select"
+                label="Preparation Location"
+                prompt="Select preparation location"
+                options={@location_options}
+              />
+            </div>
+          </div>
 
-    <div class="actions">
-      <button class="btn primary" type="submit">
-        Save Order
-      </button>
-    </div>
-  </.form>
+          <div class="form-block">
+            <div class="field">
+              <.input
+                field={f[:customer_paid_shipping]}
+                type="checkbox"
+                label="Customer paid shipping"
+              />
+            </div>
+          </div>
+        </div>
+
+        <div class="actions">
+          <button class="btn primary" type="submit">
+            Save Order
+          </button>
+          <.link navigate={~p"/orders"} class="btn">
+            Cancel
+          </.link>
+        </div>
+      </.form>
+    </section>
+  </div>
 </section>
