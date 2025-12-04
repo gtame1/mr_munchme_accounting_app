@@ -859,6 +859,12 @@ defmodule MrMunchMeAccountingApp.Accounting do
     |> Repo.all()
   end
 
+  def get_money_transfer!(id) do
+    MoneyTransfer
+    |> Repo.get!(id)
+    |> Repo.preload([:from_account, :to_account])
+  end
+
   def change_transfer_form(attrs \\ %{}) do
     {%{
       from_account_id: nil,
@@ -947,6 +953,104 @@ defmodule MrMunchMeAccountingApp.Accounting do
     create_journal_entry_with_lines(entry_attrs, lines)
   end
 
+  def update_money_transfer(%MoneyTransfer{} = transfer, attrs) do
+    form_changeset = change_transfer_form(attrs)
+
+    if form_changeset.valid? do
+      %{
+        from_account_id: from_id,
+        to_account_id: to_id,
+        date: date,
+        amount_pesos: amount_pesos,
+        note: note
+      } = Ecto.Changeset.apply_changes(form_changeset)
+
+      amount_cents =
+        amount_pesos
+        |> Decimal.mult(Decimal.new(100))
+        |> Decimal.round(0)
+        |> Decimal.to_integer()
+
+      Repo.transaction(fn ->
+        # 1) Find and update the journal entry
+        reference = "Transfer ##{transfer.id}"
+
+        journal_entry =
+          from(je in JournalEntry, where: je.reference == ^reference)
+          |> Repo.one()
+
+        if journal_entry do
+          # Update the journal entry
+          entry_attrs = %{
+            date: date,
+            description: note || "Transfer from #{describe_account(from_id)} to #{describe_account(to_id)}"
+          }
+
+          from_acct = Repo.get!(Account, from_id)
+          to_acct = Repo.get!(Account, to_id)
+
+          lines = [
+            %{
+              account_id: to_acct.id,
+              debit_cents: amount_cents,
+              credit_cents: 0,
+              description: "Transfer from #{from_acct.code} #{from_acct.name}"
+            },
+            %{
+              account_id: from_acct.id,
+              debit_cents: 0,
+              credit_cents: amount_cents,
+              description: "Transfer to #{to_acct.code} #{to_acct.name}"
+            }
+          ]
+
+          case update_journal_entry_with_lines(journal_entry, entry_attrs, lines) do
+            {:ok, _entry} -> :ok
+            {:error, changeset} -> Repo.rollback(changeset)
+          end
+        end
+
+        # 2) Update the transfer record
+        transfer_changeset =
+          MoneyTransfer.changeset(transfer, %{
+            from_account_id: from_id,
+            to_account_id: to_id,
+            date: date,
+            amount_cents: amount_cents,
+            note: note
+          })
+
+        case Repo.update(transfer_changeset) do
+          {:ok, updated_transfer} -> updated_transfer
+          {:error, changeset} -> Repo.rollback(changeset)
+        end
+      end)
+      |> case do
+        {:ok, transfer} -> {:ok, transfer}
+        {:error, reason} -> {:error, form_changeset |> Ecto.Changeset.add_error(:base, "Failed to update transfer: #{inspect(reason)}")}
+      end
+    else
+      {:error, form_changeset}
+    end
+  end
+
+  def delete_money_transfer(%MoneyTransfer{} = transfer) do
+    Repo.transaction(fn ->
+      # Find and delete the related journal entry
+      reference = "Transfer ##{transfer.id}"
+
+      journal_entry =
+        from(je in JournalEntry, where: je.reference == ^reference)
+        |> Repo.one()
+
+      if journal_entry do
+        Repo.delete!(journal_entry)
+      end
+
+      # Delete the transfer
+      Repo.delete!(transfer)
+    end)
+  end
 
   # ---------- Helpers for totals / formatting ----------
 

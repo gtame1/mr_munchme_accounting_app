@@ -33,7 +33,7 @@
 
             <div class="field">
               <.input field={f[:customer_email]} type="email" label="Customer Email" />
-              <p class="field-help">Optional - for order confirmations</p>
+              <p class="field-help"><i>*Optional - for order confirmations</i></p>
             </div>
           </div>
         </div>
@@ -60,7 +60,7 @@
 
             <div class="field">
               <.input field={f[:delivery_time]} type="time" label="Delivery Time" />
-              <p class="field-help">Optional - preferred time for delivery/pickup</p>
+              <p class="field-help"><i>* Optional - preferred time for delivery/pickup</i></p>
             </div>
           </div>
 
@@ -72,7 +72,7 @@
                 label="Delivery Address"
                 rows="3"
               />
-              <p class="field-help">Required only if delivery type is "Delivery"</p>
+              <p class="field-help"><i>*Required only if delivery type is "Delivery"</i></p>
             </div>
           </div>
         </div>

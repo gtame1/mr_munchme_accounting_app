@@ -55,7 +55,7 @@ defmodule MrMunchMeAccountingAppWeb.Router do
     post "/investments",        InvestmentController, :create
     post "/investments/create-withdrawal", InvestmentController, :create_withdrawal
 
-    resources "/transfers", TransferController, only: [:index, :new, :create]
+    resources "/transfers", TransferController
 
     resources "/expenses", ExpenseController, only: [:index, :new, :create, :show, :edit, :update, :delete]
   end

@@ -27,17 +27,43 @@
               <th>To</th>
               <th class="numeric">Amount</th>
               <th>Note</th>
+              <th>Actions</th>
             </tr>
           </thead>
           <tbody>
-            <%= for t <- @transfers do %>
+            <%= if @transfers == [] do %>
               <tr>
-                <td><%= t.date %></td>
-                <td><%= "#{t.from_account.code} – #{t.from_account.name}" %></td>
-                <td><%= "#{t.to_account.code} – #{t.to_account.name}" %></td>
-                <td class="numeric"><%= format_currency(t.amount_cents) %></td>
-                <td><%= t.note %></td>
+                <td colspan="6">No transfers recorded yet.</td>
               </tr>
+            <% else %>
+              <%= for t <- @transfers do %>
+                <tr>
+                  <td><%= t.date %></td>
+                  <td><%= "#{t.from_account.code} – #{t.from_account.name}" %></td>
+                  <td><%= "#{t.to_account.code} – #{t.to_account.name}" %></td>
+                  <td class="numeric"><%= format_currency(t.amount_cents) %></td>
+                  <td><%= t.note %></td>
+                  <td>
+                    <div style="display: flex; gap: 0.5rem;">
+                      <.link navigate={~p"/transfers/#{t.id}"} class="btn btn-sm">
+                        View
+                      </.link>
+                      <.link navigate={~p"/transfers/#{t.id}/edit"} class="btn btn-sm">
+                        Edit
+                      </.link>
+                      <.link
+                        href={~p"/transfers/#{t.id}"}
+                        method="delete"
+                        data-confirm="Are you sure you want to delete this transfer?"
+                        class="btn btn-sm"
+                        style="background-color: #dc2626; color: white;"
+                      >
+                        Delete
+                      </.link>
+                    </div>
+                  </td>
+                </tr>
+              <% end %>
             <% end %>
           </tbody>
         </table>

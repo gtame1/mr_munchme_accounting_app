@@ -1,0 +1,94 @@
+<section class="content">
+  <header class="content-header">
+    <h1 class="page-title">Edit Transfer</h1>
+  </header>
+
+  <div class="content-body">
+    <section class="card">
+      <h2 class="card-title">Edit Internal Transfer</h2>
+      <p class="card-subtitle">
+        Update transfer details. This will automatically update the ledger entry.
+      </p>
+
+      <.form
+        for={@changeset}
+        as={:transfer}
+        action={~p"/transfers/#{@transfer.id}"}
+        method="patch"
+        class="form-grid"
+        :let={f}
+      >
+        <%= if @changeset.action do %>
+          <div class="alert alert-error">
+            <p>There were problems with the transfer:</p>
+            <ul>
+              <%= for {field, {msg, _opts}} <- @changeset.errors do %>
+                <li><strong><%= field %>:</strong> <%= msg %></li>
+              <% end %>
+            </ul>
+          </div>
+        <% end %>
+
+        <div class="form-block">
+          <div class="field">
+            <.input
+              field={f[:from_account_id]}
+              type="select"
+              label="From account"
+              prompt="Select source account"
+              options={@account_options}
+            />
+          </div>
+
+          <div class="field">
+            <.input
+              field={f[:to_account_id]}
+              type="select"
+              label="To account"
+              prompt="Select destination account"
+              options={@account_options}
+            />
+          </div>
+
+          <div class="field">
+            <.input
+              field={f[:date]}
+              type="date"
+              label="Date"
+            />
+          </div>
+        </div>
+
+        <div class="form-block">
+          <div class="field">
+            <.input
+              field={f[:amount_pesos]}
+              type="number"
+              label="Amount (MXN)"
+              step="0.01"
+              min="0"
+            />
+          </div>
+
+          <div class="field">
+            <.input
+              field={f[:note]}
+              type="text"
+              label="Note (optional)"
+            />
+          </div>
+        </div>
+
+        <div class="actions">
+          <button type="submit" class="btn primary">
+            Update Transfer
+          </button>
+          <.link navigate={~p"/transfers/#{@transfer.id}"} class="btn">
+            Cancel
+          </.link>
+        </div>
+      </.form>
+    </section>
+  </div>
+</section>
+

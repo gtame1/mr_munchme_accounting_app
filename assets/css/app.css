@@ -512,6 +512,7 @@
   input[type="text"],
   input[type="email"],
   input[type="date"],
+  input[type="tel"],
   input[type="number"],
   select,
   textarea {
