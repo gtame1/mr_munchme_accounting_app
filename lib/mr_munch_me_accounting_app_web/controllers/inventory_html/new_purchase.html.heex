@@ -118,7 +118,7 @@
               </.inputs_for>
             </div>
 
-            <div style="margin-top: 1rem;">
+            <div style="margin-top: 1rem; display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap;">
               <button
                 type="button"
                 id="add-item-btn"
@@ -128,6 +128,11 @@
                 <.icon name="hero-plus" class="w-4 h-4" />
                 <span>Add Item</span>
               </button>
+              
+              <div style="display: flex; align-items: center; gap: 0.5rem; font-size: 1rem; font-weight: 600; color: var(--text-primary);">
+                <span>Total Purchase:</span>
+                <span id="running-total" style="font-size: 1.25rem; color: var(--primary);">$0.00</span>
+              </div>
             </div>
 
             <%= if @form[:items].errors != [] do %>
@@ -219,6 +224,24 @@
       }
     }
 
+    // Calculate and update the running total
+    function updateRunningTotal() {
+      const totalInputs = container.querySelectorAll(".item-total-cost");
+      let total = 0;
+      
+      totalInputs.forEach(function(input) {
+        const value = parseFloat(input.value || "0");
+        if (!isNaN(value) && value >= 0) {
+          total += value;
+        }
+      });
+      
+      const runningTotalEl = document.getElementById("running-total");
+      if (runningTotalEl) {
+        runningTotalEl.textContent = "$" + total.toFixed(2);
+      }
+    }
+
     // Initialize all existing rows
     function initializeRows() {
       container.querySelectorAll(".purchase-item-row").forEach(function(row) {
@@ -242,6 +265,7 @@
         if (totalInput) {
           totalInput.addEventListener("input", function() {
             updateItemUnitPrice(row);
+            updateRunningTotal();
           });
         }
 
@@ -250,6 +274,7 @@
           removeBtn.addEventListener("click", function() {
             if (container.querySelectorAll(".purchase-item-row").length > 1) {
               row.remove();
+              updateRunningTotal();
             } else {
               alert("At least one item is required.");
             }
@@ -337,10 +362,13 @@
 
         container.appendChild(newRow);
         initializeRows();
+        updateRunningTotal();
       });
     }
 
     // Initialize existing rows
     initializeRows();
+    // Initialize running total on page load
+    updateRunningTotal();
   });
 </script>
