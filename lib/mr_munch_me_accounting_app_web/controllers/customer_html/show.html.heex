@@ -1,0 +1,44 @@
+<section class="content">
+  <header class="content-header">
+    <h1 class="page-title">Customer Details</h1>
+  </header>
+
+  <div class="content-body">
+    <section class="card">
+      <div style="display:flex; justify-content:space-between; align-items:center; gap:1rem;">
+        <div>
+          <h2 class="card-title"><%= @customer.name %></h2>
+          <p class="card-subtitle">
+            Customer #<%= @customer.id %>
+          </p>
+        </div>
+        <div style="display: flex; gap: 0.5rem;">
+          <.link navigate={~p"/customers"} class="btn">
+            ← Back to Customers
+          </.link>
+          <.link navigate={~p"/customers/#{@customer.id}/edit"} class="btn primary">
+            Edit
+          </.link>
+          <.link
+            href={~p"/customers/#{@customer.id}"}
+            method="delete"
+            data-confirm="Are you sure you want to delete this customer?"
+            class="btn"
+            style="background-color: #dc2626; color: white;"
+          >
+            Delete
+          </.link>
+        </div>
+      </div>
+
+      <ul class="nice-list" style="margin-top: 1rem;">
+        <li><strong>Name:</strong> <%= @customer.name %></li>
+        <li><strong>Phone:</strong> <%= @customer.phone %></li>
+        <li><strong>Email:</strong> <%= @customer.email || "—" %></li>
+        <li><strong>Delivery Address:</strong> <%= @customer.delivery_address || "—" %></li>
+        <li><strong>Created:</strong> <%= Calendar.strftime(@customer.inserted_at, "%B %d, %Y") %></li>
+      </ul>
+    </section>
+  </div>
+</section>
+

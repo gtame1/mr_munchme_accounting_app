@@ -8,11 +8,11 @@
 - Add purchase link to inventory
 - Add notes to inventory purchases
 - Add shorcut to shipping expense in inventory purchase form in case the purchase involves shipping/delivery expenses.
-- Add CRUD to money transfers
 - Split total inventory by inventory location
 - Change all forms that accept cents to full pesos.
 - Edit specific inventory used in each order. Some orders (few) use a bit more or a bit less inventory, or some might use more ingredients or less. How can we add something that can allow us to edit the order used inventory?
 - Add inventory consolidation tool
+- Add customers table to save repeat customer data, customers should be created at the moment of a new order. UI should be: choose an existing customer or create a new one. Add CRUD
 
 ## Using github
 

@@ -3,7 +3,7 @@ defmodule MrMunchMeAccountingAppWeb.OrderController do
 
   alias MrMunchMeAccountingApp.Orders
   alias MrMunchMeAccountingApp.Orders.{Order, OrderPayment}
-  alias MrMunchMeAccountingApp.{Inventory, Accounting, Repo}
+  alias MrMunchMeAccountingApp.{Inventory, Accounting, Repo, Customers}
 
   def index(conn, params) do
     # 1) Apply defaults directly to params
@@ -42,7 +42,8 @@ defmodule MrMunchMeAccountingAppWeb.OrderController do
       changeset: changeset,
       action: ~p"/orders",
       product_options: Orders.product_select_options(),
-      location_options: Inventory.list_locations() |> Enum.map(&{&1.name, &1.id})
+      location_options: Inventory.list_locations() |> Enum.map(&{&1.name, &1.id}),
+      customer_options: Customers.customer_select_options()
     )
   end
 

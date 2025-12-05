@@ -45,6 +45,8 @@ defmodule MrMunchMeAccountingAppWeb.Router do
     get "/inventory/requirements", InventoryController, :requirements
 
     resources "/products", ProductController, only: [:index, :new, :create, :edit, :update, :delete]
+    resources "/customers", CustomerController
+    get "/api/customers/:id", CustomerController, :api_show
     resources "/ingredients", IngredientController, only: [:index, :new, :create, :edit, :update, :delete]
     resources "/recipes", RecipeController, only: [:index, :new, :create, :show, :edit, :delete]
     post "/recipes/new_version/:id", RecipeController, :create_new_version

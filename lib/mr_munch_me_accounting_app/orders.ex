@@ -4,6 +4,8 @@ defmodule MrMunchMeAccountingApp.Orders do
 
   alias MrMunchMeAccountingApp.Orders.{Order, Product, OrderPayment}
   alias MrMunchMeAccountingApp.Accounting
+  alias MrMunchMeAccountingApp.Customers
+  alias MrMunchMeAccountingApp.Repo
 
 
   # PRODUCTS
@@ -64,7 +66,9 @@ defmodule MrMunchMeAccountingApp.Orders do
         as: :product,
         join: l in assoc(o, :prep_location),
         as: :prep_location,
-        preload: [product: p, prep_location: l]
+        left_join: c in assoc(o, :customer),
+        as: :customer,
+        preload: [product: p, prep_location: l, customer: c]
 
     base_query
     |> maybe_filter_status(params["status"])
@@ -182,25 +186,92 @@ defmodule MrMunchMeAccountingApp.Orders do
     end
   end
 
-  def get_order!(id), do: Repo.get!(Order, id) |> Repo.preload([:product, :prep_location])
+  def get_order!(id), do: Repo.get!(Order, id) |> Repo.preload([:product, :prep_location, :customer])
 
   def change_order(%Order{} = order, attrs \\ %{}) do
     Order.changeset(order, attrs)
   end
 
   def create_order(attrs) do
+    Repo.transaction(fn ->
+      # If customer_id is provided, populate customer fields from customer record
+      # If customer_id is not provided, find or create customer by phone
+      attrs =
+        cond do
+          attrs["customer_id"] || attrs[:customer_id] ->
+            # Populate customer fields from the customer record
+            customer_id = attrs["customer_id"] || attrs[:customer_id]
 
-    case %Order{}
-         |> Order.changeset(attrs)
-         |> Repo.insert() do
-      {:ok, order} ->
-        # Try to create the accounting entry; if it fails, we don't crash the order creation.
-        _ = Accounting.record_order_created(order)
-        {:ok, order}
+            customer = Customers.get_customer!(customer_id)
 
-      {:error, changeset} ->
-        # Bubble the validation errors back to the controller / form
-        {:error, changeset}
+            # Populate customer fields from customer record
+            attrs
+            |> Map.put("customer_name", customer.name)
+            |> Map.put("customer_phone", customer.phone)
+            |> Map.put("customer_email", customer.email || nil)
+            |> populate_delivery_address_if_missing(customer)
+
+          true ->
+            case handle_customer_creation(attrs) do
+              {:ok, customer_id} ->
+                Map.put(attrs, "customer_id", customer_id)
+
+              {:error, changeset} ->
+                Repo.rollback(changeset)
+            end
+        end
+
+      case %Order{}
+           |> Order.changeset(attrs)
+           |> Repo.insert() do
+        {:ok, order} ->
+          # Try to create the accounting entry; if it fails, we don't crash the order creation.
+          _ = Accounting.record_order_created(order)
+          order
+
+        {:error, changeset} ->
+          Repo.rollback(changeset)
+      end
+    end)
+  end
+
+  # Helper to populate delivery_address from customer if not already provided in order
+  defp populate_delivery_address_if_missing(attrs, customer) do
+    delivery_address = attrs["delivery_address"] || attrs[:delivery_address]
+
+    if (!delivery_address || String.trim(delivery_address || "") == "") &&
+         customer.delivery_address &&
+         String.trim(customer.delivery_address) != "" do
+      Map.put(attrs, "delivery_address", customer.delivery_address)
+    else
+      attrs
+    end
+  end
+
+  # Helper function to find or create customer when customer_id is not provided
+  defp handle_customer_creation(attrs) do
+    customer_name = attrs["customer_name"] || attrs[:customer_name]
+    customer_phone = attrs["customer_phone"] || attrs[:customer_phone]
+    customer_email = attrs["customer_email"] || attrs[:customer_email]
+    delivery_address = attrs["delivery_address"] || attrs[:delivery_address]
+
+    if customer_name && customer_phone do
+      customer_attrs = %{
+        name: customer_name,
+        phone: customer_phone,
+        email: customer_email,
+        delivery_address: delivery_address
+      }
+
+      case Customers.find_or_create_by_phone(customer_phone, customer_attrs) do
+        {:ok, customer} ->
+          {:ok, customer.id}
+
+        {:error, changeset} ->
+          {:error, changeset}
+      end
+    else
+      {:error, :missing_customer_info}
     end
   end
 

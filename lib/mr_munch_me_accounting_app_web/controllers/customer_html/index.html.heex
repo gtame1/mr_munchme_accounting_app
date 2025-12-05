@@ -1,0 +1,70 @@
+<section class="content">
+  <header class="content-header">
+    <h1 class="page-title">Customers</h1>
+  </header>
+
+  <div class="content-body">
+    <section class="card">
+      <div class="card-header">
+        <h2 class="card-title">Customers</h2>
+        <p class="card-subtitle">
+          Manage your customer database.
+        </p>
+      </div>
+
+      <div class="actions" style="margin-bottom: 0.75rem;">
+        <.link navigate={~p"/customers/new"} class="btn primary">
+          + New Customer
+        </.link>
+      </div>
+
+      <div class="table-wrapper">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Phone</th>
+              <th>Email</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <%= if @customers == [] do %>
+              <tr>
+                <td colspan="4">No customers found.</td>
+              </tr>
+            <% else %>
+              <%= for customer <- @customers do %>
+                <tr>
+                  <td><strong><%= customer.name %></strong></td>
+                  <td><%= customer.phone %></td>
+                  <td><%= customer.email || "—" %></td>
+                  <td>
+                    <div style="display: flex; gap: 0.5rem;">
+                      <.link navigate={~p"/customers/#{customer.id}"} class="btn btn-sm">
+                        View
+                      </.link>
+                      <.link navigate={~p"/customers/#{customer.id}/edit"} class="btn btn-sm">
+                        Edit
+                      </.link>
+                      <.link
+                        href={~p"/customers/#{customer.id}"}
+                        method="delete"
+                        data-confirm="Are you sure you want to delete this customer?"
+                        class="btn btn-sm"
+                        style="background-color: #dc2626; color: white;"
+                      >
+                        Delete
+                      </.link>
+                    </div>
+                  </td>
+                </tr>
+              <% end %>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+</section>
+
