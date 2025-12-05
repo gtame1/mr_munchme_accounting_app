@@ -6,6 +6,7 @@ defmodule MrMunchMeAccountingApp.Inventory.Recepies do
   alias MrMunchMeAccountingApp.Repo
   alias MrMunchMeAccountingApp.Orders.Product
   alias MrMunchMeAccountingApp.Inventory.{Recipe}
+  alias MrMunchMeAccountingApp.Inventory
 
   @packaging_codes ~w(
     PACKING_PLASTICO
@@ -155,6 +156,49 @@ defmodule MrMunchMeAccountingApp.Inventory.Recepies do
   """
   def change_recipe(%Recipe{} = recipe, attrs \\ %{}) do
     Recipe.changeset(recipe, attrs)
+  end
+
+  @doc """
+  Calculates the estimated total cost of a recipe based on average unit prices of ingredients.
+  Returns the total cost in cents.
+  Returns {:ok, total_cents} if all ingredients have costs.
+  Returns {:partial, total_cents, missing_ingredients} if some ingredients are missing costs.
+  """
+  def estimated_recipe_cost(%Recipe{} = recipe) do
+    recipe = Repo.preload(recipe, :recipe_lines)
+    ingredient_infos = Inventory.ingredient_quick_infos()
+
+    {total_cents, missing} =
+      recipe.recipe_lines
+      |> Enum.reduce({0, []}, fn line, {acc_cents, missing_acc} ->
+        ingredient_code = line.ingredient_code
+        quantity_decimal = line.quantity
+
+        case Map.get(ingredient_infos, ingredient_code) do
+          nil ->
+            # Ingredient not found in quick infos
+            {acc_cents, [ingredient_code | missing_acc]}
+
+          %{"avg_cost_cents" => nil} ->
+            # Ingredient exists but no average cost available
+            {acc_cents, [ingredient_code | missing_acc]}
+
+          %{"avg_cost_cents" => avg_cost_cents} when is_integer(avg_cost_cents) ->
+            # Calculate cost: avg_cost_cents (cents per unit) * quantity (in ingredient's unit)
+            quantity_float = Decimal.to_float(quantity_decimal)
+            line_cost_cents = trunc(avg_cost_cents * quantity_float)
+            {acc_cents + line_cost_cents, missing_acc}
+
+          _ ->
+            {acc_cents, missing_acc}
+        end
+      end)
+
+    if missing == [] do
+      {:ok, total_cents}
+    else
+      {:partial, total_cents, missing}
+    end
   end
 
   # Fallback to hardcoded recipes (original implementation)

@@ -40,6 +40,32 @@
             <%= @recipe.description || "—" %>
           </p>
         </div>
+
+        <div class="field">
+          <label class="label">Estimated Total Cost</label>
+          <p style="padding: 0.5rem; background: #f9fafb; border-radius: 0.375rem;">
+            <%= case @estimated_cost do %>
+              <% {:ok, total_cents} -> %>
+                <strong style="font-size: 1.1rem; color: var(--primary);">
+                  <%= format_currency(total_cents) %>
+                </strong>
+              <% {:partial, total_cents, missing} -> %>
+                <strong style="font-size: 1.1rem; color: var(--primary);">
+                  <%= format_currency(total_cents) %>
+                </strong>
+                <span style="color: #dc2626; font-size: 0.85rem; margin-left: 0.5rem;">
+                  (partial - missing costs for: <%= Enum.join(missing, ", ") %>)
+                </span>
+              <% _ -> %>
+                <span style="color: #6b7280; font-style: italic;">
+                  Unable to calculate - missing ingredient costs
+                </span>
+            <% end %>
+          </p>
+          <p class="field-help" style="margin-top: 0.25rem;">
+            <i>Based on current average unit prices of ingredients</i>
+          </p>
+        </div>
       </div>
 
       <div class="form-block" style="flex-direction: column; width: 100%;">

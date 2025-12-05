@@ -9,9 +9,29 @@ defmodule MrMunchMeAccountingAppWeb.RecipeController do
     recipes = Recepies.list_recipes()
     recipe_versions_by_product = Recepies.list_all_recipe_versions_by_product()
 
+    # Calculate estimated costs for each recipe
+    recipes_with_costs =
+      Enum.map(recipes, fn recipe ->
+        estimated_cost = Recepies.estimated_recipe_cost(recipe)
+        Map.put(recipe, :estimated_cost, estimated_cost)
+      end)
+
+    # Calculate estimated costs for all recipe versions
+    recipe_versions_by_product_with_costs =
+      recipe_versions_by_product
+      |> Enum.map(fn {product_id, versions} ->
+        versions_with_costs =
+          Enum.map(versions, fn version ->
+            estimated_cost = Recepies.estimated_recipe_cost(version)
+            Map.put(version, :estimated_cost, estimated_cost)
+          end)
+        {product_id, versions_with_costs}
+      end)
+      |> Map.new()
+
     render(conn, :index,
-      recipes: recipes,
-      recipe_versions_by_product: recipe_versions_by_product
+      recipes: recipes_with_costs,
+      recipe_versions_by_product: recipe_versions_by_product_with_costs
     )
   end
 
@@ -61,7 +81,8 @@ defmodule MrMunchMeAccountingAppWeb.RecipeController do
 
   def show(conn, %{"id" => id}) do
     recipe = Recepies.get_recipe!(id)
-    render(conn, :show, recipe: recipe)
+    estimated_cost = Recepies.estimated_recipe_cost(recipe)
+    render(conn, :show, recipe: recipe, estimated_cost: estimated_cost)
   end
 
   def edit(conn, %{"id" => id}) do
