@@ -94,10 +94,10 @@ defmodule SeedHelper do
         Enum.each(recipe_lines, fn line ->
           %RecipeLine{}
           |> RecipeLine.changeset(%{
-            recipe_id: recipe.id,
             ingredient_code: line.ingredient_code,
             quantity: Decimal.new(to_string(line.quantity))
           })
+          |> Ecto.Changeset.put_change(:recipe_id, recipe.id)
           |> Repo.insert!()
         end)
 
