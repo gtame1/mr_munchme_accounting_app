@@ -23,23 +23,65 @@
         <%= if @changeset.action do %>
           <div class="alert alert-error" style="margin-bottom: 1.5rem;">
             <p><strong>⚠️ There were problems creating the new recipe version. Please review the errors below:</strong></p>
-            <%= if @changeset.errors != [] do %>
+            
+            <%!-- Extract all errors using traverse_errors and flatten nested structures --%>
+            <% all_errors = Ecto.Changeset.traverse_errors(@changeset, fn {msg, opts} ->
+              Enum.reduce(opts, msg, fn {key, value}, acc ->
+                String.replace(acc, "%{#{key}}", to_string(value))
+              end)
+            end) %>
+            
+            <%!-- Flatten errors into a list of {path, message} tuples, handling nested maps --%>
+            <% error_list = 
+              all_errors
+              |> Enum.flat_map(fn {field_path, error_value} ->
+                cond do
+                  is_list(error_value) ->
+                    Enum.map(error_value, fn error_msg -> {to_string(field_path), error_msg} end)
+                  is_map(error_value) ->
+                    # Handle nested maps (e.g., recipe_lines.0.recipe_id) - recursively flatten
+                    error_value
+                    |> Enum.flat_map(fn {nested_key, nested_value} ->
+                      nested_path = "#{field_path}.#{nested_key}"
+                      cond do
+                        is_list(nested_value) ->
+                          Enum.map(nested_value, fn error_msg -> {nested_path, error_msg} end)
+                        is_map(nested_value) ->
+                          # Handle deeper nesting (e.g., recipe_lines.0.recipe_id)
+                          nested_value
+                          |> Enum.flat_map(fn {deep_key, deep_value} ->
+                            deep_path = "#{nested_path}.#{deep_key}"
+                            if is_list(deep_value) do
+                              Enum.map(deep_value, fn error_msg -> {deep_path, error_msg} end)
+                            else
+                              [{deep_path, to_string(deep_value)}]
+                            end
+                          end)
+                        true ->
+                          [{nested_path, to_string(nested_value)}]
+                      end
+                    end)
+                  true ->
+                    [{to_string(field_path), to_string(error_value)}]
+                end
+              end)
+            %>
+            
+            <%= if length(error_list) > 0 do %>
               <ul style="margin-top: 0.75rem; padding-left: 1.5rem; list-style-type: disc;">
-                <%= for {field, {message, _}} <- @changeset.errors do %>
-                  <li style="margin-bottom: 0.5rem;"><strong><%= humanize(field) %>:</strong> <%= message %></li>
+                <%= for {field_path, error_msg} <- error_list do %>
+                  <% field_display = field_path |> to_string() |> String.replace("_", " ") |> String.replace(".", " → ") %>
+                  <li style="margin-bottom: 0.5rem;">
+                    <strong><%= String.capitalize(field_display) %>:</strong> <%= error_msg %>
+                  </li>
                 <% end %>
               </ul>
+            <% else %>
+              <p style="margin-top: 0.75rem; color: #dc2626;">
+                No specific errors detected. Please check the server logs for more details.
+              </p>
             <% end %>
-            <%= if @form[:recipe_lines].errors != [] do %>
-              <div style="margin-top: 0.75rem;">
-                <p><strong>Recipe Lines errors:</strong></p>
-                <ul style="margin-top: 0.5rem; padding-left: 1.5rem; list-style-type: disc;">
-                  <%= for {field, {message, _}} <- @form[:recipe_lines].errors do %>
-                    <li style="margin-bottom: 0.5rem;"><strong><%= humanize(field) %>:</strong> <%= message %></li>
-                  <% end %>
-                </ul>
-              </div>
-            <% end %>
+            
             <p style="margin-top: 0.75rem; font-size: 0.9rem;">Please check the fields highlighted in red below for specific errors.</p>
           </div>
         <% end %>

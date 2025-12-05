@@ -14,8 +14,8 @@ defmodule MrMunchMeAccountingApp.Inventory.RecipeLine do
 
   def changeset(recipe_line, attrs) do
     recipe_line
-    |> cast(attrs, [:recipe_id, :ingredient_code, :quantity])
-    |> validate_required([:recipe_id, :ingredient_code, :quantity])
+    |> cast(attrs, [:ingredient_code, :quantity])
+    |> validate_required([:ingredient_code, :quantity])
     |> validate_number(:quantity, greater_than: 0)
   end
 end

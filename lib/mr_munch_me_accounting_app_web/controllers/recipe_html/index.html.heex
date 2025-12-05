@@ -44,23 +44,24 @@
             <% end %>
           </td>
           <td>
-            <.link navigate={~p"/recipes/#{recipe.id}/edit"} class="btn btn-sm">
-              Create New Version
-            </.link>
-            <%= if Map.has_key?(@recipe_versions_by_product, recipe.product_id) do %>
-              <% versions = @recipe_versions_by_product[recipe.product_id] %>
-              <%= if length(versions) > 1 do %>
-                <button
-                  type="button"
-                  class="btn btn-sm toggle-versions-btn"
-                  data-recipe-id={recipe.id}
-                  data-version-count={length(versions)}
-                  style="margin-left: 0.5rem;"
-                >
-                  View Versions (<%= length(versions) %>)
-                </button>
+            <div style="display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center;">
+              <.link navigate={~p"/recipes/#{recipe.id}/edit"} class="btn btn-sm">
+                New Version
+              </.link>
+              <%= if Map.has_key?(@recipe_versions_by_product, recipe.product_id) do %>
+                <% versions = @recipe_versions_by_product[recipe.product_id] %>
+                <%= if length(versions) > 1 do %>
+                  <button
+                    type="button"
+                    class="btn btn-sm toggle-versions-btn"
+                    data-recipe-id={recipe.id}
+                    data-version-count={length(versions)}
+                  >
+                    Versions (<%= length(versions) %>)
+                  </button>
+                <% end %>
               <% end %>
-            <% end %>
+            </div>
           </td>
         </tr>
         <%= if Map.has_key?(@recipe_versions_by_product, recipe.product_id) do %>
@@ -139,7 +140,7 @@
             row.style.display = isHidden ? 'table-row' : 'none';
             this.textContent = isHidden 
               ? 'Hide Versions' 
-              : 'View Versions (' + versionCount + ')';
+              : 'Versions (' + versionCount + ')';
           }
         });
       });

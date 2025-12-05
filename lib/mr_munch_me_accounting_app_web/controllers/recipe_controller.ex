@@ -147,6 +147,14 @@ defmodule MrMunchMeAccountingAppWeb.RecipeController do
         |> redirect(to: ~p"/recipes")
 
       {:error, %Ecto.Changeset{} = changeset} ->
+        # Debug: Log errors for troubleshooting
+        IO.inspect(changeset.errors, label: "Recipe errors")
+        if changeset.changes[:recipe_lines] do
+          Enum.each(changeset.changes.recipe_lines, fn line_changeset ->
+            IO.inspect(line_changeset.errors, label: "Recipe line errors")
+          end)
+        end
+
         changeset = Map.put(changeset, :action, :insert)
         form = Phoenix.Component.to_form(changeset)
 
