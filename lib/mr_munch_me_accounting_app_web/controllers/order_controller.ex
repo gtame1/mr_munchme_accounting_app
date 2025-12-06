@@ -15,6 +15,13 @@ defmodule MrMunchMeAccountingAppWeb.OrderController do
     # 2) Use these params for the query
     orders = Orders.list_orders(params)
 
+    # Calculate payment summaries for each order
+    orders_with_payment_status =
+      Enum.map(orders, fn order ->
+        payment_summary = Orders.payment_summary(order)
+        Map.put(order, :payment_summary, payment_summary)
+      end)
+
     # 3) Build filters map from the same params (so UI & query are in sync)
     filters = %{
       status: params["status"] || "",
@@ -28,7 +35,7 @@ defmodule MrMunchMeAccountingAppWeb.OrderController do
     }
 
     render(conn, :index,
-      orders: orders,
+      orders: orders_with_payment_status,
       filters: filters,
       product_filter_options: Orders.product_select_options(),
       location_filter_options: Inventory.list_locations() |> Enum.map(&{&1.name, &1.id})

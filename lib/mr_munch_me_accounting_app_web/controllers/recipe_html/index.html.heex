@@ -45,8 +45,8 @@
           </td>
           <td>
             <div style="display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center;">
-              <.link navigate={~p"/recipes/#{recipe.id}/edit"} class="btn btn-sm">
-                New Version
+              <.link navigate={~p"/recipes/#{recipe.id}"} class="btn btn-sm">
+                View
               </.link>
               <%= if Map.has_key?(@recipe_versions_by_product, recipe.product_id) do %>
                 <% versions = @recipe_versions_by_product[recipe.product_id] %>

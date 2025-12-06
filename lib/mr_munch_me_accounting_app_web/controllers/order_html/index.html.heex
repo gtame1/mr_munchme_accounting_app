@@ -113,6 +113,7 @@
             </.link>
           </th>
           <th>Prep Location</th>
+          <th>Payment Status</th>
         </tr>
       </thead>
 
@@ -135,7 +136,18 @@
 
             <td><.location_badge location={order.prep_location} /></td>
             <td>
-              
+              <%= if order.payment_summary do %>
+                <%= cond do %>
+                  <% order.payment_summary.fully_paid? -> %>
+                    <span class="status-badge status-paid">Paid</span>
+                  <% order.payment_summary.partially_paid? -> %>
+                    <span class="status-badge status-partial">Partially paid</span>
+                  <% true -> %>
+                    <span class="status-badge status-unpaid">Unpaid</span>
+                <% end %>
+              <% else %>
+                <span class="status-badge status-unpaid">Unpaid</span>
+              <% end %>
             </td>
           </tr>
         <% end %>
