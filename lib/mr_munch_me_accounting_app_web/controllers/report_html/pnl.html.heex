@@ -34,41 +34,172 @@
       </.form>
     </section>
 
-    <!-- Current period summary card -->
+    <!-- P&L Statement -->
     <section class="card">
       <h2 class="card-title">
-        P&amp;L for <%= @start_date %> to <%= @end_date %>
+        Profit &amp; Loss Statement
       </h2>
-
       <p class="card-subtitle">
-        High-level view of revenue, COGS, and expenses for the selected period.
+        Period: <%= @start_date %> to <%= @end_date %>
       </p>
 
-      <div class="nice-list" style="margin-top: 1rem;">
-        <li>
-          <strong>Total Revenue:</strong>
-          <%= format_currency(@summary.total_revenue_cents) %>
-        </li>
-        <li>
-          <strong>Total COGS:</strong>
-          <%= format_currency(@summary.total_cogs_cents) %>
-        </li>
-        <li>
-          <strong>Gross Profit:</strong>
-          <%= format_currency(@summary.gross_profit_cents) %>
-        </li>
-        <li>
-          <strong>Operating Expenses:</strong>
-          <%= format_currency(@summary.total_opex_cents) %>
-        </li>
-        <li>
-          <strong>Operating Income:</strong>
-          <%= format_currency(@summary.operating_income_cents) %>
-        </li>
-        <li>
-          <strong>Net Income:</strong>
-          <%= format_currency(@summary.net_income_cents) %>
-        </li>
+      <div class="table-wrapper" style="margin-top: 1.5rem;">
+        <table class="table">
+          <thead>
+            <tr>
+              <th style="text-align: left; width: 60%;">Account</th>
+              <th class="numeric" style="width: 20%;">Amount</th>
+              <th class="numeric" style="width: 20%;">% of Revenue</th>
+            </tr>
+          </thead>
+          <tbody>
+            <%!-- REVENUE SECTION --%>
+            <tr style="background-color: #f0f9ff; font-weight: 600; border-top: 2px solid #0ea5e9;">
+              <td colspan="3" style="padding: 0.75rem 1rem; color: #0369a1;">
+                REVENUE
+              </td>
+            </tr>
+
+            <%= if @summary.revenue_by_product && @summary.revenue_by_product != [] do %>
+              <%= for product <- @summary.revenue_by_product do %>
+                <tr>
+                  <td style="padding-left: 2rem;">
+                    <%= product.product_name %>
+                    <%= if product.product_sku do %>
+                      <span style="color: #6b7280; font-size: 0.875rem;">(<%= product.product_sku %>)</span>
+                    <% end %>
+                  </td>
+                  <td class="numeric"><%= format_currency(product.revenue_cents) %></td>
+                  <td class="numeric">
+                    <%= if @summary.total_revenue_cents > 0 do %>
+                      <%= Float.round(product.revenue_cents / @summary.total_revenue_cents * 100, 1) %>%
+                    <% else %>
+                      —
+                    <% end %>
+                  </td>
+                </tr>
+              <% end %>
+            <% end %>
+
+            <tr style="font-weight: 600; border-top: 1px solid #e5e7eb;">
+              <td>Total Revenue</td>
+              <td class="numeric"><%= format_currency(@summary.total_revenue_cents) %></td>
+              <td class="numeric">100.0%</td>
+            </tr>
+
+            <%!-- COGS SECTION --%>
+            <tr style="background-color: #fff7ed; font-weight: 600; border-top: 2px solid #f97316; margin-top: 1rem;">
+              <td colspan="3" style="padding: 0.75rem 1rem; color: #c2410c;">
+                COST OF GOODS SOLD (COGS)
+              </td>
+            </tr>
+
+            <%= if @summary.cogs_by_product && @summary.cogs_by_product != [] do %>
+              <%= for product <- @summary.cogs_by_product do %>
+                <tr>
+                  <td style="padding-left: 2rem;">
+                    <%= product.product_name %>
+                    <%= if product.product_sku do %>
+                      <span style="color: #6b7280; font-size: 0.875rem;">(<%= product.product_sku %>)</span>
+                    <% end %>
+                  </td>
+                  <td class="numeric"><%= format_currency(product.cogs_cents) %></td>
+                  <td class="numeric">
+                    <%= if @summary.total_revenue_cents > 0 do %>
+                      <%= Float.round(product.cogs_cents / @summary.total_revenue_cents * 100, 1) %>%
+                    <% else %>
+                      —
+                    <% end %>
+                  </td>
+                </tr>
+              <% end %>
+            <% end %>
+
+            <tr style="font-weight: 600; border-top: 1px solid #e5e7eb;">
+              <td>Total COGS</td>
+              <td class="numeric"><%= format_currency(@summary.total_cogs_cents) %></td>
+              <td class="numeric">
+                <%= if @summary.total_revenue_cents > 0 do %>
+                  <%= Float.round(@summary.total_cogs_cents / @summary.total_revenue_cents * 100, 1) %>%
+                <% else %>
+                  —
+                <% end %>
+              </td>
+            </tr>
+
+            <%!-- GROSS PROFIT --%>
+            <tr style="background-color: #f0fdf4; font-weight: 600; border-top: 2px solid #22c55e; color: #166534;">
+              <td>Gross Profit</td>
+              <td class="numeric"><%= format_currency(@summary.gross_profit_cents) %></td>
+              <td class="numeric">
+                <%= @summary.gross_margin_percent %>%
+              </td>
+            </tr>
+
+            <%!-- EXPENSES SECTION --%>
+            <tr style="background-color: #fef2f2; font-weight: 600; border-top: 2px solid #ef4444; margin-top: 1rem;">
+              <td colspan="3" style="padding: 0.75rem 1rem; color: #991b1b;">
+                OPERATING EXPENSES
+              </td>
+            </tr>
+
+            <%= if @summary.operating_expense_accounts && @summary.operating_expense_accounts != [] do %>
+              <%= for account <- @summary.operating_expense_accounts do %>
+                <tr>
+                  <td style="padding-left: 2rem;">
+                    <%= account.code %> – <%= account.name %>
+                  </td>
+                  <td class="numeric"><%= format_currency(account.net_cents) %></td>
+                  <td class="numeric">
+                    <%= if @summary.total_revenue_cents > 0 do %>
+                      <%= Float.round(account.net_cents / @summary.total_revenue_cents * 100, 1) %>%
+                    <% else %>
+                      —
+                    <% end %>
+                  </td>
+                </tr>
+              <% end %>
+            <% else %>
+              <tr>
+                <td colspan="3" style="padding-left: 2rem; color: #6b7280; font-style: italic;">
+                  No operating expenses recorded
+                </td>
+              </tr>
+            <% end %>
+
+            <tr style="font-weight: 600; border-top: 1px solid #e5e7eb;">
+              <td>Total Operating Expenses</td>
+              <td class="numeric"><%= format_currency(@summary.total_opex_cents) %></td>
+              <td class="numeric">
+                <%= if @summary.total_revenue_cents > 0 do %>
+                  <%= Float.round(@summary.total_opex_cents / @summary.total_revenue_cents * 100, 1) %>%
+                <% else %>
+                  —
+                <% end %>
+              </td>
+            </tr>
+
+            <%!-- OPERATING INCOME --%>
+            <tr style="background-color: #f0fdf4; font-weight: 600; border-top: 2px solid #22c55e; color: #166534;">
+              <td>Operating Income</td>
+              <td class="numeric"><%= format_currency(@summary.operating_income_cents) %></td>
+              <td class="numeric">
+                <%= @summary.operating_margin_percent %>%
+              </td>
+            </tr>
+
+            <%!-- NET INCOME --%>
+            <tr style="background-color: #dbeafe; font-weight: 700; border-top: 3px solid #2563eb; font-size: 1.1rem; color: #1e40af;">
+              <td>Net Income</td>
+              <td class="numeric" style="font-size: 1.1rem;">
+                <%= format_currency(@summary.net_income_cents) %>
+              </td>
+              <td class="numeric" style="font-size: 1.1rem;">
+                <%= @summary.net_margin_percent %>%
+              </td>
+            </tr>
+          </tbody>
+        </table>
       </div>
     </section>
 

@@ -1298,6 +1298,34 @@ defmodule MrMunchMeAccountingApp.Accounting do
     operating_income_cents = gross_profit_cents - total_opex_cents
     net_income_cents = operating_income_cents
 
+    # Calculate margins
+    gross_margin_percent =
+      if total_revenue_cents > 0 do
+        Float.round(gross_profit_cents / total_revenue_cents * 100, 2)
+      else
+        0.0
+      end
+
+    operating_margin_percent =
+      if total_revenue_cents > 0 do
+        Float.round(operating_income_cents / total_revenue_cents * 100, 2)
+      else
+        0.0
+      end
+
+    net_margin_percent =
+      if total_revenue_cents > 0 do
+        Float.round(net_income_cents / total_revenue_cents * 100, 2)
+      else
+        0.0
+      end
+
+    # Get revenue breakdown by product
+    revenue_by_product = revenue_by_product(start_date, end_date)
+
+    # Get COGS breakdown by product
+    cogs_by_product = cogs_by_product(start_date, end_date)
+
     %{
       start_date: start_date,
       end_date: end_date,
@@ -1309,7 +1337,12 @@ defmodule MrMunchMeAccountingApp.Accounting do
       gross_profit_cents: gross_profit_cents,
       total_opex_cents: total_opex_cents,
       operating_income_cents: operating_income_cents,
-      net_income_cents: net_income_cents
+      net_income_cents: net_income_cents,
+      gross_margin_percent: gross_margin_percent,
+      operating_margin_percent: operating_margin_percent,
+      net_margin_percent: net_margin_percent,
+      revenue_by_product: revenue_by_product,
+      cogs_by_product: cogs_by_product
     }
   end
 
@@ -1357,6 +1390,112 @@ defmodule MrMunchMeAccountingApp.Accounting do
 
   defp pad2(int) when is_integer(int) and int < 10, do: "0#{int}"
   defp pad2(int) when is_integer(int), do: Integer.to_string(int)
+
+  # Get revenue breakdown by product
+  defp revenue_by_product(start_date, end_date) do
+    shipping_fee = shipping_fee_cents()
+
+    from(o in Order,
+      join: p in assoc(o, :product),
+      where: o.delivery_date >= ^start_date and o.delivery_date <= ^end_date and o.status == "delivered",
+      group_by: [p.id, p.name, p.sku],
+      select: %{
+        product_id: p.id,
+        product_name: p.name,
+        product_sku: p.sku,
+        revenue_cents: fragment("SUM(?) + SUM(CASE WHEN ? THEN ? ELSE 0 END)", p.price_cents, o.customer_paid_shipping, ^shipping_fee)
+      }
+    )
+    |> Repo.all()
+    |> Enum.map(fn %{revenue_cents: cents} = row ->
+      # Handle Decimal or integer result from fragment
+      revenue_cents = if is_integer(cents), do: cents, else: Decimal.to_integer(cents)
+      Map.put(row, :revenue_cents, revenue_cents)
+    end)
+  end
+
+  # Get COGS breakdown by product
+  defp cogs_by_product(start_date, end_date) do
+    # Get all delivered orders in the period with their products
+    orders =
+      from(o in Order,
+        join: p in assoc(o, :product),
+        where: o.delivery_date >= ^start_date and o.delivery_date <= ^end_date and o.status == "delivered",
+        select: {o.id, p.id, p.name, p.sku}
+      )
+      |> Repo.all()
+
+    # Get COGS for each order from journal entries
+    order_ids = Enum.map(orders, fn {id, _, _, _} -> id end)
+
+    cogs_map =
+      if Enum.empty?(order_ids) do
+        %{}
+      else
+        # Build OR conditions for order references
+        reference_patterns = Enum.map(order_ids, fn id -> "Order ##{id}" end)
+
+        base_query =
+          from(je in JournalEntry,
+            join: jl in assoc(je, :journal_lines),
+            join: acc in assoc(jl, :account),
+            where:
+              je.entry_type == "order_delivered" and
+                acc.code == "5000" and
+                je.date >= ^start_date and
+                je.date <= ^end_date
+          )
+
+        # Add the first reference pattern with where, then use or_where for the rest
+        query =
+          case reference_patterns do
+            [first_pattern] ->
+              base_query
+              |> where([je], ilike(je.reference, ^first_pattern))
+            [first_pattern | rest_patterns] ->
+              base_query
+              |> where([je], ilike(je.reference, ^first_pattern))
+              |> Enum.reduce(rest_patterns, fn pattern, q ->
+                or_where(q, [je], ilike(je.reference, ^pattern))
+              end)
+            [] ->
+              base_query
+          end
+
+        from([je, jl, acc] in query,
+          group_by: je.reference,
+          select: {je.reference, sum(jl.debit_cents)}
+        )
+        |> Repo.all()
+        |> Enum.into(%{}, fn {ref, cogs} ->
+          # Extract order ID from reference like "Order #123"
+          order_id =
+            case Regex.run(~r/#(\d+)/, ref) do
+              [_, id_str] -> String.to_integer(id_str)
+              _ -> nil
+            end
+          {order_id, cogs || 0}
+        end)
+      end
+
+    # Group COGS by product
+    orders
+    |> Enum.reduce(%{}, fn {order_id, product_id, product_name, product_sku}, acc ->
+      cogs_cents = Map.get(cogs_map, order_id, 0)
+      key = {product_id, product_name, product_sku}
+
+      Map.update(acc, key, cogs_cents, &(&1 + cogs_cents))
+    end)
+    |> Enum.map(fn {{product_id, product_name, product_sku}, cogs_cents} ->
+      %{
+        product_id: product_id,
+        product_name: product_name,
+        product_sku: product_sku,
+        cogs_cents: cogs_cents
+      }
+    end)
+    |> Enum.sort_by(& &1.product_name)
+  end
 
   # Get the production cost for an order from the "order_in_prep" journal entry
   # Returns the WIP debit amount, or nil if no journal entry exists
