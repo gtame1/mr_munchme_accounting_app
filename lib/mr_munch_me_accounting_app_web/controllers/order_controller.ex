@@ -13,16 +13,47 @@ defmodule MrMunchMeAccountingAppWeb.OrderController do
       |> Map.put_new("sort_dir", "asc")
 
     # 2) Use these params for the query
-    orders = Orders.list_orders(params)
+    all_orders = Orders.list_orders(params)
 
     # Calculate payment summaries for each order
     orders_with_payment_status =
-      Enum.map(orders, fn order ->
+      Enum.map(all_orders, fn order ->
         payment_summary = Orders.payment_summary(order)
         Map.put(order, :payment_summary, payment_summary)
       end)
 
-    # 3) Build filters map from the same params (so UI & query are in sync)
+    # 3) Separate active orders from completed (delivered & paid) orders
+    {active_orders, _completed_orders} =
+      Enum.split_with(orders_with_payment_status, fn order ->
+        !(order.status == "delivered" && order.payment_summary.fully_paid?)
+      end)
+
+    # 4) Get completed orders with pagination
+    # We show all completed orders up to the current offset + limit
+    completed_limit = 10
+    completed_offset =
+      case params["completed_offset"] do
+        nil -> 0
+        "" -> 0
+        val -> String.to_integer(val)
+      end
+
+    # Load all completed orders from 0 to offset+limit
+    total_to_load = completed_offset + completed_limit
+    completed_orders = Orders.list_delivered_and_paid_orders(total_to_load, 0)
+
+    # Calculate payment summaries for completed orders
+    completed_orders_with_payment_status =
+      Enum.map(completed_orders, fn order ->
+        payment_summary = Orders.payment_summary(order)
+        Map.put(order, :payment_summary, payment_summary)
+      end)
+
+    # Check if there are more completed orders by trying to load one more
+    # If we got exactly what we asked for, there might be more
+    has_more_completed = length(completed_orders_with_payment_status) >= total_to_load
+
+    # 5) Build filters map from the same params (so UI & query are in sync)
     filters = %{
       status: params["status"] || "",
       delivery_type: params["delivery_type"] || "",
@@ -35,7 +66,10 @@ defmodule MrMunchMeAccountingAppWeb.OrderController do
     }
 
     render(conn, :index,
-      orders: orders_with_payment_status,
+      orders: active_orders,
+      completed_orders: completed_orders_with_payment_status,
+      completed_offset: completed_offset,
+      has_more_completed: has_more_completed,
       filters: filters,
       product_filter_options: Orders.product_select_options(),
       location_filter_options: Inventory.list_locations() |> Enum.map(&{&1.name, &1.id})

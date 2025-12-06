@@ -80,6 +80,53 @@ defmodule MrMunchMeAccountingApp.Orders do
     |> Repo.all()
   end
 
+  def list_delivered_and_paid_orders(limit \\ 10, offset \\ 0) do
+    import Ecto.Query
+
+    # Load a larger batch to account for orders that might not be fully paid
+    # We'll load 3x the limit to ensure we get enough paid orders
+    batch_size = limit * 3
+
+    # Get delivered orders starting from the offset
+    delivered_orders =
+      from o in Order,
+        where: o.status == "delivered",
+        join: p in assoc(o, :product),
+        join: l in assoc(o, :prep_location),
+        left_join: c in assoc(o, :customer),
+        preload: [product: p, prep_location: l, customer: c],
+        order_by: [desc: o.delivery_date, desc: o.id],
+        limit: ^batch_size,
+        offset: ^offset
+
+    # Load all orders and filter for fully paid ones, then take only the limit we need
+    delivered_orders
+    |> Repo.all()
+    |> Enum.filter(fn order ->
+      payment_summary = payment_summary(order)
+      payment_summary.fully_paid?
+    end)
+    |> Enum.take(limit)
+  end
+
+  def count_delivered_and_paid_orders do
+    import Ecto.Query
+
+    # Get all delivered orders
+    delivered_orders =
+      from o in Order,
+        where: o.status == "delivered",
+        preload: [:product]
+
+    # Count how many are fully paid
+    delivered_orders
+    |> Repo.all()
+    |> Enum.count(fn order ->
+      payment_summary = payment_summary(order)
+      payment_summary.fully_paid?
+    end)
+  end
+
   @statuses ~w(new_order in_prep ready delivered canceled)
   @delivery_types ~w(pickup delivery)
 
