@@ -83,6 +83,122 @@
       </div>
     </section>
 
+    <!-- Orders per Product -->
+    <section class="card">
+      <h2 class="card-title">Orders per Product</h2>
+      <p class="card-subtitle">
+        Number of orders (non-canceled) for each product in this period.
+      </p>
+
+      <%= if m.orders_by_product && m.orders_by_product != [] do %>
+        <div class="table-wrapper" style="margin-top: 1rem;">
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Product</th>
+                <th class="numeric">Orders</th>
+                <th class="numeric">Revenue</th>
+                <th class="numeric">COGS</th>
+                <th class="numeric">Gross Profit</th>
+              </tr>
+            </thead>
+            <tbody>
+              <%= for product <- m.orders_by_product do %>
+                <tr>
+                  <td>
+                    <%= product.product_name %>
+                    <%= if product.product_sku do %>
+                      <span style="color: #6b7280; font-size: 0.875rem;">(<%= product.product_sku %>)</span>
+                    <% end %>
+                  </td>
+                  <td class="numeric"><%= product.order_count %></td>
+                  <td class="numeric"><%= format_currency(product.revenue_cents || 0) %></td>
+                  <td class="numeric"><%= format_currency(product.cogs_cents || 0) %></td>
+                  <td class="numeric">
+                    <strong><%= format_currency(product.gross_profit_cents || 0) %></strong>
+                  </td>
+                </tr>
+              <% end %>
+            </tbody>
+            <tfoot style="border-top: 2px solid #e5e7eb; font-weight: 600;">
+              <tr>
+                <td><strong>Total</strong></td>
+                <td class="numeric">
+                  <strong><%= Enum.reduce(m.orders_by_product, 0, &(&1.order_count + &2)) %></strong>
+                </td>
+                <td class="numeric">
+                  <strong><%= format_currency(Enum.reduce(m.orders_by_product, 0, &((&1.revenue_cents || 0) + &2))) %></strong>
+                </td>
+                <td class="numeric">
+                  <strong><%= format_currency(Enum.reduce(m.orders_by_product, 0, &((&1.cogs_cents || 0) + &2))) %></strong>
+                </td>
+                <td class="numeric">
+                  <strong><%= format_currency(Enum.reduce(m.orders_by_product, 0, &((&1.gross_profit_cents || 0) + &2))) %></strong>
+                </td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      <% else %>
+        <p style="margin-top: 1rem; color: #6b7280; font-style: italic;">
+          No orders for this period.
+        </p>
+      <% end %>
+    </section>
+
+    <!-- Inventory Position Summary -->
+    <section class="card">
+      <h2 class="card-title">Current Inventory Position</h2>
+      <p class="card-subtitle">
+        Summary of current inventory by type.
+      </p>
+
+      <% inv = m.inventory_summary %>
+      <div class="dashboard-metrics" style="margin-top: 1rem;">
+        <div class="metric-card">
+          <div class="metric-label">Total Inventory Value</div>
+          <div class="metric-value">
+            <%= format_currency(inv.total_value_cents || 0) %>
+          </div>
+        </div>
+
+        <div class="metric-card">
+          <div class="metric-label">Total Items in Stock</div>
+          <div class="metric-value"><%= inv.total_items || 0 %></div>
+        </div>
+      </div>
+
+      <%= if inv.by_type && inv.by_type != [] do %>
+        <div style="margin-top: 1.5rem;">
+          <h3 class="card-title" style="font-size: 1rem;">Inventory by Type</h3>
+          <div class="table-wrapper" style="margin-top: 0.75rem;">
+            <table class="table">
+              <thead>
+                <tr>
+                  <th>Type</th>
+                  <th class="numeric">Items</th>
+                  <th class="numeric">Total Value</th>
+                </tr>
+              </thead>
+              <tbody>
+                <%= for {type, data} <- Enum.sort(inv.by_type) do %>
+                  <tr>
+                    <td><%= String.capitalize(to_string(type)) %></td>
+                    <td class="numeric"><%= data.count %></td>
+                    <td class="numeric"><%= format_currency(data.total_value_cents) %></td>
+                  </tr>
+                <% end %>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      <% else %>
+        <p style="margin-top: 1rem; color: #6b7280; font-style: italic;">
+          No inventory items in stock.
+        </p>
+      <% end %>
+    </section>
+
     <!-- Financial Summary (P&L) -->
     <section class="card">
       <h2 class="card-title">Financial Summary (P&amp;L)</h2>

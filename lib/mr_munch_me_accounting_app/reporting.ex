@@ -9,6 +9,7 @@ defmodule MrMunchMeAccountingApp.Reporting do
   alias MrMunchMeAccountingApp.Orders.{Order, Product}
   alias MrMunchMeAccountingApp.Accounting
   alias MrMunchMeAccountingApp.Accounting.JournalEntry
+  alias MrMunchMeAccountingApp.Inventory
 
   @doc """
   Returns metrics for the dashboard for a date range.
@@ -65,6 +66,140 @@ defmodule MrMunchMeAccountingApp.Reporting do
 
     delivered_orders = Map.get(orders_by_status, "delivered", 0)
 
+    # --- Orders per product with revenue and COGS ---
+    shipping_fee = Accounting.shipping_fee_cents()
+
+    orders_by_product_base =
+      from(o in Order,
+        join: p in assoc(o, :product),
+        where:
+          o.delivery_date >= ^start_date and
+            o.delivery_date <= ^end_date and
+            o.status != "canceled",
+        group_by: [p.id, p.name, p.sku],
+        select: %{
+          product_id: p.id,
+          product_name: p.name,
+          product_sku: p.sku,
+          order_count: count(o.id),
+          revenue_cents: fragment("SUM(?) + SUM(CASE WHEN ? THEN ? ELSE 0 END)", p.price_cents, o.customer_paid_shipping, ^shipping_fee)
+        },
+        order_by: [desc: count(o.id)]
+      )
+      |> Repo.all()
+
+    # Get order IDs for each product to calculate COGS
+    product_order_ids =
+      orders_by_product_base
+      |> Enum.map(fn product -> product.product_id end)
+      |> Enum.uniq()
+
+    # Get all orders for these products in the period
+    all_orders =
+      if Enum.empty?(product_order_ids) do
+        []
+      else
+        from(o in Order,
+          where:
+            o.delivery_date >= ^start_date and
+              o.delivery_date <= ^end_date and
+              o.status != "canceled" and
+              o.product_id in ^product_order_ids,
+          select: o.id
+        )
+        |> Repo.all()
+      end
+
+    # Get COGS by order from journal entries
+    cogs_by_order =
+      if Enum.empty?(all_orders) do
+        %{}
+      else
+        reference_patterns = Enum.map(all_orders, fn id -> "Order ##{id}" end)
+
+        base_query =
+          from(je in JournalEntry,
+            join: jl in assoc(je, :journal_lines),
+            join: acc in assoc(jl, :account),
+            where:
+              je.entry_type == "order_delivered" and
+                acc.code == "5000" and
+                je.date >= ^start_date and
+                je.date <= ^end_date
+          )
+
+        query =
+          case reference_patterns do
+            [] ->
+              base_query
+            [first_pattern] ->
+              base_query
+              |> where([je], ilike(je.reference, ^first_pattern))
+            [first_pattern | rest_patterns] when length(rest_patterns) > 0 ->
+              initial_query = base_query |> where([je], ilike(je.reference, ^first_pattern))
+              Enum.reduce(rest_patterns, initial_query, fn pattern, acc_q ->
+                or_where(acc_q, [je], ilike(je.reference, ^pattern))
+              end)
+            _ ->
+              base_query
+          end
+
+        from([je, jl, acc] in query,
+          group_by: je.reference,
+          select: {je.reference, sum(jl.debit_cents)}
+        )
+        |> Repo.all()
+        |> Enum.into(%{}, fn {ref, cogs} ->
+          order_id =
+            case Regex.run(~r/#(\d+)/, ref) do
+              [_, id_str] -> String.to_integer(id_str)
+              _ -> nil
+            end
+          {order_id, cogs || 0}
+        end)
+      end
+
+    # Get product_id for each order to group COGS by product
+    orders_with_products =
+      if Enum.empty?(all_orders) do
+        []
+      else
+        from(o in Order,
+          where: o.id in ^all_orders,
+          select: {o.id, o.product_id}
+        )
+        |> Repo.all()
+      end
+
+    # Group COGS by product
+    cogs_by_product =
+      orders_with_products
+      |> Enum.reduce(%{}, fn {order_id, product_id}, acc ->
+        cogs_cents = Map.get(cogs_by_order, order_id, 0)
+        Map.update(acc, product_id, cogs_cents, &(&1 + cogs_cents))
+      end)
+
+    # Combine revenue and COGS
+    orders_by_product =
+      orders_by_product_base
+      |> Enum.map(fn product ->
+        revenue_cents =
+          if is_integer(product.revenue_cents),
+            do: product.revenue_cents,
+            else: Decimal.to_integer(product.revenue_cents)
+
+        cogs_cents = Map.get(cogs_by_product, product.product_id, 0)
+        gross_profit_cents = revenue_cents - cogs_cents
+
+        product
+        |> Map.put(:revenue_cents, revenue_cents)
+        |> Map.put(:cogs_cents, cogs_cents)
+        |> Map.put(:gross_profit_cents, gross_profit_cents)
+      end)
+
+    # --- Inventory position summary ---
+    inventory_summary = inventory_position_summary()
+
     # --- Financial: full P&L for same period ---
     pnl = Accounting.profit_and_loss(start_date, end_date)
 
@@ -72,9 +207,43 @@ defmodule MrMunchMeAccountingApp.Reporting do
       total_orders: total_orders,
       delivered_orders: delivered_orders,
       orders_by_status: orders_by_status,
+      orders_by_product: orders_by_product,
       revenue_cents: revenue_cents,
       avg_order_value_cents: avg_order_value_cents,
+      inventory_summary: inventory_summary,
       pnl: pnl
+    }
+  end
+
+  defp inventory_position_summary do
+    # Get all stock items with quantity > 0
+    stock_items = Inventory.list_stock_items()
+    |> Enum.filter(fn stock -> stock.quantity_on_hand > 0 end)
+
+    # Group by inventory type
+    stock_by_type =
+      stock_items
+      |> Enum.group_by(fn stock ->
+        Inventory.inventory_type(stock.ingredient.code)
+      end)
+
+    # Count items by type
+    counts_by_type =
+      Enum.map(stock_by_type, fn {type, items} ->
+        total_value = Enum.reduce(items, 0, fn stock, acc ->
+          acc + Inventory.inventory_item_value_cents(stock.ingredient_id, stock.location_id)
+        end)
+        {type, %{count: length(items), total_value_cents: total_value}}
+      end)
+      |> Enum.into(%{})
+
+    # Get total inventory value
+    total_value_cents = Inventory.total_inventory_value_cents()
+
+    %{
+      total_value_cents: total_value_cents,
+      by_type: counts_by_type,
+      total_items: length(stock_items)
     }
   end
 
