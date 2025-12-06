@@ -199,4 +199,9 @@ defmodule MrMunchMeAccountingApp.Partners do
   def list_partners do
     Repo.all(Partner)
   end
+
+  def partner_select_options do
+    list_partners()
+    |> Enum.map(&{&1.name, &1.id})
+  end
 end

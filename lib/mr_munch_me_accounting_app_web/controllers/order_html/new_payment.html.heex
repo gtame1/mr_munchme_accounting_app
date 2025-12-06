@@ -20,10 +20,11 @@
         <.input
           field={f[:amount]}
           type="number"
-          label="Amount"
+          label="Total Amount Received"
           step="0.01"
           placeholder="e.g. 550.50"
           min="0"
+          id="total_amount_input"
         />
       </div>
 
@@ -37,6 +38,77 @@
         />
       </div>
 
+      <div class="field">
+        <label class="inline-flex items-center gap-2">
+          <input
+            type="checkbox"
+            id="split_payment_checkbox"
+            style="cursor: pointer;"
+          />
+          <span>This is a split payment (partner paid part of it)</span>
+        </label>
+      </div>
+    </div>
+
+    <%!-- Split Payment Section --%>
+    <div class="form-section" id="split-payment-section" style="display: none;">
+      <h3 class="section-title">Split Payment Details</h3>
+      <p class="section-help">Enter the amounts paid by customer and partner separately.</p>
+      
+      <div class="form-block">
+        <div class="field">
+          <label class="label">Customer Amount (in pesos)</label>
+          <input
+            type="number"
+            name="order_payment[customer_amount]"
+            step="0.01"
+            placeholder="e.g. 420.00"
+            min="0"
+            id="customer_amount_input"
+            class="input w-full"
+          />
+          <p class="field-help"><i>Amount paid by the customer</i></p>
+        </div>
+
+        <div class="field">
+          <label class="label">Partner Amount (in pesos)</label>
+          <input
+            type="number"
+            name="order_payment[partner_amount]"
+            step="0.01"
+            placeholder="e.g. 80.00"
+            min="0"
+            id="partner_amount_input"
+            class="input w-full"
+          />
+          <p class="field-help"><i>Amount paid by a partner</i></p>
+        </div>
+
+        <div class="field">
+          <.input
+            field={f[:partner_id]}
+            type="select"
+            label="Partner"
+            prompt="Select partner"
+            options={@partner_options}
+            id="partner_select"
+          />
+        </div>
+
+        <div class="field">
+          <.input
+            field={f[:partner_payable_account_id]}
+            type="select"
+            label="Partner Accounts Payable Account"
+            prompt="Select accounts payable account"
+            options={@liability_account_options}
+            id="partner_payable_account_select"
+          />
+        </div>
+      </div>
+    </div>
+
+    <div class="form-block">
       <div class="field">
         <.input
           field={f[:method]}
@@ -54,16 +126,6 @@
           rows="3"
         />
       </div>
-
-      <!-- For now we keep deposit handling for later, but we can add this if you want soon -->
-      <%!--
-      <div class="field">
-        <label class="inline-flex items-center gap-2">
-          <.input field={f[:is_deposit]} type="checkbox" />
-          <span>Is this an advance (deposit)?</span>
-        </label>
-      </div>
-      --%>
     </div>
 
     <div class="actions">
@@ -77,3 +139,91 @@
     </div>
   </.form>
 </section>
+
+<script>
+  document.addEventListener("DOMContentLoaded", function () {
+    const splitPaymentCheckbox = document.getElementById("split_payment_checkbox");
+    const splitPaymentSection = document.getElementById("split-payment-section");
+    const totalAmountInput = document.getElementById("total_amount_input");
+    const customerAmountInput = document.getElementById("customer_amount_input");
+    const partnerAmountInput = document.getElementById("partner_amount_input");
+    const partnerSelect = document.getElementById("partner_select");
+    const partnerPayableAccountSelect = document.getElementById("partner_payable_account_select");
+
+    function toggleSplitPaymentSection() {
+      if (splitPaymentCheckbox.checked) {
+        splitPaymentSection.style.display = "block";
+        // Make partner fields required when split payment is enabled
+        if (partnerSelect) partnerSelect.required = true;
+        if (partnerPayableAccountSelect) partnerPayableAccountSelect.required = true;
+      } else {
+        splitPaymentSection.style.display = "none";
+        // Clear and make optional when disabled
+        if (customerAmountInput) customerAmountInput.value = "";
+        if (partnerAmountInput) partnerAmountInput.value = "";
+        if (partnerSelect) {
+          partnerSelect.value = "";
+          partnerSelect.required = false;
+        }
+        if (partnerPayableAccountSelect) {
+          partnerPayableAccountSelect.value = "";
+          partnerPayableAccountSelect.required = false;
+        }
+      }
+    }
+
+    // Auto-calculate customer amount when total and partner amount change
+    function calculateCustomerAmount() {
+      if (!splitPaymentCheckbox.checked) return;
+
+      const total = parseFloat(totalAmountInput.value) || 0;
+      const partner = parseFloat(partnerAmountInput.value) || 0;
+      const customer = total - partner;
+
+      if (customerAmountInput && customer >= 0) {
+        customerAmountInput.value = customer.toFixed(2);
+      }
+    }
+
+    // Validate that customer + partner = total
+    function validateSplitAmounts() {
+      if (!splitPaymentCheckbox.checked) return true;
+
+      const total = parseFloat(totalAmountInput.value) || 0;
+      const customer = parseFloat(customerAmountInput.value) || 0;
+      const partner = parseFloat(partnerAmountInput.value) || 0;
+      const sum = customer + partner;
+
+      // Allow small rounding differences (0.01)
+      return Math.abs(total - sum) < 0.02;
+    }
+
+    // Initial state
+    toggleSplitPaymentSection();
+
+    // Event listeners
+    if (splitPaymentCheckbox) {
+      splitPaymentCheckbox.addEventListener("change", toggleSplitPaymentSection);
+    }
+
+    if (totalAmountInput) {
+      totalAmountInput.addEventListener("input", calculateCustomerAmount);
+    }
+
+    if (partnerAmountInput) {
+      partnerAmountInput.addEventListener("input", calculateCustomerAmount);
+    }
+
+    // Form validation before submit
+    const form = document.querySelector("form");
+    if (form) {
+      form.addEventListener("submit", function(e) {
+        if (!validateSplitAmounts()) {
+          e.preventDefault();
+          alert("Customer amount + Partner amount must equal Total amount received.");
+          return false;
+        }
+      });
+    }
+  });
+</script>

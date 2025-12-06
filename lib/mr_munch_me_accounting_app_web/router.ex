@@ -25,6 +25,8 @@ defmodule MrMunchMeAccountingAppWeb.Router do
     get "/orders/:id/payments/new", OrderController, :new_payment
     post "/orders/:id/payments", OrderController, :create_payment
 
+    resources "/order_payments", OrderPaymentController, only: [:index, :show, :edit, :update, :delete]
+
     get "/", ReportController, :dashboard
     get "/reports/pnl", ReportController, :pnl
     get "/reports/balance_sheet", ReportController, :balance_sheet

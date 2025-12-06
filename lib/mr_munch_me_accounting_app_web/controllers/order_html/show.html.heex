@@ -143,6 +143,7 @@
             <th>Paid to</th>
             <th>Method</th>
             <th>Note</th>
+            <th>Actions</th>
           </tr>
         </thead>
         <tbody>
@@ -153,6 +154,11 @@
               <td><%= p.paid_to_account && "#{p.paid_to_account.code} – #{p.paid_to_account.name}" %></td>
               <td><%= p.method %></td>
               <td><%= p.note %></td>
+              <td>
+                <.link navigate={~p"/order_payments/#{p.id}"} class="btn btn-sm">
+                  View
+                </.link>
+              </td>
             </tr>
           <% end %>
         </tbody>

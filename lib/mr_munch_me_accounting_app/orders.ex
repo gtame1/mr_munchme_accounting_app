@@ -314,6 +314,19 @@ defmodule MrMunchMeAccountingApp.Orders do
     )
   end
 
+  def list_all_payments do
+    Repo.all(
+      from p in OrderPayment,
+        order_by: [desc: p.payment_date, desc: p.id],
+        preload: [:order, :paid_to_account, :partner]
+    )
+  end
+
+  def get_order_payment!(id) do
+    Repo.get!(OrderPayment, id)
+    |> Repo.preload([:order, :paid_to_account, :partner, :partner_payable_account])
+  end
+
   def change_order_payment(%OrderPayment{} = payment, attrs \\ %{}) do
     OrderPayment.changeset(payment, attrs)
   end
@@ -334,6 +347,46 @@ defmodule MrMunchMeAccountingApp.Orders do
           Repo.rollback(reason)
       end
     end)
+  end
+
+  def update_order_payment(%OrderPayment{} = payment, attrs) do
+    Repo.transaction(fn ->
+      with {:ok, payment} <-
+             payment
+             |> OrderPayment.changeset(attrs)
+             |> Repo.update(),
+           {:ok, _entry} <- Accounting.update_order_payment_journal_entry(payment) do
+        payment
+      else
+        {:error, %Ecto.Changeset{} = changeset} ->
+          Repo.rollback(changeset)
+
+        {:error, reason} ->
+          Repo.rollback(reason)
+      end
+    end)
+  end
+
+  def delete_order_payment(%OrderPayment{} = payment) do
+    Repo.transaction(fn ->
+      # Find and delete the related journal entry
+      reference = "Order ##{payment.order_id} payment ##{payment.id}"
+
+      journal_entry =
+        from(je in MrMunchMeAccountingApp.Accounting.JournalEntry, where: je.reference == ^reference)
+        |> Repo.one()
+
+      if journal_entry do
+        Repo.delete!(journal_entry)
+      end
+
+      # Delete the payment
+      Repo.delete!(payment)
+    end)
+    |> case do
+      {:ok, payment} -> {:ok, payment}
+      {:error, reason} -> {:error, reason}
+    end
   end
 
     # ---------------------------

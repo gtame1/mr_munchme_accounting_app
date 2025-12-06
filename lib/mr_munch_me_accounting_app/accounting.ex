@@ -102,12 +102,13 @@ defmodule MrMunchMeAccountingApp.Accounting do
 
     revenue_cents = base_revenue + shipping_cents
 
-    # For now this is total cost (ingredients + packaging mixed)
-    cost_cents = order.production_cost_cents || 0
+    # Get the production cost from the "order_in_prep" journal entry (WIP debit)
+    # This was recorded when the order moved to "in_prep"
+    wip = get_account_by_code!(@wip_inventory_code)
+    cost_cents = get_order_production_cost(order.id, wip.id) || 0
 
     ar    = get_account_by_code!(@ar_code)
     sales = get_account_by_code!(@sales_code)
-    wip   = get_account_by_code!(@wip_inventory_code)
 
     # For now, ALL COGS → Ingredients Used (5000).
     # Later we can split into ingredients vs packaging if we have separate numbers.
@@ -182,19 +183,15 @@ defmodule MrMunchMeAccountingApp.Accounting do
   def record_order_canceled(%Order{} = _order), do: :ok
 
   def record_order_payment(%OrderPayment{} = payment) do
-    payment = Repo.preload(payment, [:order, :paid_to_account])
+    payment = Repo.preload(payment, [:order, :paid_to_account, :partner, :partner_payable_account])
 
     order = payment.order
     paid_to = payment.paid_to_account
 
-    # if payment.is_deposit == true and no AR yet → credit a Customer Deposits liability instead of AR.
-    second_account = if payment.is_deposit do
-      get_account_by_code!(@customer_deposits_code)
-    else
-      get_account_by_code!(@ar_code)
-    end
-
-    amount_cents = payment.amount_cents
+    # Calculate amounts: default customer_amount to total if not set
+    total_amount = payment.amount_cents
+    customer_amount = payment.customer_amount_cents || total_amount
+    partner_amount = payment.partner_amount_cents || 0
 
     entry_attrs = %{
       date: payment.payment_date,
@@ -203,22 +200,120 @@ defmodule MrMunchMeAccountingApp.Accounting do
       description: "Payment from #{order.customer_name}"
     }
 
-    lines = [
-      %{
-        account_id: paid_to.id,
-        debit_cents: amount_cents,
-        credit_cents: 0,
-        description: "Payment received (#{paid_to.code} – #{paid_to.name})"
-      },
-      %{
-        account_id: second_account.id,
-        debit_cents: 0,
-        credit_cents: amount_cents,
-        description: if payment.is_deposit do "Increase Customer Deposits for order ##{order.id}" else "Reduce Accounts Receivable for order ##{order.id}" end
-      }
-    ]
+    # Build journal entry lines
+    lines = build_payment_journal_lines(
+      paid_to,
+      order,
+      payment,
+      total_amount,
+      customer_amount,
+      partner_amount
+    )
 
     create_journal_entry_with_lines(entry_attrs, lines)
+  end
+
+  def update_order_payment_journal_entry(%OrderPayment{} = payment) do
+    payment = Repo.preload(payment, [:order, :paid_to_account, :partner, :partner_payable_account])
+
+    reference = "Order ##{payment.order_id} payment ##{payment.id}"
+
+    journal_entry =
+      from(je in JournalEntry, where: je.reference == ^reference)
+      |> Repo.one()
+
+    if journal_entry do
+      order = payment.order
+      paid_to = payment.paid_to_account
+
+      # Calculate amounts: default customer_amount to total if not set
+      total_amount = payment.amount_cents
+      customer_amount = payment.customer_amount_cents || total_amount
+      partner_amount = payment.partner_amount_cents || 0
+
+      entry_attrs = %{
+        date: payment.payment_date,
+        description: "Payment from #{order.customer_name}"
+      }
+
+      # Build journal entry lines
+      lines = build_payment_journal_lines(
+        paid_to,
+        order,
+        payment,
+        total_amount,
+        customer_amount,
+        partner_amount
+      )
+
+      update_journal_entry_with_lines(journal_entry, entry_attrs, lines)
+    else
+      # If journal entry doesn't exist, create it
+      record_order_payment(payment)
+    end
+  end
+
+  defp build_payment_journal_lines(paid_to, order, payment, total_amount, customer_amount, partner_amount) do
+    # Always debit the cash/receiving account for the total amount
+    debit_line = %{
+      account_id: paid_to.id,
+      debit_cents: total_amount,
+      credit_cents: 0,
+      description: "Payment received (#{paid_to.code} – #{paid_to.name})"
+    }
+
+    # Build credit lines based on split payment
+    credit_lines = if partner_amount > 0 do
+      # Split payment: customer portion goes to AR, partner portion goes to Accounts Payable
+      ar_account = if payment.is_deposit do
+        get_account_by_code!(@customer_deposits_code)
+      else
+        get_account_by_code!(@ar_code)
+      end
+
+      partner_account = payment.partner_payable_account
+
+      [
+        %{
+          account_id: ar_account.id,
+          debit_cents: 0,
+          credit_cents: customer_amount,
+          description: if payment.is_deposit do
+            "Increase Customer Deposits for order ##{order.id} (customer portion)"
+          else
+            "Reduce Accounts Receivable for order ##{order.id} (customer portion)"
+          end
+        },
+        %{
+          account_id: partner_account.id,
+          debit_cents: 0,
+          credit_cents: partner_amount,
+          description: "Accounts Payable to #{payment.partner.name} for order ##{order.id}"
+        }
+      ]
+    else
+      # Regular payment: all goes to AR or Customer Deposits
+      ar_account = if payment.is_deposit do
+        get_account_by_code!(@customer_deposits_code)
+      else
+        get_account_by_code!(@ar_code)
+      end
+
+      [
+        %{
+          account_id: ar_account.id,
+          debit_cents: 0,
+          credit_cents: total_amount,
+          description: if payment.is_deposit do
+            "Increase Customer Deposits for order ##{order.id}"
+          else
+            "Reduce Accounts Receivable for order ##{order.id}"
+          end
+        }
+      ]
+    end
+
+    [debit_line | credit_lines]
   end
 
   @doc """
@@ -548,6 +643,12 @@ defmodule MrMunchMeAccountingApp.Accounting do
   # helper to build account select options
   def expense_account_options do
     from(a in Account, where: a.type == "expense", order_by: a.code)
+    |> Repo.all()
+    |> Enum.map(&{"#{&1.code} – #{&1.name}", &1.id})
+  end
+
+  def liability_account_options do
+    from(a in Account, where: a.type == "liability", order_by: a.code)
     |> Repo.all()
     |> Enum.map(&{"#{&1.code} – #{&1.name}", &1.id})
   end
@@ -1242,6 +1343,21 @@ defmodule MrMunchMeAccountingApp.Accounting do
 
   defp pad2(int) when is_integer(int) and int < 10, do: "0#{int}"
   defp pad2(int) when is_integer(int), do: Integer.to_string(int)
+
+  # Get the production cost for an order from the "order_in_prep" journal entry
+  # Returns the WIP debit amount, or nil if no journal entry exists
+  defp get_order_production_cost(order_id, wip_account_id) do
+    reference = "Order ##{order_id}"
+
+    Repo.one(
+      from je in JournalEntry,
+        join: jl in assoc(je, :journal_lines),
+        where: je.entry_type == "order_in_prep" and je.reference == ^reference,
+        where: jl.account_id == ^wip_account_id and jl.debit_cents > 0,
+        select: jl.debit_cents,
+        limit: 1
+    )
+  end
 
   def balance_sheet(as_of_date) do
 

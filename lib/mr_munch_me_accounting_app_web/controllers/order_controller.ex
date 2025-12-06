@@ -3,7 +3,7 @@ defmodule MrMunchMeAccountingAppWeb.OrderController do
 
   alias MrMunchMeAccountingApp.Orders
   alias MrMunchMeAccountingApp.Orders.{Order, OrderPayment}
-  alias MrMunchMeAccountingApp.{Inventory, Accounting, Repo, Customers}
+  alias MrMunchMeAccountingApp.{Inventory, Accounting, Repo, Customers, Partners}
 
   def index(conn, params) do
     # 1) Apply defaults directly to params
@@ -86,7 +86,8 @@ defmodule MrMunchMeAccountingAppWeb.OrderController do
       order: order,
       changeset: changeset,
       product_options: Orders.product_select_options(),
-      location_options: Inventory.list_locations() |> Enum.map(&{&1.name, &1.id})
+      location_options: Inventory.list_locations() |> Enum.map(&{&1.name, &1.id}),
+      customer_options: Customers.customer_select_options()
     )
   end
 
@@ -104,7 +105,8 @@ defmodule MrMunchMeAccountingAppWeb.OrderController do
           order: order,
           changeset: changeset,
           product_options: Orders.product_select_options(),
-          location_options: Inventory.list_locations() |> Enum.map(&{&1.name, &1.id})
+          location_options: Inventory.list_locations() |> Enum.map(&{&1.name, &1.id}),
+          customer_options: Customers.customer_select_options()
         )
     end
   end
@@ -144,7 +146,9 @@ defmodule MrMunchMeAccountingAppWeb.OrderController do
       order: order,
       changeset: changeset,
       action: ~p"/orders/#{order.id}/payments",
-      paid_to_account_options: Accounting.cash_or_payable_account_options()
+      paid_to_account_options: Accounting.cash_or_payable_account_options(),
+      partner_options: Partners.partner_select_options(),
+      liability_account_options: Accounting.liability_account_options()
     )
   end
 
@@ -156,7 +160,7 @@ defmodule MrMunchMeAccountingAppWeb.OrderController do
 
     # Parse amount as decimal and convert to cents
     amount_cents =
-      case Decimal.parse(params["amount"]) do
+      case Decimal.parse(params["amount"] || "0") do
         {dec, ""} ->
           dec
           |> Decimal.mult(Decimal.new(100))
@@ -167,6 +171,38 @@ defmodule MrMunchMeAccountingAppWeb.OrderController do
           nil
       end
 
+    # Parse split payment amounts and convert to cents
+    customer_amount_cents =
+      if params["customer_amount"] do
+        case Decimal.parse(params["customer_amount"]) do
+          {dec, ""} ->
+            dec
+            |> Decimal.mult(Decimal.new(100))
+            |> Decimal.round(0)
+            |> Decimal.to_integer()
+
+          _ ->
+            nil
+        end
+      else
+        nil
+      end
+
+    partner_amount_cents =
+      if params["partner_amount"] do
+        case Decimal.parse(params["partner_amount"]) do
+          {dec, ""} ->
+            dec
+            |> Decimal.mult(Decimal.new(100))
+            |> Decimal.round(0)
+            |> Decimal.to_integer()
+
+          _ ->
+            nil
+        end
+      else
+        nil
+      end
 
     # Make sure we tie the payment to the correct order_id explicitly
     attrs =
@@ -174,6 +210,9 @@ defmodule MrMunchMeAccountingAppWeb.OrderController do
       |> Map.put("order_id", order.id)
       |> Map.put("is_deposit", payment_date < order.delivery_date)
       |> Map.put("amount_cents", amount_cents)
+      |> Map.put("customer_amount_cents", customer_amount_cents)
+      |> Map.put("partner_amount_cents", partner_amount_cents)
+      |> Map.drop(["customer_amount", "partner_amount", "amount"])
 
     case Orders.create_order_payment(attrs) do
       {:ok, _payment} ->
@@ -186,7 +225,9 @@ defmodule MrMunchMeAccountingAppWeb.OrderController do
           order: order,
           changeset: changeset,
           action: ~p"/orders/#{order.id}/payments",
-          paid_to_account_options: Accounting.cash_or_payable_account_options()
+          paid_to_account_options: Accounting.cash_or_payable_account_options(),
+          partner_options: Partners.partner_select_options(),
+          liability_account_options: Accounting.liability_account_options()
         )
     end
   end

@@ -135,8 +135,10 @@ assets = [
 # -------------------------
 
 liabilities = [
-  %{code: "2000", name: "Accounts Payable", type: "liability", normal_balance: "credit"},
-  %{code: "2001", name: "Accounts Payable - Gaby Vera", type: "liability", normal_balance: "credit"},
+  %{code: "2000", name: "Accounts Payable (General)", type: "liability", normal_balance: "credit"},
+  %{code: "2001", name: "Accounts Payable - Ana Gaby", type: "liability", normal_balance: "credit"},
+  %{code: "2002", name: "Accounts Payable - Fer", type: "liability", normal_balance: "credit"},
+  %{code: "2003", name: "Accounts Payable - Gaby Vera", type: "liability", normal_balance: "credit"},
   %{code: "2011", name: "NuBank AG (CC)", type: "liability", normal_balance: "credit"},
   %{code: "2012", name: "Plata AG (CC)", type: "liability", normal_balance: "credit"},
   %{code: "2013", name: "Nelo Guillo (CC)", type: "liability", normal_balance: "credit"},
@@ -266,8 +268,8 @@ IO.puts("✅ Seeded #{length(locations)} locations")
 # -------------------------
 
 partners = [
-  %{name: "Ana Gabriela Vazquez", email: "ana.gaby@example.com", phone: "1234567890"},
-  %{name: "Fernanda Gonzalo", email: "fernanda.gonzalo@example.com", phone: "1234567890"},
+  %{name: "Ana Gabriela Vazquez", email: "anag997@hotmail.com", phone: "5543417149"},
+  %{name: "Fernanda Gonzalo", email: "marifergonzalo@gmail.com", phone: "5579184041"},
 ]
 
 partners
