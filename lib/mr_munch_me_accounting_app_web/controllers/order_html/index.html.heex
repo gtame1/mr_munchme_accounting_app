@@ -114,13 +114,14 @@
           </th>
           <th>Prep Location</th>
           <th>Payment Status</th>
+          <th>Actions</th>
         </tr>
       </thead>
 
       <tbody>
         <%= if Enum.empty?(@orders) do %>
           <tr>
-            <td colspan="8">No active orders.</td>
+            <td colspan="9">No active orders.</td>
           </tr>
         <% else %>
           <%= for order <- @orders do %>
@@ -153,6 +154,49 @@
                 <% else %>
                   <span class="status-badge status-unpaid">Unpaid</span>
                 <% end %>
+              </td>
+              <td>
+                <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
+                  <%!-- Quick Status Update Buttons (same logic as order show page) --%>
+                  <%= if order.status == "new_order" do %>
+                    <.form for={%{}} as={:status} action={~p"/orders/#{order.id}/status"} method="post" style="display: inline;">
+                      <input type="hidden" name="status[status]" value="in_prep" />
+                      <button class="btn btn-sm primary" type="submit" style="font-size: 0.75rem; padding: 0.25rem 0.5rem; white-space: nowrap;">Move to In Prep</button>
+                    </.form>
+                  <% end %>
+
+                  <%= if order.status == "in_prep" do %>
+                    <.form for={%{}} as={:status} action={~p"/orders/#{order.id}/status"} method="post" style="display: inline;">
+                      <input type="hidden" name="status[status]" value="ready" />
+                      <button class="btn btn-sm primary" type="submit" style="font-size: 0.75rem; padding: 0.25rem 0.5rem; white-space: nowrap;">Mark as Ready</button>
+                    </.form>
+                  <% end %>
+
+                  <%= if order.status == "ready" do %>
+                    <.form for={%{}} as={:status} action={~p"/orders/#{order.id}/status"} method="post" style="display: inline;">
+                      <input type="hidden" name="status[status]" value="delivered" />
+                      <button class="btn btn-sm primary" type="submit" style="font-size: 0.75rem; padding: 0.25rem 0.5rem; white-space: nowrap;">Mark as Delivered</button>
+                    </.form>
+                  <% end %>
+
+                  <%= if order.status not in ["delivered", "canceled", "ready", "in_prep"] do %>
+                    <.form for={%{}} as={:status} action={~p"/orders/#{order.id}/status"} method="post" style="display: inline;">
+                      <input type="hidden" name="status[status]" value="canceled" />
+                      <button class="btn btn-sm danger" type="submit" style="font-size: 0.75rem; padding: 0.25rem 0.5rem; white-space: nowrap;">Cancel Order</button>
+                    </.form>
+                  <% end %>
+
+                  <%!-- Quick Payment --%>
+                  <%= if !order.payment_summary || !order.payment_summary.fully_paid? do %>
+                    <.link
+                      navigate={~p"/orders/#{order.id}/payments/new"}
+                      class="btn btn-sm"
+                      style="font-size: 0.75rem; padding: 0.25rem 0.5rem; white-space: nowrap;"
+                    >
+                      💰 Payment
+                    </.link>
+                  <% end %>
+                </div>
               </td>
             </tr>
           <% end %>

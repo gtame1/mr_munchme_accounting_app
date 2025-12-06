@@ -67,11 +67,22 @@ defmodule MrMunchMeAccountingAppWeb.CustomerController do
 
   def delete(conn, %{"id" => id}) do
     customer = Customers.get_customer!(id)
-    {:ok, _customer} = Customers.delete_customer(customer)
 
-    conn
-    |> put_flash(:info, "Customer deleted successfully.")
-    |> redirect(to: ~p"/customers")
+    case Customers.delete_customer(customer) do
+      {:ok, _customer} ->
+        conn
+        |> put_flash(:info, "Customer deleted successfully.")
+        |> redirect(to: ~p"/customers")
+
+      {:error, :has_active_orders} ->
+        active_count = Customers.count_active_orders(customer)
+        conn
+        |> put_flash(
+          :error,
+          "Cannot delete customer. This customer has #{active_count} active order(s). Please cancel or complete the orders first."
+        )
+        |> redirect(to: ~p"/customers/#{customer.id}")
+    end
   end
 end
 

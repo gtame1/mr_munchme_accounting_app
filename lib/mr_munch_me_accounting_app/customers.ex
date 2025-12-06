@@ -75,18 +75,46 @@ defmodule MrMunchMeAccountingApp.Customers do
 
   @doc """
   Deletes a customer.
+  Returns {:error, :has_active_orders} if the customer has active orders.
 
   ## Examples
 
       iex> delete_customer(customer)
       {:ok, %Customer{}}
 
-      iex> delete_customer(customer)
-      {:error, %Ecto.Changeset{}}
-
+      iex> delete_customer(customer_with_orders)
+      {:error, :has_active_orders}
   """
   def delete_customer(%Customer{} = customer) do
-    Repo.delete(customer)
+    # Check if customer has active orders (not canceled, and not delivered+paid)
+    alias MrMunchMeAccountingApp.Orders.Order
+
+    active_orders =
+      from o in Order,
+        where: o.customer_id == ^customer.id,
+        where: o.status != "canceled"
+
+    # Check if there are any active orders
+    if Repo.exists?(active_orders) do
+      {:error, :has_active_orders}
+    else
+      Repo.delete(customer)
+    end
+  end
+
+  @doc """
+  Counts the number of active orders for a customer.
+  Active orders are those that are not canceled.
+  """
+  def count_active_orders(%Customer{} = customer) do
+    alias MrMunchMeAccountingApp.Orders.Order
+
+    from(o in Order,
+      where: o.customer_id == ^customer.id,
+      where: o.status != "canceled",
+      select: count()
+    )
+    |> Repo.one()
   end
 
   @doc """
