@@ -1400,4 +1400,92 @@ defmodule MrMunchMeAccountingApp.Inventory do
       end)
     end
   end
+
+  @doc """
+  Calculates the cumulative average cost for an ingredient at a location as of a specific date.
+  This is used to backfill costs for movements that were recorded with $0 cost.
+  """
+  defp calculate_cumulative_avg_cost_as_of_date(ingredient_id, location_id, as_of_date) do
+    result =
+      from(m in InventoryMovement,
+        where: m.ingredient_id == ^ingredient_id,
+        where: m.to_location_id == ^location_id,
+        where: m.movement_type == "purchase",
+        where: m.movement_date <= ^as_of_date,
+        select: %{
+          total_cost: fragment("COALESCE(SUM(?), 0)", m.total_cost_cents),
+          total_quantity: fragment("COALESCE(SUM(?), 0)", m.quantity)
+        }
+      )
+      |> Repo.one()
+
+    # Convert Decimal values from SQL SUM to integers
+    total_cost = case result do
+      %{total_cost: cost} when is_integer(cost) -> cost
+      %{total_cost: %Decimal{} = cost} -> Decimal.to_integer(cost)
+      _ -> 0
+    end
+
+    total_quantity = case result do
+      %{total_quantity: qty} when is_integer(qty) -> qty
+      %{total_quantity: %Decimal{} = qty} -> Decimal.to_integer(qty)
+      _ -> 0
+    end
+
+    case {total_cost, total_quantity} do
+      {0, 0} -> nil
+      {_, 0} -> nil
+      {cost, qty} when qty > 0 ->
+        exact_avg = cost / qty
+        round(exact_avg)
+      _ -> nil
+    end
+  end
+
+  @doc """
+  Backfills costs for usage and write_off movements that have $0 cost.
+  This should be run when purchases have been added but movements were recorded before the purchases.
+
+  Returns the count of movements updated.
+  """
+  def backfill_movement_costs do
+    # Find all usage and write_off movements with $0 cost
+    zero_cost_movements =
+      from(m in InventoryMovement,
+        where: m.movement_type in ["usage", "write_off"],
+        where: m.total_cost_cents == 0 or m.unit_cost_cents == 0,
+        where: not is_nil(m.from_location_id),
+        preload: [:ingredient, :from_location]
+      )
+      |> Repo.all()
+
+    updated_count =
+      Enum.reduce(zero_cost_movements, 0, fn movement, acc ->
+        # Calculate what the cost should have been at the movement date
+        avg_cost = calculate_cumulative_avg_cost_as_of_date(
+          movement.ingredient_id,
+          movement.from_location_id,
+          movement.movement_date
+        )
+
+        if avg_cost && avg_cost > 0 do
+          unit_cost_cents = avg_cost
+          total_cost_cents = movement.quantity * unit_cost_cents
+
+          case movement
+               |> InventoryMovement.changeset(%{
+                 unit_cost_cents: unit_cost_cents,
+                 total_cost_cents: total_cost_cents
+               })
+               |> Repo.update() do
+            {:ok, _} -> acc + 1
+            {:error, _} -> acc
+          end
+        else
+          acc
+        end
+      end)
+
+    {:ok, updated_count}
+  end
 end
