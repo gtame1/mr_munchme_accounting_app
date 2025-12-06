@@ -214,7 +214,10 @@ defmodule MrMunchMeAccountingApp.Accounting do
   end
 
   def update_order_payment_journal_entry(%OrderPayment{} = payment) do
-    payment = Repo.preload(payment, [:order, :paid_to_account, :partner, :partner_payable_account])
+    payment =
+      payment
+      |> Repo.reload()
+      |> Repo.preload([:order, :paid_to_account, :partner, :partner_payable_account])
 
     reference = "Order ##{payment.order_id} payment ##{payment.id}"
 
@@ -226,27 +229,32 @@ defmodule MrMunchMeAccountingApp.Accounting do
       order = payment.order
       paid_to = payment.paid_to_account
 
-      # Calculate amounts: default customer_amount to total if not set
-      total_amount = payment.amount_cents
-      customer_amount = payment.customer_amount_cents || total_amount
-      partner_amount = payment.partner_amount_cents || 0
+      # Ensure paid_to_account is loaded
+      if is_nil(paid_to) do
+        {:error, "Paid to account is missing for payment"}
+      else
+        # Calculate amounts: default customer_amount to total if not set
+        total_amount = payment.amount_cents
+        customer_amount = payment.customer_amount_cents || total_amount
+        partner_amount = payment.partner_amount_cents || 0
 
-      entry_attrs = %{
-        date: payment.payment_date,
-        description: "Payment from #{order.customer_name}"
-      }
+        entry_attrs = %{
+          date: payment.payment_date,
+          description: "Payment from #{order.customer_name}"
+        }
 
-      # Build journal entry lines
-      lines = build_payment_journal_lines(
-        paid_to,
-        order,
-        payment,
-        total_amount,
-        customer_amount,
-        partner_amount
-      )
+        # Build journal entry lines
+        lines = build_payment_journal_lines(
+          paid_to,
+          order,
+          payment,
+          total_amount,
+          customer_amount,
+          partner_amount
+        )
 
-      update_journal_entry_with_lines(journal_entry, entry_attrs, lines)
+        update_journal_entry_with_lines(journal_entry, entry_attrs, lines)
+      end
     else
       # If journal entry doesn't exist, create it
       record_order_payment(payment)
@@ -273,6 +281,12 @@ defmodule MrMunchMeAccountingApp.Accounting do
 
       partner_account = payment.partner_payable_account
 
+      if is_nil(partner_account) do
+        raise ArgumentError, "Partner payable account is required for split payments. Payment ID: #{payment.id}, Partner ID: #{payment.partner_id}"
+      end
+
+      partner_name = if payment.partner, do: payment.partner.name, else: "Partner"
+
       [
         %{
           account_id: ar_account.id,
@@ -288,7 +302,7 @@ defmodule MrMunchMeAccountingApp.Accounting do
           account_id: partner_account.id,
           debit_cents: 0,
           credit_cents: partner_amount,
-          description: "Accounts Payable to #{payment.partner.name} for order ##{order.id}"
+          description: "Accounts Payable to #{partner_name} for order ##{order.id}"
         }
       ]
     else

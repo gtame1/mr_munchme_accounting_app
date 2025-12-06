@@ -355,6 +355,7 @@ defmodule MrMunchMeAccountingApp.Orders do
              payment
              |> OrderPayment.changeset(attrs)
              |> Repo.update(),
+           payment <- payment |> Repo.preload([:order, :paid_to_account, :partner, :partner_payable_account]),
            {:ok, _entry} <- Accounting.update_order_payment_journal_entry(payment) do
         payment
       else
