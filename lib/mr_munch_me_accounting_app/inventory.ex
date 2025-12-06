@@ -1446,6 +1446,8 @@ defmodule MrMunchMeAccountingApp.Inventory do
   Backfills costs for usage and write_off movements that have $0 cost.
   This should be run when purchases have been added but movements were recorded before the purchases.
 
+  If no purchases exist up to the movement date, falls back to the overall current cost.
+
   Returns the count of movements updated.
   """
   def backfill_movement_costs do
@@ -1461,12 +1463,26 @@ defmodule MrMunchMeAccountingApp.Inventory do
 
     updated_count =
       Enum.reduce(zero_cost_movements, 0, fn movement, acc ->
-        # Calculate what the cost should have been at the movement date
-        avg_cost = calculate_cumulative_avg_cost_as_of_date(
+        # First try: Calculate what the cost should have been at the movement date
+        avg_cost_as_of_date = calculate_cumulative_avg_cost_as_of_date(
           movement.ingredient_id,
           movement.from_location_id,
           movement.movement_date
         )
+
+        # Fallback: If no purchases up to that date, use overall current cost
+        avg_cost =
+          if avg_cost_as_of_date && avg_cost_as_of_date > 0 do
+            avg_cost_as_of_date
+          else
+            # Use the current overall cumulative average cost as fallback
+            calculate_cumulative_avg_cost(movement.ingredient_id, movement.from_location_id) ||
+              # If still no cost, try to get from current stock
+              case get_or_create_stock!(movement.ingredient_id, movement.from_location_id) do
+                stock when stock.avg_cost_per_unit_cents > 0 -> stock.avg_cost_per_unit_cents
+                _ -> nil
+              end
+          end
 
         if avg_cost && avg_cost > 0 do
           unit_cost_cents = avg_cost
