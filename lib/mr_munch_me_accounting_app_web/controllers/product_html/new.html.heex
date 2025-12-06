@@ -39,6 +39,52 @@
       </div>
     </div>
 
+    <%!-- Recipe section --%>
+    <div class="form-block" style="border-top: 1px solid var(--border-subtle); padding-top: 1.5rem; margin-top: 1.5rem;">
+      <h3 style="font-size: 1.1rem; font-weight: 600; margin-bottom: 1rem;">Recipe (Required for Orders)</h3>
+      <p class="field-help" style="margin-bottom: 1rem;">
+        Products need a recipe for orders to work properly. You can copy a recipe from an existing product or create one later.
+      </p>
+
+      <div class="field">
+        <label class="fieldset mb-2">
+          <input
+            type="checkbox"
+            name="product[create_recipe]"
+            value="true"
+            id="create-recipe-checkbox"
+            checked
+          />
+          <span class="label" style="margin-left: 0.5rem; font-weight: 500;">
+            Create recipe for this product
+          </span>
+        </label>
+      </div>
+
+      <div class="field" id="recipe-source-field" style="display: block;">
+        <label class="label mb-1">Copy recipe from existing product</label>
+        <select
+          name="product[copy_recipe_from_product_id]"
+          id="copy-recipe-select"
+          class="w-full select"
+        >
+          <option value="">-- Select a product to copy recipe from (optional) --</option>
+          <%= for {label, product_id} <- @recipe_options do %>
+            <option value={product_id}><%= label %></option>
+          <% end %>
+        </select>
+        <p class="field-help">
+          If you select a product, its recipe will be copied to this new product. 
+          If left empty, you can create a recipe later from the Recipes page.
+        </p>
+        <%= if @recipe_options == [] do %>
+          <div class="alert alert-warning" style="margin-top: 0.75rem;">
+            <p>No existing recipes found. You'll need to create a recipe manually after creating this product.</p>
+          </div>
+        <% end %>
+      </div>
+    </div>
+
     <div class="actions">
       <button class="btn primary" type="submit">
         Create Product
@@ -49,4 +95,27 @@
     </div>
   </.form>
 </section>
+
+<script>
+  document.addEventListener("DOMContentLoaded", function() {
+    const checkbox = document.getElementById("create-recipe-checkbox");
+    const recipeField = document.getElementById("recipe-source-field");
+    const recipeSelect = document.getElementById("copy-recipe-select");
+
+    function toggleRecipeFields() {
+      if (checkbox.checked) {
+        recipeField.style.display = "block";
+      } else {
+        recipeField.style.display = "none";
+        recipeSelect.value = ""; // Clear selection when hidden
+      }
+    }
+
+    if (checkbox) {
+      checkbox.addEventListener("change", toggleRecipeFields);
+      // Initial state
+      toggleRecipeFields();
+    }
+  });
+</script>
 

@@ -159,6 +159,60 @@ defmodule MrMunchMeAccountingApp.Inventory.Recepies do
   end
 
   @doc """
+  Copy a recipe from one product to another.
+  Creates a new recipe for the target product with the same recipe lines.
+  """
+  def copy_recipe_from_product(%Product{} = source_product, %Product{} = target_product, effective_date \\ Date.utc_today()) do
+    case get_active_recipe(source_product) do
+      nil ->
+        {:error, :no_recipe_found}
+
+      source_recipe ->
+        source_recipe = Repo.preload(source_recipe, :recipe_lines)
+
+        recipe_attrs = %{
+          product_id: target_product.id,
+          effective_date: effective_date,
+          name: source_recipe.name || "#{target_product.name} Recipe",
+          description: source_recipe.description || "Recipe copied from #{source_product.name}",
+          recipe_lines:
+            Enum.map(source_recipe.recipe_lines || [], fn line ->
+              %{
+                ingredient_code: line.ingredient_code,
+                quantity: Decimal.to_string(line.quantity)
+              }
+            end)
+        }
+
+        create_recipe(recipe_attrs)
+    end
+  end
+
+  @doc """
+  Get options for products that have recipes, for use in dropdowns.
+  Returns a list of {label, product_id} tuples.
+  """
+  def products_with_recipes_select_options do
+    from(r in Recipe,
+      distinct: r.product_id,
+      join: p in assoc(r, :product),
+      order_by: p.name,
+      select: {p.id, p.name, p.sku}
+    )
+    |> Repo.all()
+    |> Enum.map(fn {id, name, sku} ->
+      label =
+        if sku do
+          "#{name} (#{sku})"
+        else
+          name
+        end
+
+      {label, id}
+    end)
+  end
+
+  @doc """
   Calculates the estimated total cost of a recipe based on average unit prices of ingredients.
   Returns the total cost in cents.
   Returns {:ok, total_cents} if all ingredients have costs.

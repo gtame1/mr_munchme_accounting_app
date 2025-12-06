@@ -3,6 +3,7 @@ defmodule MrMunchMeAccountingAppWeb.ProductController do
 
   alias MrMunchMeAccountingApp.Orders
   alias MrMunchMeAccountingApp.Orders.Product
+  alias MrMunchMeAccountingApp.Inventory.Recepies
 
   def index(conn, _params) do
     products = Orders.list_all_products()
@@ -11,19 +12,61 @@ defmodule MrMunchMeAccountingAppWeb.ProductController do
 
   def new(conn, _params) do
     changeset = Orders.change_product(%Product{})
-    render(conn, :new, changeset: changeset, action: ~p"/products")
+    recipe_options = Recepies.products_with_recipes_select_options()
+    render(conn, :new,
+      changeset: changeset,
+      action: ~p"/products",
+      recipe_options: recipe_options
+    )
   end
 
   def create(conn, %{"product" => product_params}) do
-    case Orders.create_product(product_params) do
-      {:ok, _product} ->
-        conn
-        |> put_flash(:info, "Product created successfully.")
-        |> redirect(to: ~p"/products")
+    # Extract recipe-related params
+    copy_recipe_from_product_id = product_params["copy_recipe_from_product_id"]
+    create_recipe = product_params["create_recipe"] == "true"
+
+    # Filter out recipe-related params before creating product
+    product_attrs =
+      product_params
+      |> Map.delete("create_recipe")
+      |> Map.delete("copy_recipe_from_product_id")
+
+    case Orders.create_product(product_attrs) do
+      {:ok, product} ->
+        # If recipe copying was requested and a source product was selected, copy the recipe
+        if create_recipe && copy_recipe_from_product_id && copy_recipe_from_product_id != "" do
+          source_product = Orders.get_product!(copy_recipe_from_product_id)
+
+          case Recepies.copy_recipe_from_product(source_product, product) do
+            {:ok, _recipe} ->
+              conn
+              |> put_flash(:info, "Product and recipe created successfully.")
+              |> redirect(to: ~p"/products")
+
+            {:error, :no_recipe_found} ->
+              conn
+              |> put_flash(:warning, "Product created, but the source product doesn't have a recipe to copy.")
+              |> redirect(to: ~p"/products")
+
+            {:error, _changeset} ->
+              conn
+              |> put_flash(:warning, "Product created, but there was an error copying the recipe. You can create a recipe manually.")
+              |> redirect(to: ~p"/products")
+          end
+        else
+          conn
+          |> put_flash(:info, "Product created successfully.")
+          |> redirect(to: ~p"/products")
+        end
 
       {:error, %Ecto.Changeset{} = changeset} ->
         changeset = Map.put(changeset, :action, :insert)
-        render(conn, :new, changeset: changeset, action: ~p"/products")
+        recipe_options = Recepies.products_with_recipes_select_options()
+        render(conn, :new,
+          changeset: changeset,
+          action: ~p"/products",
+          recipe_options: recipe_options
+        )
     end
   end
 
