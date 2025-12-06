@@ -123,21 +123,33 @@ defmodule MrMunchMeAccountingApp.Reporting do
         0
       else
         # Build OR conditions for order references
-        order_ref_conditions =
-          Enum.map(order_ids, fn id ->
-            dynamic([je], ilike(je.reference, ^"Order ##{id}"))
-          end)
-          |> Enum.reduce(&dynamic([je], ^&1 or ^&2))
+        reference_patterns = Enum.map(order_ids, fn id -> "Order ##{id}" end)
 
-        from(je in JournalEntry,
-          join: jl in assoc(je, :journal_lines),
-          join: acc in assoc(jl, :account),
-          where:
-            je.entry_type == "order_delivered" and
-              acc.code == "5000" and
-              je.date >= ^start_date and
-              je.date <= ^end_date and
-              ^order_ref_conditions,
+        # Start with base query
+        query =
+          from(je in JournalEntry,
+            join: jl in assoc(je, :journal_lines),
+            join: acc in assoc(jl, :account),
+            where:
+              je.entry_type == "order_delivered" and
+                acc.code == "5000" and
+                je.date >= ^start_date and
+                je.date <= ^end_date
+          )
+
+        # Add the first reference pattern with where, then use or_where for the rest
+        [first_pattern | rest_patterns] = reference_patterns
+
+        query =
+          query
+          |> where([je], ilike(je.reference, ^first_pattern))
+
+        query =
+          Enum.reduce(rest_patterns, query, fn pattern, q ->
+            or_where(q, [je], ilike(je.reference, ^pattern))
+          end)
+
+        from([je, jl, acc] in query,
           select: sum(jl.debit_cents)
         )
         |> Repo.one()

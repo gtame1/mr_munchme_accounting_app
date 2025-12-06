@@ -56,7 +56,7 @@ defmodule MrMunchMeAccountingAppWeb.ReportController do
     product_options = Orders.product_select_options()
 
     product_id =
-      case Map.get(params, "sku") do
+      case Map.get(params, "product_id") do
         nil ->
           # Get first active product
           case product_options do
@@ -64,16 +64,26 @@ defmodule MrMunchMeAccountingAppWeb.ReportController do
             [] -> nil
           end
         "" -> nil
-        id_str ->
+        id_str when is_binary(id_str) ->
           case Integer.parse(id_str) do
             {id, _} -> id
             :error -> nil
           end
+        id when is_integer(id) ->
+          id
+        _ ->
+          nil
       end
 
     unit_economics_data =
       if product_id do
-        Reporting.unit_economics(product_id, start_date, end_date)
+        try do
+          Reporting.unit_economics(product_id, start_date, end_date)
+        rescue
+          Ecto.NoResultsError ->
+            # Product doesn't exist - return nil
+            nil
+        end
       else
         nil
       end

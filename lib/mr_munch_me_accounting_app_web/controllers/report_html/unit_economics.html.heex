@@ -18,7 +18,7 @@
             <select name="product_id" id="product-select" onchange="this.form.submit()">
               <option value="">Select a product</option>
               <%= for {label, id} <- @product_options do %>
-                <option value={id} selected={id == @selected_product_id}>
+                <option value={to_string(id)} selected={id == @selected_product_id}>
                   <%= label %>
                 </option>
               <% end %>

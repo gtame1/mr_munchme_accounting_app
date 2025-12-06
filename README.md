@@ -16,8 +16,7 @@
 - Add shortcuts to update the order status or record a payment from the order index
 - What happens if i delete a customer with an active order? Do we need to catch that error?
 - Should we add UI to add new balance sheet accounts?
-- Tie in new products to a recipe from the UI
-- Separate ("Delivered" & "Paid") orders in a different table in the index, use the same logic to only show the 10 most recent but have a button to load more. They have to be delivered AND paid.
+
 
 ## Using github
 
@@ -25,3 +24,6 @@
 - git add .
 - git commit -m "Tweak inventory purchase form"
 - git push
+
+## Database
+`psql -d mr_munch_me_accounting_app_dev`
