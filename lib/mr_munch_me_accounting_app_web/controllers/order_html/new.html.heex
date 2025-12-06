@@ -253,10 +253,7 @@
         customerAddressDisplay.style.display = "none";
         customerAddressText.textContent = "No address on file";
         if (deliveryAddressTextarea) {
-          deliveryAddressTextarea.disabled = false;
-          deliveryAddressTextarea.readOnly = false;
           deliveryAddressTextarea.value = "";
-          deliveryAddressTextarea.style.backgroundColor = "";
         }
         return;
       }
@@ -268,21 +265,18 @@
             customerAddressDisplay.style.display = "block";
             customerAddressText.textContent = data.delivery_address;
             if (deliveryAddressTextarea) {
+              // Preload the address but keep it editable
               deliveryAddressTextarea.value = data.delivery_address;
-              deliveryAddressTextarea.disabled = true;
-              deliveryAddressTextarea.readOnly = true;
-              deliveryAddressTextarea.style.backgroundColor = "#f5f5f5";
-              deliveryAddressTextarea.style.cursor = "not-allowed";
+              deliveryAddressTextarea.disabled = false;
+              deliveryAddressTextarea.readOnly = false;
+              deliveryAddressTextarea.style.backgroundColor = "";
+              deliveryAddressTextarea.style.cursor = "";
             }
           } else {
             customerAddressDisplay.style.display = "block";
             customerAddressText.textContent = "No address on file";
             if (deliveryAddressTextarea) {
-              deliveryAddressTextarea.disabled = false;
-              deliveryAddressTextarea.readOnly = false;
               deliveryAddressTextarea.value = "";
-              deliveryAddressTextarea.style.backgroundColor = "";
-              deliveryAddressTextarea.style.cursor = "";
             }
           }
         })
@@ -290,10 +284,7 @@
           console.error("Error fetching customer data:", error);
           customerAddressDisplay.style.display = "none";
           if (deliveryAddressTextarea) {
-            deliveryAddressTextarea.disabled = false;
-            deliveryAddressTextarea.readOnly = false;
-            deliveryAddressTextarea.style.backgroundColor = "";
-            deliveryAddressTextarea.style.cursor = "";
+            deliveryAddressTextarea.value = "";
           }
         });
     }
@@ -311,10 +302,7 @@
           customerAddressDisplay.style.display = "none";
           const deliveryAddressTextarea = getDeliveryAddressTextarea();
           if (deliveryAddressTextarea) {
-            deliveryAddressTextarea.disabled = false;
-            deliveryAddressTextarea.readOnly = false;
-            deliveryAddressTextarea.style.backgroundColor = "";
-            deliveryAddressTextarea.style.cursor = "";
+            deliveryAddressTextarea.value = "";
           }
         }
       });
@@ -325,10 +313,6 @@
         customerAddressDisplay.style.display = "none";
         const deliveryAddressTextarea = getDeliveryAddressTextarea();
         if (deliveryAddressTextarea) {
-          deliveryAddressTextarea.disabled = false;
-          deliveryAddressTextarea.readOnly = false;
-          deliveryAddressTextarea.style.backgroundColor = "";
-          deliveryAddressTextarea.style.cursor = "";
           deliveryAddressTextarea.value = "";
         }
       });
