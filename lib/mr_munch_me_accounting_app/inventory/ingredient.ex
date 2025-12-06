@@ -7,6 +7,7 @@ defmodule MrMunchMeAccountingApp.Inventory.Ingredient do
     field :name, :string
     field :unit, :string, default: "g"
     field :cost_per_unit_cents, :integer, default: 0
+    field :inventory_type, :string, default: "ingredients"
 
     has_many :inventories, MrMunchMeAccountingApp.Inventory.InventoryItem
     has_many :inventory_movements, MrMunchMeAccountingApp.Inventory.InventoryMovement
@@ -14,11 +15,14 @@ defmodule MrMunchMeAccountingApp.Inventory.Ingredient do
     timestamps()
   end
 
+  @inventory_types ~w(ingredients packing kitchen other)
+
   def changeset(ingredient, attrs) do
     ingredient
-    |> cast(attrs, [:code, :name, :unit, :cost_per_unit_cents])
-    |> validate_required([:code, :name, :unit, :cost_per_unit_cents])
+    |> cast(attrs, [:code, :name, :unit, :cost_per_unit_cents, :inventory_type])
+    |> validate_required([:code, :name, :unit, :cost_per_unit_cents, :inventory_type])
     |> validate_number(:cost_per_unit_cents, greater_than_or_equal_to: 0)
+    |> validate_inclusion(:inventory_type, @inventory_types)
     |> unique_constraint(:code)
   end
 end

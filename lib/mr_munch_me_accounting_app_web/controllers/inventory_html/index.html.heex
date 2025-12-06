@@ -178,7 +178,51 @@
         </div>
       <% end %>
 
-      <%= if ingredients_stock == [] && packing_stock == [] && kitchen_stock == [] do %>
+      <%!-- Other Inventory --%>
+      <% other_stock = Map.get(@stock_by_type, :other, []) %>
+      <%= if other_stock != [] do %>
+        <h3 style="margin-top: 1.5rem; margin-bottom: 1rem; font-size: 1.25rem; font-weight: 600;">Other</h3>
+        <div class="table-wrapper">
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Ingredient</th>
+                <th>Location</th>
+                <th>Quantity</th>
+                <th>Avg Cost / Unit</th>
+                <th>Total Value</th>
+              </tr>
+            </thead>
+            <tbody>
+              <%= for stock <- Enum.sort_by(other_stock, &[&1.ingredient.name, &1.location.name]) do %>
+                <% ingredient = stock.ingredient %>
+                <% location = stock.location %>
+                <% total_value_cents = stock.quantity_on_hand * stock.avg_cost_per_unit_cents %>
+
+                <tr>
+                  <td>
+                    <strong><%= ingredient.name %></strong>
+                    <div class="text-muted small"><%= ingredient.code %></div>
+                  </td>
+                  <td><.location_badge location={location} /></td>
+                  
+                  <td>
+                    <%= format_inventory(stock.quantity_on_hand, ingredient.unit) %>
+                  </td>
+                  <td>
+                    <%= format_currency(stock.avg_cost_per_unit_cents) %>
+                  </td>
+                  <td>
+                    <%= format_currency(total_value_cents) %>
+                  </td>
+                </tr>
+              <% end %>
+            </tbody>
+          </table>
+        </div>
+      <% end %>
+
+      <%= if ingredients_stock == [] && packing_stock == [] && kitchen_stock == [] && other_stock == [] do %>
         <div class="table-wrapper">
           <table class="table">
             <tbody>

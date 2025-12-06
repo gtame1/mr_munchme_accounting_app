@@ -35,6 +35,17 @@
         <.input field={f[:cost_per_unit_cents]} type="number" label="Cost per Unit (cents)" />
         <p class="field-help">Enter cost in cents (e.g., 100 for $1.00)</p>
       </div>
+
+      <div class="field">
+        <.input
+          field={f[:inventory_type]}
+          type="select"
+          label="Inventory Type"
+          prompt="Select inventory type"
+          options={@inventory_type_options}
+        />
+        <p class="field-help">Determines which inventory account this ingredient uses (Ingredients, Packing, or Kitchen Equipment)</p>
+      </div>
     </div>
 
     <div class="actions">

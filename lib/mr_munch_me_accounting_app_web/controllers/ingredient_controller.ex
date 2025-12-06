@@ -11,7 +11,17 @@ defmodule MrMunchMeAccountingAppWeb.IngredientController do
 
   def new(conn, _params) do
     changeset = Inventory.change_ingredient(%Ingredient{})
-    render(conn, :new, changeset: changeset, action: ~p"/ingredients")
+    inventory_type_options = [
+      {"Ingredients", "ingredients"},
+      {"Packing", "packing"},
+      {"Kitchen Equipment", "kitchen"},
+      {"Other", "other"}
+    ]
+    render(conn, :new,
+      changeset: changeset,
+      action: ~p"/ingredients",
+      inventory_type_options: inventory_type_options
+    )
   end
 
   def create(conn, %{"ingredient" => ingredient_params}) do
@@ -23,14 +33,34 @@ defmodule MrMunchMeAccountingAppWeb.IngredientController do
 
       {:error, %Ecto.Changeset{} = changeset} ->
         changeset = Map.put(changeset, :action, :insert)
-        render(conn, :new, changeset: changeset, action: ~p"/ingredients")
+        inventory_type_options = [
+          {"Ingredients", "ingredients"},
+          {"Packing", "packing"},
+          {"Kitchen Equipment", "kitchen"}
+        ]
+        render(conn, :new,
+          changeset: changeset,
+          action: ~p"/ingredients",
+          inventory_type_options: inventory_type_options
+        )
     end
   end
 
   def edit(conn, %{"id" => id}) do
     ingredient = Inventory.get_ingredient!(id)
     changeset = Inventory.change_ingredient(ingredient)
-    render(conn, :edit, ingredient: ingredient, changeset: changeset, action: ~p"/ingredients/#{ingredient}")
+    inventory_type_options = [
+      {"Ingredients", "ingredients"},
+      {"Packing", "packing"},
+      {"Kitchen Equipment", "kitchen"},
+      {"Other", "other"}
+    ]
+    render(conn, :edit,
+      ingredient: ingredient,
+      changeset: changeset,
+      action: ~p"/ingredients/#{ingredient}",
+      inventory_type_options: inventory_type_options
+    )
   end
 
   def update(conn, %{"id" => id, "ingredient" => ingredient_params}) do
@@ -44,7 +74,17 @@ defmodule MrMunchMeAccountingAppWeb.IngredientController do
 
       {:error, %Ecto.Changeset{} = changeset} ->
         changeset = Map.put(changeset, :action, :update)
-        render(conn, :edit, ingredient: ingredient, changeset: changeset, action: ~p"/ingredients/#{ingredient}")
+        inventory_type_options = [
+          {"Ingredients", "ingredients"},
+          {"Packing", "packing"},
+          {"Kitchen Equipment", "kitchen"}
+        ]
+        render(conn, :edit,
+          ingredient: ingredient,
+          changeset: changeset,
+          action: ~p"/ingredients/#{ingredient}",
+          inventory_type_options: inventory_type_options
+        )
     end
   end
 

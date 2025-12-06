@@ -488,23 +488,28 @@ defmodule MrMunchMeAccountingApp.Inventory do
 
   # ---------- Dashboard helpers ----------
 
-  @packing_codes ["BOLSA_CELOFAN", "ESTAMPAS", "LISTONES", "BASE_GRANDE", "BASE_MEDIANA"]
-  @kitchen_codes ["MOLDE_GRANDE", "MOLDE_MEDIANO"]
-
   @doc """
-  Determines the inventory type based on ingredient code.
-  Returns :packing, :kitchen, or :ingredients
+  Determines the inventory type based on ingredient.
+  Returns :packing, :kitchen, :other, or :ingredients
   """
   def inventory_type(ingredient_code) when is_binary(ingredient_code) do
-    cond do
-      ingredient_code in @packing_codes -> :packing
-      ingredient_code in @kitchen_codes -> :kitchen
-      true -> :ingredients
+    case Repo.get_by(Ingredient, code: ingredient_code) do
+      nil -> :ingredients  # Default if ingredient not found
+      ingredient -> String.to_atom(ingredient.inventory_type || "ingredients")
     end
   end
 
-  def inventory_type(%{code: code}), do: inventory_type(code)
-  def inventory_type(%{ingredient: %{code: code}}), do: inventory_type(code)
+  def inventory_type(%Ingredient{} = ingredient) do
+    case ingredient.inventory_type do
+      nil -> :ingredients
+      type -> String.to_atom(type)
+    end
+  end
+
+  def inventory_type(%{code: code}) when is_binary(code), do: inventory_type(code)
+  def inventory_type(%{ingredient: %{code: code}}) when is_binary(code), do: inventory_type(code)
+  def inventory_type(%{ingredient: %Ingredient{} = ingredient}), do: inventory_type(ingredient)
+  def inventory_type(_), do: :ingredients  # Default fallback
 
   @doc """
   Returns all stock items, preloaded with ingredient + location.
