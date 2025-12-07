@@ -236,8 +236,13 @@ defmodule MrMunchMeAccountingApp.Inventory do
       #   Repo.rollback({:error, :insufficient_stock})
       # end
 
-      # Use current average cost
-      unit_cost_cents = stock.avg_cost_per_unit_cents
+      # Use current average cost, with fallback to ingredient's cost_per_unit_cents
+      unit_cost_cents =
+        if stock.avg_cost_per_unit_cents && stock.avg_cost_per_unit_cents > 0 do
+          stock.avg_cost_per_unit_cents
+        else
+          ingredient.cost_per_unit_cents || 0
+        end
       total_cost_cents = quantity * unit_cost_cents
 
       new_qty = stock.quantity_on_hand - quantity
@@ -1095,8 +1100,13 @@ defmodule MrMunchMeAccountingApp.Inventory do
         Repo.rollback(:insufficient_stock)
       end
 
-      # Use current avg cost for write-off
-      unit_cost_cents = stock.avg_cost_per_unit_cents
+      # Use current avg cost for write-off, with fallback to ingredient's cost_per_unit_cents
+      unit_cost_cents =
+        if stock.avg_cost_per_unit_cents && stock.avg_cost_per_unit_cents > 0 do
+          stock.avg_cost_per_unit_cents
+        else
+          ingredient.cost_per_unit_cents || 0
+        end
       total_cost_cents = unit_cost_cents * quantity
 
       # Insert movement
@@ -1470,17 +1480,23 @@ defmodule MrMunchMeAccountingApp.Inventory do
           movement.movement_date
         )
 
-        # Fallback: If no purchases up to that date, use overall current cost
+        # Fallback chain: If no purchases up to that date, use overall current cost, then ingredient cost
         avg_cost =
           if avg_cost_as_of_date && avg_cost_as_of_date > 0 do
             avg_cost_as_of_date
           else
-            # Use the current overall cumulative average cost as fallback
+            # Try overall cumulative average cost
             calculate_cumulative_avg_cost(movement.ingredient_id, movement.from_location_id) ||
-              # If still no cost, try to get from current stock
+              # Try current stock's avg_cost_per_unit_cents
               case get_or_create_stock!(movement.ingredient_id, movement.from_location_id) do
                 stock when stock.avg_cost_per_unit_cents > 0 -> stock.avg_cost_per_unit_cents
-                _ -> nil
+                _ ->
+                  # Final fallback: use the ingredient's cost_per_unit_cents if set
+                  if movement.ingredient && movement.ingredient.cost_per_unit_cents && movement.ingredient.cost_per_unit_cents > 0 do
+                    movement.ingredient.cost_per_unit_cents
+                  else
+                    nil
+                  end
               end
           end
 
