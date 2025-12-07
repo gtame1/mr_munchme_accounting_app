@@ -272,6 +272,55 @@ defmodule MrMunchMeAccountingAppWeb.OrderController do
         )
     end
   end
+
+  def calendar(conn, params) do
+    # Parse year and month from params, default to current month
+    today = Date.utc_today()
+    year = case params["year"] do
+      nil -> today.year
+      year_str -> String.to_integer(year_str)
+    end
+
+    month = case params["month"] do
+      nil -> today.month
+      month_str -> String.to_integer(month_str)
+    end
+
+    # Ensure valid month range
+    month = cond do
+      month < 1 -> 1
+      month > 12 -> 12
+      true -> month
+    end
+
+    # Get orders grouped by delivery date for this month
+    orders_by_date = Orders.list_orders_for_calendar_month(year, month)
+
+    # Calculate first day of month and last day
+    first_day = Date.new!(year, month, 1)
+    last_day = Date.end_of_month(first_day)
+
+    # Calculate first day of calendar grid (might be from previous month)
+    # Date.day_of_week returns 1=Monday, 7=Sunday, but we want Sunday=0
+    weekday = Date.day_of_week(first_day)
+    # Convert: 7 (Sunday) -> 0, 1 (Monday) -> 1, etc.
+    days_from_sunday = if weekday == 7, do: 0, else: weekday
+    calendar_start = Date.add(first_day, -days_from_sunday)
+
+    # Calculate last day of calendar grid (complete 6 weeks = 42 days)
+    calendar_end = Date.add(calendar_start, 41)
+
+    render(conn, :calendar,
+      year: year,
+      month: month,
+      first_day: first_day,
+      last_day: last_day,
+      calendar_start: calendar_start,
+      calendar_end: calendar_end,
+      orders_by_date: orders_by_date,
+      today: today
+    )
+  end
 end
 
 
@@ -280,4 +329,20 @@ defmodule MrMunchMeAccountingAppWeb.OrderHTML do
   import MrMunchMeAccountingAppWeb.CoreComponents
 
   embed_templates "order_html/*"
+
+  def prev_month(year, month) do
+    if month == 1 do
+      %{year: year - 1, month: 12}
+    else
+      %{year: year, month: month - 1}
+    end
+  end
+
+  def next_month(year, month) do
+    if month == 12 do
+      %{year: year + 1, month: 1}
+    else
+      %{year: year, month: month + 1}
+    end
+  end
 end

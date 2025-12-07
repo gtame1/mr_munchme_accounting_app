@@ -1,0 +1,353 @@
+<div class="calendar-page">
+  <div class="calendar-header">
+    <div class="calendar-header-left">
+      <h1 class="calendar-title">Delivery Calendar</h1>
+      <p class="calendar-subtitle">View all orders scheduled for delivery by date</p>
+    </div>
+    <div class="calendar-header-actions">
+      <.link 
+        navigate={~p"/orders/calendar?year=#{prev_month(@year, @month).year}&month=#{prev_month(@year, @month).month}"}
+        class="btn btn-sm"
+      >
+        ← Previous
+      </.link>
+      <.link 
+        navigate={~p"/orders/calendar?year=#{Date.utc_today().year}&month=#{Date.utc_today().month}"}
+        class="btn btn-sm"
+      >
+        Today
+      </.link>
+      <.link 
+        navigate={~p"/orders/calendar?year=#{next_month(@year, @month).year}&month=#{next_month(@year, @month).month}"}
+        class="btn btn-sm"
+      >
+        Next →
+      </.link>
+      <.link navigate={~p"/orders"} class="btn btn-sm primary">
+        View List
+      </.link>
+    </div>
+  </div>
+
+  <div class="calendar-month-title">
+    <%= Calendar.strftime(@first_day, "%B %Y") %>
+  </div>
+
+  <div class="calendar-grid">
+    <div class="calendar-weekday">S</div>
+    <div class="calendar-weekday">M</div>
+    <div class="calendar-weekday">T</div>
+    <div class="calendar-weekday">W</div>
+    <div class="calendar-weekday">T</div>
+    <div class="calendar-weekday">F</div>
+    <div class="calendar-weekday">S</div>
+
+    <%= for date <- Date.range(@calendar_start, @calendar_end) do %>
+      <div class={
+        [
+          "calendar-day",
+          if(Date.compare(date, @first_day) == :lt or Date.compare(date, @last_day) == :gt, do: "calendar-day-other-month"),
+          if(Date.compare(date, @today) == :eq, do: "calendar-day-today")
+        ]
+      }>
+        <div class="calendar-day-number">
+          <%= date.day %>
+        </div>
+        <div class="calendar-day-orders">
+          <%= if orders = Map.get(@orders_by_date, date) do %>
+            <%= if length(orders) > 0 do %>
+              <div class="calendar-orders-count">
+                <strong><%= length(orders) %></strong> <%= if length(orders) == 1, do: "order", else: "orders" %>
+              </div>
+              <div class="calendar-orders-list">
+                <%= for order <- Enum.take(orders, 3) do %>
+                  <div class="calendar-order-item">
+                    <span class={
+                      cond do
+                        order.status == "new_order" -> "calendar-order-status-new_order"
+                        order.status == "in_prep" -> "calendar-order-status-in_prep"
+                        order.status == "ready" -> "calendar-order-status-ready"
+                        order.status == "delivered" -> "calendar-order-status-delivered"
+                        true -> ""
+                      end
+                    }></span>
+                    <.link navigate={~p"/orders/#{order.id}"} class="calendar-order-link">
+                      <%= order.customer_name %> - <%= order.product && order.product.name %>
+                    </.link>
+                  </div>
+                <% end %>
+                <%= if length(orders) > 3 do %>
+                  <div class="calendar-order-more">
+                    +<%= length(orders) - 3 %> more
+                  </div>
+                <% end %>
+              </div>
+            <% end %>
+          <% end %>
+        </div>
+      </div>
+    <% end %>
+  </div>
+
+  <div class="calendar-legend">
+    <div class="calendar-legend-items">
+      <div class="calendar-legend-item">
+        <span class="calendar-order-status-new_order"></span>
+        <span>New</span>
+      </div>
+      <div class="calendar-legend-item">
+        <span class="calendar-order-status-in_prep"></span>
+        <span>Prep</span>
+      </div>
+      <div class="calendar-legend-item">
+        <span class="calendar-order-status-ready"></span>
+        <span>Ready</span>
+      </div>
+      <div class="calendar-legend-item">
+        <span class="calendar-order-status-delivered"></span>
+        <span>Done</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+  .calendar-page {
+    padding: 0.5rem 1rem;
+    height: calc(100vh - 6rem);
+    max-height: calc(100vh - 6rem);
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    overflow: hidden;
+  }
+
+  .calendar-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+    flex-shrink: 0;
+  }
+
+  .calendar-header-left {
+    flex: 1;
+    min-width: 200px;
+  }
+
+  .calendar-title {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--text-main, #3d2318);
+    margin: 0;
+  }
+
+  .calendar-subtitle {
+    display: none;
+  }
+
+  .calendar-header-actions {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+  }
+
+  .calendar-month-title {
+    text-align: center;
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--text-main, #3d2318);
+    padding: 0.15rem 0;
+    flex-shrink: 0;
+  }
+
+  .calendar-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 1px;
+    background: var(--border-subtle, #e5e7eb);
+    border: 1px solid var(--border-subtle, #e5e7eb);
+    border-radius: var(--radius-md, 10px);
+    overflow: hidden;
+    flex: 1 1 0;
+    min-height: 0;
+    grid-auto-rows: 1fr;
+  }
+
+  .calendar-weekday {
+    padding: 0.35rem 0.25rem;
+    text-align: center;
+    font-weight: 600;
+    font-size: 0.7rem;
+    background: var(--bg-card, #ffffff);
+    color: var(--text-muted, #8b6f5b);
+    letter-spacing: 0;
+    flex-shrink: 0;
+  }
+
+  .calendar-day {
+    min-height: 0;
+    padding: 0.4rem;
+    background: var(--bg-card, #fff);
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    overflow-y: auto;
+    font-size: 0.75rem;
+  }
+
+  .calendar-day-other-month {
+    background: var(--bg-subtle, #f9fafb);
+    opacity: 0.6;
+  }
+
+  .calendar-day-today {
+    background: #fff8ed;
+    border: 2px solid #f8b84e;
+  }
+
+  .calendar-day-number {
+    font-weight: 600;
+    font-size: 0.8rem;
+    color: var(--text-main, #3d2318);
+    margin-bottom: 0.25rem;
+  }
+
+  .calendar-day-orders {
+    flex: 1;
+    overflow-y: auto;
+    font-size: 0.8rem;
+  }
+
+  .calendar-orders-count {
+    font-size: 0.65rem;
+    color: var(--text-muted, #8b6f5b);
+    margin-bottom: 0.25rem;
+    padding: 0.125rem 0.35rem;
+    background: var(--bg-subtle, #f9fafb);
+    border-radius: var(--radius-sm, 6px);
+    display: inline-block;
+  }
+
+  .calendar-orders-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+  }
+
+  .calendar-order-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.35rem;
+    padding: 0.3rem 0.4rem;
+    border-radius: var(--radius-sm, 6px);
+    background: var(--bg-subtle, #f9fafb);
+    transition: background 0.15s;
+  }
+
+  .calendar-order-item:hover {
+    background: var(--bg-hover, #f3f4f6);
+  }
+
+  .calendar-order-status-new_order::before,
+  .calendar-order-status-in_prep::before,
+  .calendar-order-status-ready::before,
+  .calendar-order-status-delivered::before {
+    content: "";
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    margin-right: 0.25rem;
+  }
+
+  .calendar-order-status-new_order::before {
+    background: #3b82f6;
+  }
+
+  .calendar-order-status-in_prep::before {
+    background: #f59e0b;
+  }
+
+  .calendar-order-status-ready::before {
+    background: #10b981;
+  }
+
+  .calendar-order-status-delivered::before {
+    background: #6b7280;
+  }
+
+  .calendar-order-link {
+    color: var(--text-main, #3d2318);
+    text-decoration: none;
+    font-size: 0.8rem;
+    line-height: 1.4;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: normal;
+    flex: 1;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+  }
+
+  .calendar-order-link:hover {
+    text-decoration: underline;
+    color: var(--primary, #8a3b2f);
+  }
+
+  .calendar-order-more {
+    font-size: 0.65rem;
+    color: var(--text-muted, #8b6f5b);
+    font-style: italic;
+    padding: 0.25rem 0.5rem;
+  }
+
+  .calendar-legend {
+    padding: 0.5rem 0.75rem;
+    background: var(--bg-card, #ffffff);
+    border-radius: var(--radius-md, 10px);
+    border: 1px solid var(--border-subtle, #f1e4da);
+    box-shadow: 0 2px 8px rgba(61, 35, 24, 0.05);
+    flex-shrink: 0;
+  }
+
+  .calendar-legend-items {
+    display: flex;
+    gap: 1.25rem;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .calendar-legend-item {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.75rem;
+    color: var(--text-main, #3d2318);
+  }
+
+  .calendar-legend-item span:first-child {
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+  }
+
+  .calendar-legend-item .calendar-order-status-new_order {
+    background: #3b82f6;
+  }
+
+  .calendar-legend-item .calendar-order-status-in_prep {
+    background: #f59e0b;
+  }
+
+  .calendar-legend-item .calendar-order-status-ready {
+    background: #10b981;
+  }
+
+  .calendar-legend-item .calendar-order-status-delivered {
+    background: #6b7280;
+  }
+</style>

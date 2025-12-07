@@ -233,6 +233,42 @@ defmodule MrMunchMeAccountingApp.Orders do
     end
   end
 
+  @doc """
+  Gets orders for a specific month, grouped by delivery date.
+  Returns a map where keys are dates (Date) and values are lists of orders.
+  Excludes canceled orders by default.
+  """
+  def list_orders_for_calendar_month(year, month, opts \\ []) do
+    import Ecto.Query
+
+    exclude_canceled = Keyword.get(opts, :exclude_canceled, true)
+
+    # Calculate first and last day of the month
+    first_day = Date.new!(year, month, 1)
+    last_day = Date.end_of_month(first_day)
+
+    base_query =
+      from o in Order,
+        where: o.delivery_date >= ^first_day and o.delivery_date <= ^last_day,
+        join: p in assoc(o, :product),
+        join: l in assoc(o, :prep_location),
+        left_join: c in assoc(o, :customer),
+        preload: [product: p, prep_location: l, customer: c],
+        order_by: [asc: o.delivery_date, asc: o.id]
+
+    query =
+      if exclude_canceled do
+        from o in base_query, where: o.status != "canceled"
+      else
+        base_query
+      end
+
+    orders = Repo.all(query)
+
+    # Group orders by delivery date
+    Enum.group_by(orders, & &1.delivery_date, & &1)
+  end
+
   def get_order!(id), do: Repo.get!(Order, id) |> Repo.preload([:product, :prep_location, :customer])
 
   def change_order(%Order{} = order, attrs \\ %{}) do

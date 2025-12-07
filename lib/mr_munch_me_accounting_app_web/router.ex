@@ -20,6 +20,7 @@ defmodule MrMunchMeAccountingAppWeb.Router do
 
     resources "/transactions", TransactionController, only: [:index, :new, :create, :show]
 
+    get "/orders/calendar", OrderController, :calendar
     resources "/orders", OrderController, only: [:index, :show, :new, :create, :edit, :update]
     post "/orders/:id/status", OrderController, :update_status
     get "/orders/:id/payments/new", OrderController, :new_payment
