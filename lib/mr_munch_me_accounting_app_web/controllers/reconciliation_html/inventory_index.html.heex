@@ -1,0 +1,114 @@
+<section class="content">
+    <header class="content-header">
+      <h1 class="page-title">Inventory Reconciliation</h1>
+    </header>
+
+    <div class="content-body">
+      <section class="card">
+        <h2 class="card-title">Reconcile Inventory Quantities</h2>
+        <p class="card-subtitle">
+          Enter actual inventory quantities and create adjustment journal entries to match the system.
+        </p>
+
+        <div class="table-wrapper" style="margin-top: 1.5rem;">
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Ingredient</th>
+                <th>Location</th>
+                <th>System Quantity</th>
+                <th>Actual Quantity</th>
+                <th>Difference</th>
+                <th>Value</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              <%= for item <- @inventory_items do %>
+                <tr>
+                  <td><strong><%= item.ingredient.code %></strong><br/>
+                    <span style="font-size: 0.85rem; color: #8b6f5b;"><%= item.ingredient.name %></span>
+                  </td>
+                  <td><.location_badge location={ item.location } /></td>
+                  <td class="numeric"><%= item.quantity_on_hand %></td>
+                  <td>
+                    <.form 
+                      for={%{}} 
+                      method="post" 
+                      action={~p"/reconciliation/inventory/adjust"} 
+                      class="inline-form"
+                      id={"adjust-form-#{item.ingredient.id}-#{item.location.id}"}
+                      :let={f}
+                    >
+                      <input type="hidden" name="ingredient_id" value={item.ingredient.id} />
+                      <input type="hidden" name="location_id" value={item.location.id} />
+                      <input type="hidden" name="adjustment_date" value={Date.utc_today()} />
+                      <div style="display: flex; gap: 0.5rem; align-items: center;">
+                        <input 
+                          type="number" 
+                          name="actual_quantity" 
+                          step="1" 
+                          value={item.quantity_on_hand} 
+                          style="width: 100px;"
+                          class="numeric"
+                        />
+                        <input 
+                          type="text" 
+                          name="description" 
+                          placeholder="Description (optional)"
+                          style="flex: 1; min-width: 200px;"
+                        />
+                        <button class="btn btn-sm" type="submit">Adjust</button>
+                      </div>
+                    </.form>
+                  </td>
+                  <td class="numeric" id={"diff-#{item.ingredient.id}-#{item.location.id}"}>
+                    <span style="color: #8b6f5b;">—</span>
+                  </td>
+                  <td class="numeric">
+                    <%= format_currency(item.total_value_cents) %>
+                    <br/>
+                    <span style="font-size: 0.75rem; color: #8b6f5b;">
+                      @ <%= format_currency(item.avg_cost_per_unit_cents) %>/unit
+                    </span>
+                  </td>
+                  <td>
+                    <span style="color: #8b6f5b; font-size: 0.85rem;">Enter actual quantity and click Adjust</span>
+                  </td>
+                </tr>
+              <% end %>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+  </section>
+
+<script>
+  // Calculate and display difference as user types
+  document.addEventListener('DOMContentLoaded', function() {
+    const forms = document.querySelectorAll('.inline-form');
+    forms.forEach(form => {
+      const ingredientId = form.querySelector('input[name="ingredient_id"]').value;
+      const locationId = form.querySelector('input[name="location_id"]').value;
+      const systemQtyCell = form.closest('tr').querySelectorAll('.numeric')[0];
+      const systemQty = parseInt(systemQtyCell.textContent.trim()) || 0;
+      const actualQtyInput = form.querySelector('input[name="actual_quantity"]');
+      const diffCell = document.getElementById('diff-' + ingredientId + '-' + locationId);
+
+      actualQtyInput.addEventListener('input', function() {
+        const actualQty = parseInt(this.value) || 0;
+        const difference = actualQty - systemQty;
+        
+        if (difference === 0) {
+          diffCell.innerHTML = '<span style="color: #10b981;">0</span>';
+        } else if (difference > 0) {
+          diffCell.innerHTML = '<span style="color: #3b82f6;">+' + difference + '</span>';
+        } else {
+          diffCell.innerHTML = '<span style="color: #dc2626;">' + difference + '</span>';
+        }
+      });
+    });
+  });
+</script>
+

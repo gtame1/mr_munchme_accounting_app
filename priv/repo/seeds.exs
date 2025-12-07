@@ -120,6 +120,7 @@ assets = [
   %{code: "1010", name: "NuBank Ana Gaby Account", type: "asset", normal_balance: "debit", is_cash: true},
   %{code: "1011", name: "Banco Fer", type: "asset", normal_balance: "debit", is_cash: true},
   %{code: "1100", name: "Accounts Receivable (Unpaid Orders)", type: "asset", normal_balance: "debit"},
+  %{code: "1100", name: "Orders Paid By Company", type: "asset", normal_balance: "credit"}, # Antiasset, discounted by value paid by company
 
   # Inventory
   %{code: "1200", name: "Ingredients Inventory", type: "asset", normal_balance: "debit"},

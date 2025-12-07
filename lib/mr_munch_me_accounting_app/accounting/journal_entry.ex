@@ -26,6 +26,7 @@ defmodule MrMunchMeAccountingApp.Accounting.JournalEntry do
     inventory_purchase
     order_payment
     internal_transfer
+    reconciliation
     other
   )
   @entry_types [
@@ -39,6 +40,7 @@ defmodule MrMunchMeAccountingApp.Accounting.JournalEntry do
     {"Inventory Purchase", "inventory_purchase"},
     {"Order Payment", "order_payment"},
     {"Internal Transfer", "internal_transfer"},
+    {"Reconciliation", "reconciliation"},
     {"Other", "other"}
   ]
 
