@@ -915,7 +915,7 @@
     border-radius: var(--radius-md, 10px);
     overflow: hidden;
     grid-template-rows: 2.5rem;
-    grid-auto-rows: minmax(12rem, auto);
+    grid-auto-rows: auto;
   }
 
   .calendar-grid > .calendar-weekday {
@@ -944,7 +944,7 @@
   }
 
   .calendar-day {
-    min-height: 12rem;
+    min-height: 4rem;
     padding: 0.4rem;
     background: var(--bg-card, #fff);
     display: flex;
