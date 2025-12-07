@@ -11,7 +11,7 @@ defmodule MrMunchMeAccountingApp.CustomersFixtures do
     {:ok, customer} =
       attrs
       |> Enum.into(%{
-        email: "some email",
+        email: "some@email.com",
         name: "some name",
         phone: "some phone"
       })

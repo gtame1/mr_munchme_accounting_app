@@ -21,11 +21,11 @@ defmodule MrMunchMeAccountingApp.CustomersTest do
     end
 
     test "create_customer/1 with valid data creates a customer" do
-      valid_attrs = %{name: "some name", email: "some email", phone: "some phone"}
+      valid_attrs = %{name: "some name", email: "some@email.com", phone: "some phone"}
 
       assert {:ok, %Customer{} = customer} = Customers.create_customer(valid_attrs)
       assert customer.name == "some name"
-      assert customer.email == "some email"
+      assert customer.email == "some@email.com"
       assert customer.phone == "some phone"
     end
 
@@ -35,11 +35,11 @@ defmodule MrMunchMeAccountingApp.CustomersTest do
 
     test "update_customer/2 with valid data updates the customer" do
       customer = customer_fixture()
-      update_attrs = %{name: "some updated name", email: "some updated email", phone: "some updated phone"}
+      update_attrs = %{name: "some updated name", email: "updated@email.com", phone: "some updated phone"}
 
       assert {:ok, %Customer{} = customer} = Customers.update_customer(customer, update_attrs)
       assert customer.name == "some updated name"
-      assert customer.email == "some updated email"
+      assert customer.email == "updated@email.com"
       assert customer.phone == "some updated phone"
     end
 

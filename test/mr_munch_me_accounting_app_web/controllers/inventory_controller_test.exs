@@ -26,6 +26,15 @@ defmodule MrMunchMeAccountingAppWeb.InventoryControllerTest do
         is_cash: false
       })
 
+    {:ok, _ingredients_cogs_account} =
+      Accounting.create_account(%{
+        code: "5000",
+        name: "Ingredients COGS",
+        type: "expense",
+        normal_balance: "debit",
+        is_cash: false
+      })
+
     # Create ingredient
     {:ok, ingredient} =
       %Ingredient{}
