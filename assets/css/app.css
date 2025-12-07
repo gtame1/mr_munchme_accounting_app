@@ -147,6 +147,10 @@
     margin-top: 0.25rem;
   }
 
+  .nav-dropdown-menu.no-transition {
+    transition: none;
+  }
+
   .nav-link {
     display: block;
     padding: 0.55rem 0.85rem;

@@ -86,12 +86,19 @@ window.toggleDropdown = function(button) {
   }
 }
 
-// Initialize dropdowns on page load
-window.addEventListener('load', () => {
+// Initialize dropdowns without animation
+const initializeDropdowns = () => {
   const dropdowns = document.querySelectorAll('.nav-dropdown')
   dropdowns.forEach(dropdown => {
     const menu = dropdown.querySelector('.nav-dropdown-menu')
     const icon = dropdown.querySelector('.dropdown-icon')
+    
+    // Disable transitions during initialization
+    menu.classList.add('no-transition')
+    if (icon) {
+      icon.style.transition = 'none'
+    }
+    
     // Open only dropdowns with data-default-open="true"
     const shouldBeOpen = dropdown.getAttribute('data-default-open') === 'true'
     if (shouldBeOpen) {
@@ -107,29 +114,24 @@ window.addEventListener('load', () => {
         icon.style.transform = 'rotate(0deg)'
       }
     }
+    
+    // Re-enable transitions after styles are set
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        menu.classList.remove('no-transition')
+        if (icon) {
+          icon.style.transition = ''
+        }
+      })
+    })
   })
-})
+}
 
-// Re-initialize dropdowns after LiveView navigation
-window.addEventListener('phx:page-loading-stop', () => {
-  const dropdowns = document.querySelectorAll('.nav-dropdown')
-  dropdowns.forEach(dropdown => {
-    const menu = dropdown.querySelector('.nav-dropdown-menu')
-    const icon = dropdown.querySelector('.dropdown-icon')
-    // Preserve open/closed state after navigation
-    if (dropdown.classList.contains('is-open')) {
-      menu.style.maxHeight = menu.scrollHeight + 'px'
-      if (icon) {
-        icon.style.transform = 'rotate(180deg)'
-      }
-    } else {
-      menu.style.maxHeight = '0'
-      if (icon) {
-        icon.style.transform = 'rotate(0deg)'
-      }
-    }
-  })
-})
+// Initialize dropdowns on page load
+window.addEventListener('load', initializeDropdowns)
+
+// Re-initialize dropdowns after LiveView navigation (without animation)
+window.addEventListener('phx:page-loading-stop', initializeDropdowns)
 
 // The lines below enable quality of life phoenix_live_reload
 // development features:
