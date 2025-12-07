@@ -4,6 +4,8 @@ defmodule MrMunchMeAccountingAppWeb.ReportController do
   alias MrMunchMeAccountingApp.Accounting
   alias MrMunchMeAccountingApp.Reporting
   alias MrMunchMeAccountingApp.Orders
+  alias MrMunchMeAccountingApp.Inventory.Verification
+  alias MrMunchMeAccountingApp.Repo
 
   def dashboard(conn, params) do
     {start_date, end_date} = resolve_period(params)
@@ -109,6 +111,43 @@ defmodule MrMunchMeAccountingAppWeb.ReportController do
     )
   end
 
+  def inventory_verification(conn, params) do
+    results = Verification.run_all_checks()
+
+    # Handle repair action (POST request)
+    if conn.method == "POST" do
+      case Verification.repair_inventory_quantities() do
+        {:ok, repairs_list} when repairs_list != [] ->
+          # Store repairs in session and redirect
+          conn
+          |> put_session(:repair_results, repairs_list)
+          |> redirect(to: ~p"/reports/inventory_verification#repair-results")
+        {:ok, []} ->
+          # No repairs needed
+          render(conn, :inventory_verification,
+            results: results,
+            repairs: []
+          )
+        {:error, _reason} ->
+          render(conn, :inventory_verification,
+            results: results,
+            repairs: []
+          )
+      end
+    else
+      # GET request - retrieve repairs from session
+      repairs = get_session(conn, :repair_results) || []
+
+      # Clear repair results from session after reading
+      conn = delete_session(conn, :repair_results)
+
+      render(conn, :inventory_verification,
+        results: results,
+        repairs: repairs
+      )
+    end
+  end
+
   # Helpers
 
   defp resolve_period(%{"start_date" => s, "end_date" => e}) when s != "" and e != "" do
@@ -131,4 +170,74 @@ defmodule MrMunchMeAccountingAppWeb.ReportHTML do
   import MrMunchMeAccountingAppWeb.CoreComponents
 
   embed_templates "report_html/*"
+
+  defp format_check_name(name) do
+    name
+    |> Atom.to_string()
+    |> String.replace("_", " ")
+    |> String.split()
+    |> Enum.map(&String.capitalize/1)
+    |> Enum.join(" ")
+  end
+
+  defp get_check_explanation(:inventory_quantities) do
+    "Verifies that stored inventory quantities match the sum of all movements (purchases, usages, transfers). " <>
+    "If mismatched, use the 'Repair Quantities' button to recalculate from movements, or use Inventory Reconciliation to record physical counts."
+  end
+
+  defp get_check_explanation(:wip_balance) do
+    "Verifies that the Work-In-Progress (WIP) account balance matches the net WIP from journal entries " <>
+    "(debits from orders in prep minus credits from orders delivered). If mismatched, review order status changes and journal entries."
+  end
+
+  defp get_check_explanation(:inventory_cost_accounting) do
+    "Verifies that the total value of inventory items (quantity × average cost) matches the Ingredients Inventory account balance. " <>
+    "If mismatched, review inventory purchases, cost updates, and journal entries affecting the inventory account."
+  end
+
+  defp get_check_explanation(:order_wip_consistency) do
+    "Verifies that orders moved to 'in prep' have corresponding 'delivered' entries, and that WIP debits equal credits for delivered orders. " <>
+    "If inconsistent, ensure all orders follow the complete workflow: in_prep → delivered, and review order status changes."
+  end
+
+  defp get_check_explanation(:journal_entries_balanced) do
+    "Verifies that all journal entries have balanced debits and credits (total debits = total credits). " <>
+    "This is a fundamental accounting rule. If unbalanced, review the journal entry creation logic and manually correct entries."
+  end
+
+  defp get_check_explanation(_) do
+    "Verification check"
+  end
+
+  defp format_key(key) do
+    key
+    |> Atom.to_string()
+    |> String.replace("_", " ")
+    |> String.split()
+    |> Enum.map(&String.capitalize/1)
+    |> Enum.join(" ")
+  end
+
+  defp format_value(key, value) when is_integer(value) do
+    # Check if this key represents a count, not a currency
+    count_keys = [:checked_entries, :unbalanced, :checked_items, :checked_orders, :issues]
+
+    if key in count_keys do
+      # Format as plain number
+      Integer.to_string(value)
+    else
+      # Format cents as currency
+      pesos = div(value, 100)
+      cents = rem(value, 100)
+      "#{pesos}.#{String.pad_leading(Integer.to_string(cents), 2, "0")} MXN"
+    end
+  end
+
+  defp format_value(_key, value) when is_list(value) do
+    "#{length(value)} items"
+  end
+
+  defp format_value(_key, value) do
+    inspect(value)
+  end
 end

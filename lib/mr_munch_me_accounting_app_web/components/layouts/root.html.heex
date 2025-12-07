@@ -66,8 +66,6 @@
               <.link navigate={~p"/reports/balance_sheet"} class="nav-link">Balance Sheet</.link>
               <.link navigate={~p"/reports/unit_economics"} class="nav-link">Unit Economics</.link>
               <.link navigate={~p"/reports/cash_flow"} class="nav-link">Cash Flow</.link>
-              <.link navigate={~p"/reconciliation/accounting"} class="nav-link">Account Reconciliation</.link>
-              <.link navigate={~p"/reconciliation/inventory"} class="nav-link">Inventory Reconciliation</.link>
             </div>
           </div>
 
@@ -80,6 +78,18 @@
               <.link navigate={~p"/products"} class="nav-link">Product List</.link>
               <.link navigate={~p"/ingredients"} class="nav-link">Ingredient List</.link>
               <.link navigate={~p"/recipes"} class="nav-link">Recepies</.link>
+            </div>
+          </div>
+
+          <div class="nav-dropdown">
+            <button type="button" class="nav-dropdown-toggle" onclick="toggleDropdown(this)">
+              <span>Reconciliation Tools</span>
+              <.icon name="hero-chevron-down" class="dropdown-icon" />
+            </button>
+            <div class="nav-dropdown-menu">
+              <.link navigate={~p"/reports/inventory_verification"} class="nav-link">Inventory Verification</.link>
+              <.link navigate={~p"/reconciliation/accounting"} class="nav-link">Account Reconciliation</.link>
+              <.link navigate={~p"/reconciliation/inventory"} class="nav-link">Inventory Reconciliation</.link>
             </div>
           </div>
 
