@@ -97,8 +97,54 @@
   .nav {
     display: flex;
     flex-direction: column;
-    gap: 0.35rem;
+    gap: 0.5rem;
     margin-top: 0.75rem;
+  }
+
+  .nav-dropdown {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .nav-dropdown-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    padding: 0.65rem 0.85rem;
+    background: transparent;
+    border: none;
+    color: var(--sidebar-text);
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    border-radius: 999px;
+    transition: background 0.15s ease, opacity 0.15s ease;
+    text-align: left;
+    opacity: 0.9;
+  }
+
+  .nav-dropdown-toggle:hover {
+    background: rgba(253, 230, 211, 0.22);
+    opacity: 1;
+  }
+
+  .nav-dropdown-toggle .dropdown-icon {
+    width: 1rem;
+    height: 1rem;
+    transition: transform 0.2s ease;
+    flex-shrink: 0;
+  }
+
+  .nav-dropdown-menu {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    overflow: hidden;
+    max-height: 0;
+    transition: max-height 0.3s ease;
+    padding-left: 0.75rem;
+    margin-top: 0.25rem;
   }
 
   .nav-link {

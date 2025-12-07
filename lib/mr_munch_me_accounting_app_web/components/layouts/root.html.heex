@@ -41,30 +41,58 @@
         </.link>
 
         <nav class="nav">
-          <strong>Main Menu</strong>
-          <.link navigate={~p"/"} class="nav-link">Dashboard</.link>
-          <.link navigate={~p"/orders"} class="nav-link">All Orders</.link>
-          <.link navigate={~p"/orders/calendar"} class="nav-link">Order Calendar</.link>
-          <.link navigate={~p"/inventory"} class="nav-link">Inventory</.link>
-          <.link navigate={~p"/inventory/requirements"} class="nav-link">Shopping List</.link>
-          <.link navigate={~p"/expenses"} class="nav-link">Expenses</.link>
+          <div class="nav-dropdown" data-default-open="true">
+            <button type="button" class="nav-dropdown-toggle" onclick="toggleDropdown(this)">
+              <span>Main Menu</span>
+              <.icon name="hero-chevron-down" class="dropdown-icon" />
+            </button>
+            <div class="nav-dropdown-menu">
+              <.link navigate={~p"/"} class="nav-link">Dashboard</.link>
+              <.link navigate={~p"/orders"} class="nav-link">All Orders</.link>
+              <.link navigate={~p"/orders/calendar"} class="nav-link">Order Calendar</.link>
+              <.link navigate={~p"/inventory"} class="nav-link">Inventory</.link>
+              <.link navigate={~p"/inventory/requirements"} class="nav-link">Shopping List</.link>
+              <.link navigate={~p"/expenses"} class="nav-link">Expenses</.link>
+            </div>
+          </div> 
 
-          <strong style="margin-top: 1rem;">Materials</strong>
-          <.link navigate={~p"/products"} class="nav-link">Product List</.link>
-          <.link navigate={~p"/ingredients"} class="nav-link">Ingredient List</.link>
-          <.link navigate={~p"/recipes"} class="nav-link">Recepies</.link>
+          <div class="nav-dropdown" data-default-open="true">
+            <button type="button" class="nav-dropdown-toggle" onclick="toggleDropdown(this)">
+              <span>Reports</span>
+              <.icon name="hero-chevron-down" class="dropdown-icon" />
+            </button>
+            <div class="nav-dropdown-menu">
+              <.link navigate={~p"/reports/pnl"} class="nav-link">P&L</.link>
+              <.link navigate={~p"/reports/balance_sheet"} class="nav-link">Balance Sheet</.link>
+              <.link navigate={~p"/reports/unit_economics"} class="nav-link">Unit Economics</.link>
+              <.link navigate={~p"/reports/cash_flow"} class="nav-link">Cash Flow</.link>
+            </div>
+          </div>
 
-          <strong style="margin-top: 1rem;">Reports</strong>
-          <.link navigate={~p"/reports/pnl"} class="nav-link">P&L</.link>
-          <.link navigate={~p"/reports/balance_sheet"} class="nav-link">Balance Sheet</.link>
-          <.link navigate={~p"/reports/unit_economics"} class="nav-link">Unit Economics</.link>
-          <.link navigate={~p"/reports/cash_flow"} class="nav-link">Cash Flow</.link>
+          <div class="nav-dropdown">
+            <button type="button" class="nav-dropdown-toggle" onclick="toggleDropdown(this)">
+              <span>Materials</span>
+              <.icon name="hero-chevron-down" class="dropdown-icon" />
+            </button>
+            <div class="nav-dropdown-menu">
+              <.link navigate={~p"/products"} class="nav-link">Product List</.link>
+              <.link navigate={~p"/ingredients"} class="nav-link">Ingredient List</.link>
+              <.link navigate={~p"/recipes"} class="nav-link">Recepies</.link>
+            </div>
+          </div>
 
-          <strong style="margin-top: 1rem;">Other</strong>
-          <.link navigate={~p"/customers"} class="nav-link">Customers</.link>
-          <.link navigate={~p"/investments"} class="nav-link">Investments</.link>
-          <.link navigate={~p"/transfers"} class="nav-link">Money Transfers</.link>
-          <.link navigate={~p"/transactions"} class="nav-link">All Transactions</.link>
+          <div class="nav-dropdown">
+            <button type="button" class="nav-dropdown-toggle" onclick="toggleDropdown(this)">
+              <span>Other</span>
+              <.icon name="hero-chevron-down" class="dropdown-icon" />
+            </button>
+            <div class="nav-dropdown-menu">
+              <.link navigate={~p"/customers"} class="nav-link">Customers</.link>
+              <.link navigate={~p"/investments"} class="nav-link">Investments</.link>
+              <.link navigate={~p"/transfers"} class="nav-link">Money Transfers</.link>
+              <.link navigate={~p"/transactions"} class="nav-link">All Transactions</.link>
+            </div>
+          </div>
 
         </nav>
       </aside>

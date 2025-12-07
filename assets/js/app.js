@@ -69,6 +69,68 @@ window.addEventListener("load", scrollToHash)
 // Handle scrolling for LiveView navigation
 window.addEventListener("phx:page-loading-stop", scrollToHash)
 
+// Dropdown menu toggle functionality
+window.toggleDropdown = function(button) {
+  const dropdown = button.closest('.nav-dropdown')
+  const menu = dropdown.querySelector('.nav-dropdown-menu')
+  const icon = button.querySelector('.dropdown-icon')
+  
+  dropdown.classList.toggle('is-open')
+  
+  if (dropdown.classList.contains('is-open')) {
+    menu.style.maxHeight = menu.scrollHeight + 'px'
+    icon.style.transform = 'rotate(180deg)'
+  } else {
+    menu.style.maxHeight = '0'
+    icon.style.transform = 'rotate(0deg)'
+  }
+}
+
+// Initialize dropdowns on page load
+window.addEventListener('load', () => {
+  const dropdowns = document.querySelectorAll('.nav-dropdown')
+  dropdowns.forEach(dropdown => {
+    const menu = dropdown.querySelector('.nav-dropdown-menu')
+    const icon = dropdown.querySelector('.dropdown-icon')
+    // Open only dropdowns with data-default-open="true"
+    const shouldBeOpen = dropdown.getAttribute('data-default-open') === 'true'
+    if (shouldBeOpen) {
+      dropdown.classList.add('is-open')
+      menu.style.maxHeight = menu.scrollHeight + 'px'
+      if (icon) {
+        icon.style.transform = 'rotate(180deg)'
+      }
+    } else {
+      dropdown.classList.remove('is-open')
+      menu.style.maxHeight = '0'
+      if (icon) {
+        icon.style.transform = 'rotate(0deg)'
+      }
+    }
+  })
+})
+
+// Re-initialize dropdowns after LiveView navigation
+window.addEventListener('phx:page-loading-stop', () => {
+  const dropdowns = document.querySelectorAll('.nav-dropdown')
+  dropdowns.forEach(dropdown => {
+    const menu = dropdown.querySelector('.nav-dropdown-menu')
+    const icon = dropdown.querySelector('.dropdown-icon')
+    // Preserve open/closed state after navigation
+    if (dropdown.classList.contains('is-open')) {
+      menu.style.maxHeight = menu.scrollHeight + 'px'
+      if (icon) {
+        icon.style.transform = 'rotate(180deg)'
+      }
+    } else {
+      menu.style.maxHeight = '0'
+      if (icon) {
+        icon.style.transform = 'rotate(0deg)'
+      }
+    }
+  })
+})
+
 // The lines below enable quality of life phoenix_live_reload
 // development features:
 //
