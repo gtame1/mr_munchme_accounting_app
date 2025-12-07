@@ -226,10 +226,12 @@ defmodule MrMunchMeAccountingAppWeb.ReportHTML do
       # Format as plain number
       Integer.to_string(value)
     else
-      # Format cents as currency
-      pesos = div(value, 100)
-      cents = rem(value, 100)
-      "#{pesos}.#{String.pad_leading(Integer.to_string(cents), 2, "0")} MXN"
+      # Format cents as currency (handle negative numbers correctly)
+      abs_value = abs(value)
+      pesos = div(abs_value, 100)
+      cents_remainder = rem(abs_value, 100)
+      sign = if value < 0, do: "-", else: ""
+      "#{sign}#{pesos}.#{String.pad_leading(Integer.to_string(cents_remainder), 2, "0")} MXN"
     end
   end
 

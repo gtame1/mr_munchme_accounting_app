@@ -47,7 +47,19 @@
       Start with one debit line and one credit line for simple transactions.
     </p>
 
-    <% params = @changeset.params || %{} %>
+    <% 
+      params = @changeset.params || %{}
+      # Get debit value - prefer changeset changes/data (in cents), then params (might be pesos)
+      debit_value = cond do
+        line = get_in(@changeset.changes, [:journal_lines, Access.at(0)]) ->
+          Ecto.Changeset.get_field(line, :debit_cents) || 0
+        line = get_in(@changeset.data, [:journal_lines, Access.at(0)]) ->
+          line.debit_cents || 0
+        true ->
+          get_in(params, ["journal_lines", "0", "debit_cents"]) || ""
+      end
+      debit_display = if is_integer(debit_value) and debit_value > 0, do: MoneyHelper.cents_to_pesos(debit_value), else: (if debit_value == "", do: "", else: debit_value)
+    %>
 
     <div class="lines-grid">
         <!-- Debit line -->
@@ -70,9 +82,10 @@
                 <.input
                     type="number"
                     name="journal_entry[journal_lines][0][debit_cents]"
-                    label="Amount (in cents)"
+                    label="Amount (MXN)"
+                    step="0.01"
                     min="0"
-                    value={get_in(params, ["journal_lines", "0", "debit_cents"]) || ""}
+                    value={debit_display}
                 />
             </div>
 
@@ -102,13 +115,27 @@
                 />
             </div>
 
+    <% 
+      # Get credit value - prefer changeset changes/data (in cents), then params (might be pesos)
+      credit_value = cond do
+        line = get_in(@changeset.changes, [:journal_lines, Access.at(1)]) ->
+          Ecto.Changeset.get_field(line, :credit_cents) || 0
+        line = get_in(@changeset.data, [:journal_lines, Access.at(1)]) ->
+          line.credit_cents || 0
+        true ->
+          get_in(params, ["journal_lines", "1", "credit_cents"]) || ""
+      end
+      credit_display = if is_integer(credit_value) and credit_value > 0, do: MoneyHelper.cents_to_pesos(credit_value), else: (if credit_value == "", do: "", else: credit_value)
+    %>
+
             <div class="field">
                 <.input
                     type="number"
                     name="journal_entry[journal_lines][1][credit_cents]"
-                    label="Amount (in cents)"
+                    label="Amount (MXN)"
+                    step="0.01"
                     min="0"
-                    value={get_in(params, ["journal_lines", "1", "credit_cents"]) || ""}
+                    value={credit_display}
                 />
             </div>
 

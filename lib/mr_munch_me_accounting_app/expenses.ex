@@ -34,24 +34,9 @@ defmodule MrMunchMeAccountingApp.Expenses do
   def update_expense(%Expense{} = expense, attrs), do: update_expense_with_journal(expense, attrs)
 
   def update_expense_with_journal(%Expense{} = expense, attrs) do
-    # Convert amount to amount_cents if needed
-    attrs =
-      case Map.pop(attrs, "amount_cents") do
-        {nil, attrs} ->
-          # No amount field, use amount_cents as-is
-          attrs
-
-        {amount, attrs} ->
-          # Convert amount (decimal) to amount_cents (integer)
-          amount_cents =
-            amount
-            |> Decimal.new()
-            |> Decimal.mult(Decimal.new(100))
-            |> Decimal.round(0)
-            |> Decimal.to_integer()
-
-          Map.put(attrs, "amount_cents", amount_cents)
-      end
+    # amount_cents should already be in cents (converted in controller)
+    # No conversion needed here
+    attrs
 
     Repo.transaction(fn ->
       with {:ok, updated_expense} <-
@@ -71,25 +56,9 @@ defmodule MrMunchMeAccountingApp.Expenses do
   end
 
   def create_expense_with_journal(attrs) do
-    IO.inspect(attrs, label: "Attrs before conversion")
-
-    attrs =
-      case Map.pop(attrs, "amount_cents") do
-        {nil, attrs} ->
-          # No amount field, use amount_cents as-is
-          attrs
-
-        {amount, attrs} ->
-          # Convert amount (decimal) to amount_cents (integer)
-          amount_cents =
-            amount
-            |> Decimal.new()
-            |> Decimal.mult(Decimal.new(100))
-            |> Decimal.round(0)
-            |> Decimal.to_integer()
-
-          Map.put(attrs, "amount_cents", amount_cents)
-      end
+    # amount_cents should already be in cents (converted in controller)
+    # No conversion needed here
+    attrs
 
     IO.inspect(attrs, label: "Attrs after conversion")
 

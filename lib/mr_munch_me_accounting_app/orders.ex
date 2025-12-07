@@ -2,7 +2,7 @@ defmodule MrMunchMeAccountingApp.Orders do
   import Ecto.Query, warn: false
   alias MrMunchMeAccountingApp.Repo
 
-  alias MrMunchMeAccountingApp.Orders.{Order, Product, OrderPayment}
+  alias MrMunchMeAccountingApp.Orders.{Order, Product, OrderPayment, OrderIngredient}
   alias MrMunchMeAccountingApp.Accounting
   alias MrMunchMeAccountingApp.Customers
   alias MrMunchMeAccountingApp.Repo
@@ -269,7 +269,7 @@ defmodule MrMunchMeAccountingApp.Orders do
     Enum.group_by(orders, & &1.delivery_date, & &1)
   end
 
-  def get_order!(id), do: Repo.get!(Order, id) |> Repo.preload([:product, :prep_location, :customer])
+  def get_order!(id), do: Repo.get!(Order, id) |> Repo.preload([:product, :prep_location, :customer, :order_ingredients])
 
   def change_order(%Order{} = order, attrs \\ %{}) do
     Order.changeset(order, attrs)
@@ -520,5 +520,25 @@ defmodule MrMunchMeAccountingApp.Orders do
     {base, shipping_cents}
   end
 
+  # ORDER INGREDIENTS
+
+  def update_order_ingredients(%Order{} = order, ingredients_attrs) when is_list(ingredients_attrs) do
+    Repo.transaction(fn ->
+      # Delete existing order ingredients
+      Repo.delete_all(from oi in OrderIngredient, where: oi.order_id == ^order.id)
+
+      # Insert new order ingredients
+      Enum.each(ingredients_attrs, fn attrs ->
+        %OrderIngredient{}
+        |> OrderIngredient.changeset(Map.put(attrs, "order_id", order.id))
+        |> Repo.insert!()
+      end)
+
+      # Reload order with ingredients
+      Repo.get!(Order, order.id) |> Repo.preload([:product, :prep_location, :customer, :order_ingredients])
+    end)
+  end
+
+  def update_order_ingredients(%Order{} = _order, _), do: {:error, :invalid_attrs}
 
 end

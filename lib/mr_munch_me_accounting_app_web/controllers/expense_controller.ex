@@ -4,6 +4,7 @@ defmodule MrMunchMeAccountingAppWeb.ExpenseController do
   alias MrMunchMeAccountingApp.Expenses
   alias MrMunchMeAccountingApp.Expenses.Expense
   alias MrMunchMeAccountingApp.Accounting
+  alias MrMunchMeAccountingAppWeb.Helpers.MoneyHelper
 
   def index(conn, _params) do
     expenses = Expenses.list_expenses()
@@ -23,6 +24,9 @@ defmodule MrMunchMeAccountingAppWeb.ExpenseController do
   end
 
   def create(conn, %{"expense" => attrs}) do
+    # Convert pesos to cents
+    attrs = MoneyHelper.convert_params_pesos_to_cents(attrs, [:amount_cents])
+
     case Expenses.create_expense_with_journal(attrs) do
       {:ok, expense} ->
         conn
@@ -50,9 +54,9 @@ defmodule MrMunchMeAccountingAppWeb.ExpenseController do
   def edit(conn, %{"id" => id}) do
     expense = Expenses.get_expense!(id)
 
-    # Convert amount_cents to decimal for form display
+    # Convert amount_cents to pesos for form display
     attrs = %{
-      "amount_cents" => Decimal.div(Decimal.new(expense.amount_cents), Decimal.new(100)) |> Decimal.to_float()
+      "amount_cents" => MoneyHelper.cents_to_pesos(expense.amount_cents)
     }
 
     changeset = Expenses.change_expense(expense, attrs)
@@ -68,6 +72,9 @@ defmodule MrMunchMeAccountingAppWeb.ExpenseController do
 
   def update(conn, %{"id" => id, "expense" => expense_params}) do
     expense = Expenses.get_expense!(id)
+
+    # Convert pesos to cents
+    expense_params = MoneyHelper.convert_params_pesos_to_cents(expense_params, [:amount_cents])
 
     case Expenses.update_expense_with_journal(expense, expense_params) do
       {:ok, expense} ->

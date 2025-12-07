@@ -3,6 +3,7 @@ defmodule MrMunchMeAccountingAppWeb.TransactionController do
 
   alias MrMunchMeAccountingApp.Accounting
   alias MrMunchMeAccountingApp.Accounting.JournalEntry
+  alias MrMunchMeAccountingAppWeb.Helpers.MoneyHelper
 
 
 
@@ -26,6 +27,11 @@ defmodule MrMunchMeAccountingAppWeb.TransactionController do
   end
 
   def create(conn, %{"journal_entry" => entry_params}) do
+    # Convert pesos to cents for journal lines
+    entry_params =
+      entry_params
+      |> MoneyHelper.convert_nested_params_pesos_to_cents("journal_lines", [:debit_cents, :credit_cents])
+
     case Accounting.create_journal_entry(entry_params) do
       {:ok, entry} ->
         conn
@@ -62,6 +68,7 @@ end
 defmodule MrMunchMeAccountingAppWeb.TransactionHTML do
   use MrMunchMeAccountingAppWeb, :html
   import MrMunchMeAccountingAppWeb.CoreComponents
+  alias MrMunchMeAccountingAppWeb.Helpers.MoneyHelper
 
   embed_templates "transaction_html/*"
 end

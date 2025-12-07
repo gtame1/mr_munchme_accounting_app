@@ -27,6 +27,8 @@ defmodule MrMunchMeAccountingApp.Orders.Order do
     belongs_to :prep_location, Location
     belongs_to :customer, Customer
 
+    has_many :order_ingredients, MrMunchMeAccountingApp.Orders.OrderIngredient, on_replace: :delete
+
     timestamps()
   end
 

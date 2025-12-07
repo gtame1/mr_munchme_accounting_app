@@ -299,33 +299,56 @@ defmodule MrMunchMeAccountingApp.Inventory do
   """
   @production_location_code "CASA_AG"
   def consume_for_order(%Order{} = order) do
-    order = Repo.preload(order, :product)
+    order = Repo.preload(order, [:product, :order_ingredients])
 
-    # Use the order's delivery_date (or in_prep date) to get the active recipe
-    recipe_date = order.delivery_date || Date.utc_today()
-    recipe_lines = Recepies.recipe_for_product(order.product, recipe_date)
     location_code =
       case order.prep_location do
         %Location{code: code} when is_binary(code) -> code
         _ -> @production_location_code #default fallback
       end
 
-    Enum.reduce(recipe_lines, 0, fn %{ingredient_code: code, quantity: qty}, acc ->
-      # Convert float quantity to integer (round to nearest)
-      qty_int = round(qty)
+    # Check if order has custom ingredient quantities
+    if order.order_ingredients != [] do
+      # Use custom quantities from order_ingredients
+      Enum.reduce(order.order_ingredients, 0, fn order_ingredient, acc ->
+        code = order_ingredient.ingredient_code
+        qty = Decimal.to_float(order_ingredient.quantity)
+        qty_int = round(qty)
+        custom_location = order_ingredient.location_code || location_code
 
-      case record_usage(code, location_code, qty_int, order.delivery_date, "order", order.id) do
-        {:ok, {:ok, result}} ->
-          acc + result.movement.total_cost_cents
+        case record_usage(code, custom_location, qty_int, order.delivery_date, "order", order.id) do
+          {:ok, {:ok, result}} ->
+            acc + result.movement.total_cost_cents
 
-        {:ok, movement} -> #safeguard
-          acc + movement.total_cost_cents
+          {:ok, movement} ->
+            acc + movement.total_cost_cents
 
-        {:error, reason} ->
-          # For now we can either raise/rollback or ignore. Safer to raise:
-          raise "Failed to record usage for ingredient #{code} in order #{order.id}: #{inspect(reason)}"
-      end
-    end)
+          {:error, reason} ->
+            raise "Failed to record usage for ingredient #{code} in order #{order.id}: #{inspect(reason)}"
+        end
+      end)
+    else
+      # Use recipe quantities (default behavior)
+      recipe_date = order.delivery_date || Date.utc_today()
+      recipe_lines = Recepies.recipe_for_product(order.product, recipe_date)
+
+      Enum.reduce(recipe_lines, 0, fn %{ingredient_code: code, quantity: qty}, acc ->
+        # Convert float quantity to integer (round to nearest)
+        qty_int = round(qty)
+
+        case record_usage(code, location_code, qty_int, order.delivery_date, "order", order.id) do
+          {:ok, {:ok, result}} ->
+            acc + result.movement.total_cost_cents
+
+          {:ok, movement} -> #safeguard
+            acc + movement.total_cost_cents
+
+          {:error, reason} ->
+            # For now we can either raise/rollback or ignore. Safer to raise:
+            raise "Failed to record usage for ingredient #{code} in order #{order.id}: #{inspect(reason)}"
+        end
+      end)
+    end
   end
 
   @doc """

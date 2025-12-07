@@ -112,10 +112,24 @@ defmodule MrMunchMeAccountingAppWeb.OrderController do
     payments = Orders.list_payments_for_order(order.id)
     payment_summary = Orders.payment_summary(order)
 
+    # Get recipe lines for this product
+    recipe_date = order.delivery_date || Date.utc_today()
+    recipe_lines = MrMunchMeAccountingApp.Inventory.Recepies.recipe_for_product(order.product, recipe_date)
+
+    # Get ingredient options for dropdown
+    ingredient_options = Inventory.ingredient_select_options()
+    location_code = case order.prep_location do
+      %{code: code} when is_binary(code) -> code
+      _ -> "CASA_AG"
+    end
+
     render(conn, :show,
       order: order,
       payments: payments,
-      payment_summary: payment_summary
+      payment_summary: payment_summary,
+      recipe_lines: recipe_lines,
+      ingredient_options: ingredient_options,
+      default_location_code: location_code
     )
   end
 
@@ -149,6 +163,44 @@ defmodule MrMunchMeAccountingAppWeb.OrderController do
           location_options: Inventory.list_locations() |> Enum.map(&{&1.name, &1.id}),
           customer_options: Customers.customer_select_options()
         )
+    end
+  end
+
+  def update_ingredients(conn, %{"id" => id, "ingredients" => ingredients_params}) do
+    order = Orders.get_order!(id)
+
+    # Convert params to list format expected by update_order_ingredients
+    ingredients_list =
+      ingredients_params
+      |> Enum.map(fn {_key, attrs} ->
+        # Convert quantity string to Decimal
+        quantity = case attrs["quantity"] do
+          qty when is_binary(qty) and qty != "" ->
+            case Decimal.parse(qty) do
+              {decimal, _} -> decimal
+              :error -> Decimal.new("0")
+            end
+          _ -> Decimal.new("0")
+        end
+
+        %{
+          "ingredient_code" => attrs["ingredient_code"],
+          "quantity" => quantity,
+          "location_code" => attrs["location_code"] || (order.prep_location && order.prep_location.code) || "CASA_AG"
+        }
+      end)
+      |> Enum.filter(fn attrs -> attrs["ingredient_code"] != "" and attrs["ingredient_code"] != nil end)
+
+    case Orders.update_order_ingredients(order, ingredients_list) do
+      {:ok, updated_order} ->
+        conn
+        |> put_flash(:info, "Order ingredients updated successfully.")
+        |> redirect(to: ~p"/orders/#{updated_order.id}")
+
+      {:error, reason} ->
+        conn
+        |> put_flash(:error, "Failed to update ingredients: #{inspect(reason)}")
+        |> redirect(to: ~p"/orders/#{order.id}")
     end
   end
 
@@ -199,51 +251,10 @@ defmodule MrMunchMeAccountingAppWeb.OrderController do
     # Parse payment_date string to Date for comparison
     payment_date = Date.from_iso8601!(params["payment_date"])
 
-    # Parse amount as decimal and convert to cents
-    amount_cents =
-      case Decimal.parse(params["amount"] || "0") do
-        {dec, ""} ->
-          dec
-          |> Decimal.mult(Decimal.new(100))
-          |> Decimal.round(0)
-          |> Decimal.to_integer()
-
-        _ ->
-          nil
-      end
-
-    # Parse split payment amounts and convert to cents
-    customer_amount_cents =
-      if params["customer_amount"] do
-        case Decimal.parse(params["customer_amount"]) do
-          {dec, ""} ->
-            dec
-            |> Decimal.mult(Decimal.new(100))
-            |> Decimal.round(0)
-            |> Decimal.to_integer()
-
-          _ ->
-            nil
-        end
-      else
-        nil
-      end
-
-    partner_amount_cents =
-      if params["partner_amount"] do
-        case Decimal.parse(params["partner_amount"]) do
-          {dec, ""} ->
-            dec
-            |> Decimal.mult(Decimal.new(100))
-            |> Decimal.round(0)
-            |> Decimal.to_integer()
-
-          _ ->
-            nil
-        end
-      else
-        nil
-      end
+    # Convert amounts from pesos to cents
+    amount_cents = if params["amount"], do: MoneyHelper.pesos_to_cents(params["amount"]), else: nil
+    customer_amount_cents = if params["customer_amount"], do: MoneyHelper.pesos_to_cents(params["customer_amount"]), else: nil
+    partner_amount_cents = if params["partner_amount"], do: MoneyHelper.pesos_to_cents(params["partner_amount"]), else: nil
 
     # Make sure we tie the payment to the correct order_id explicitly
     attrs =

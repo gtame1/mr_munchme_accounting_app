@@ -59,7 +59,7 @@
                 type="select"
                 label="Select Customer"
                 prompt="Choose a customer"
-                options={@customer_options}
+                options={@customer_options |> Enum.sort_by(fn {name, _id} -> String.downcase(name) end)}
                 id="customer_id_select"
               />
             </div>

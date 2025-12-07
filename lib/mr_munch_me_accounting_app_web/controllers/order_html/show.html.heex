@@ -123,6 +123,102 @@
   </div>
 </section>
 
+<%= if @order.status == "new_order" do %>
+  <section class="card" style="margin-top: 1.5rem;">
+    <h3 class="card-title">Customize Ingredients</h3>
+    <p class="card-subtitle">
+      Override recipe quantities for this specific order. Leave empty to use recipe defaults.
+    </p>
+
+    <.form for={%{}} action={~p"/orders/#{@order.id}/ingredients"} method="post" id="ingredients-form">
+      <div id="ingredients-container" style="display: flex; flex-direction: column; gap: 1rem; margin-top: 1rem;">
+        <% 
+          # Use custom ingredients if they exist, otherwise use recipe lines
+          ingredients_to_show = cond do
+            @order.order_ingredients != [] and length(@order.order_ingredients) > 0 ->
+              @order.order_ingredients
+            @recipe_lines != [] ->
+              Enum.map(@recipe_lines, fn %{ingredient_code: code, quantity: qty} ->
+                qty_decimal = cond do
+                  is_number(qty) -> Decimal.new(to_string(qty))
+                  true -> Decimal.new("0")
+                end
+                %{
+                  ingredient_code: code,
+                  quantity: qty_decimal,
+                  location_code: @default_location_code
+                }
+              end)
+            true ->
+              []
+          end
+        %>
+        
+        <%= for {ingredient, index} <- Enum.with_index(ingredients_to_show) do %>
+          <div class="ingredient-row" style="display: grid; grid-template-columns: 2fr 1fr 1fr auto; gap: 1rem; align-items: end; padding: 1rem; border: 1px solid #e5e7eb; border-radius: 0.5rem;">
+            <div class="field">
+              <label class="label">Ingredient</label>
+              <select 
+                name="ingredients[#{index}][ingredient_code]" 
+                class="w-full select"
+                required
+              >
+                <option value="">Select ingredient</option>
+                <%= for {name, code} <- @ingredient_options do %>
+                  <option value={code} selected={ingredient.ingredient_code == code}>
+                    <%= name %>
+                  </option>
+                <% end %>
+              </select>
+            </div>
+            
+            <div class="field">
+              <label class="label">Quantity</label>
+              <input 
+                type="number" 
+                name="ingredients[#{index}][quantity]" 
+                value={cond do
+                  is_struct(ingredient.quantity, Decimal) -> Decimal.to_float(ingredient.quantity)
+                  is_number(ingredient.quantity) -> ingredient.quantity
+                  true -> ""
+                end}
+                step="0.01"
+                min="0"
+                class="w-full input"
+                required
+              />
+            </div>
+            
+            <div class="field">
+              <label class="label">Location</label>
+              <input 
+                type="text" 
+                name="ingredients[#{index}][location_code]" 
+                value={ingredient.location_code || @default_location_code}
+                class="w-full input"
+                required
+              />
+            </div>
+            
+            <button 
+              type="button" 
+              class="btn danger btn-sm" 
+              onclick="this.closest('.ingredient-row').remove(); updateIndices();"
+            >
+              Remove
+            </button>
+          </div>
+        <% end %>
+      </div>
+      
+      <div style="margin-top: 1rem; display: flex; gap: 0.75rem;">
+        <button type="button" class="btn" onclick="addIngredientRow()">+ Add Ingredient</button>
+        <button type="submit" class="btn primary">Save Ingredients</button>
+      </div>
+    </.form>
+  </section>
+<% end %>
+
 <section class="card" style="margin-top: 1.5rem;">
   <h3 class="card-title">Payments</h3>
   <p class="card-subtitle">
@@ -166,3 +262,58 @@
     </div>
   <% end %>
 </section>
+
+<%= if @order.status == "new_order" do %>
+  <script>
+    let ingredientIndex = <%= length(if @order.order_ingredients != [] and length(@order.order_ingredients) > 0, do: @order.order_ingredients, else: (@recipe_lines || [])) %>;
+    
+    function addIngredientRow() {
+      const container = document.getElementById('ingredients-container');
+      const row = document.createElement('div');
+      row.className = 'ingredient-row';
+      row.style.cssText = 'display: grid; grid-template-columns: 2fr 1fr 1fr auto; gap: 1rem; align-items: end; padding: 1rem; border: 1px solid #e5e7eb; border-radius: 0.5rem;';
+      
+      const ingredientOptions = <%= Jason.encode!(@ingredient_options) %>;
+      const defaultLocation = '<%= @default_location_code %>';
+      
+      let selectOptions = '<option value="">Select ingredient</option>';
+      for (const [name, code] of Object.entries(ingredientOptions)) {
+        selectOptions += `<option value="${code}">${name}</option>`;
+      }
+      
+      row.innerHTML = `
+        <div class="field">
+          <label class="label">Ingredient</label>
+          <select name="ingredients[${ingredientIndex}][ingredient_code]" class="w-full select" required>
+            ${selectOptions}
+          </select>
+        </div>
+        <div class="field">
+          <label class="label">Quantity</label>
+          <input type="number" name="ingredients[${ingredientIndex}][quantity]" step="0.01" min="0" class="w-full input" required />
+        </div>
+        <div class="field">
+          <label class="label">Location</label>
+          <input type="text" name="ingredients[${ingredientIndex}][location_code]" value="${defaultLocation}" class="w-full input" required />
+        </div>
+        <button type="button" class="btn danger btn-sm" onclick="this.closest('.ingredient-row').remove(); updateIndices();">Remove</button>
+      `;
+      
+      container.appendChild(row);
+      ingredientIndex++;
+    }
+    
+    function updateIndices() {
+      const rows = document.querySelectorAll('.ingredient-row');
+      rows.forEach((row, index) => {
+        row.querySelectorAll('input, select').forEach(input => {
+          const name = input.name;
+          if (name) {
+            input.name = name.replace(/ingredients\[\d+\]/, `ingredients[${index}]`);
+          }
+        });
+      });
+      ingredientIndex = rows.length;
+    }
+  </script>
+<% end %>

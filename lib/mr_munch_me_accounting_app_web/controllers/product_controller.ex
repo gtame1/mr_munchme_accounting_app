@@ -3,6 +3,7 @@ defmodule MrMunchMeAccountingAppWeb.ProductController do
 
   alias MrMunchMeAccountingApp.Orders
   alias MrMunchMeAccountingApp.Orders.Product
+  alias MrMunchMeAccountingAppWeb.Helpers.MoneyHelper
 
   def index(conn, _params) do
     products = Orders.list_all_products()
@@ -18,6 +19,9 @@ defmodule MrMunchMeAccountingAppWeb.ProductController do
   end
 
   def create(conn, %{"product" => product_params}) do
+    # Convert pesos to cents
+    product_params = MoneyHelper.convert_params_pesos_to_cents(product_params, [:price_cents])
+
     case Orders.create_product(product_params) do
       {:ok, _product} ->
         conn
@@ -35,12 +39,17 @@ defmodule MrMunchMeAccountingAppWeb.ProductController do
 
   def edit(conn, %{"id" => id}) do
     product = Orders.get_product!(id)
-    changeset = Orders.change_product(product)
+    # Convert cents to pesos for form display
+    attrs = %{"price_cents" => MoneyHelper.cents_to_pesos(product.price_cents || 0)}
+    changeset = Orders.change_product(product, attrs)
     render(conn, :edit, product: product, changeset: changeset, action: ~p"/products/#{product}")
   end
 
   def update(conn, %{"id" => id, "product" => product_params}) do
     product = Orders.get_product!(id)
+
+    # Convert pesos to cents
+    product_params = MoneyHelper.convert_params_pesos_to_cents(product_params, [:price_cents])
 
     case Orders.update_product(product, product_params) do
       {:ok, _product} ->
@@ -69,6 +78,7 @@ defmodule MrMunchMeAccountingAppWeb.ProductHTML do
   use MrMunchMeAccountingAppWeb, :html
   import MrMunchMeAccountingAppWeb.CoreComponents
   import Phoenix.Naming
+  alias MrMunchMeAccountingAppWeb.Helpers.MoneyHelper
 
   embed_templates "product_html/*"
 end

@@ -3,6 +3,7 @@ defmodule MrMunchMeAccountingAppWeb.OrderPaymentController do
 
   alias MrMunchMeAccountingApp.Orders
   alias MrMunchMeAccountingApp.{Accounting, Partners}
+  alias MrMunchMeAccountingAppWeb.Helpers.MoneyHelper
 
   def index(conn, _params) do
     payments = Orders.list_all_payments()
@@ -20,29 +21,9 @@ defmodule MrMunchMeAccountingAppWeb.OrderPaymentController do
     payment = Orders.get_order_payment!(id)
 
     # Convert amounts from cents to pesos for form display
-    amount_pesos =
-      if payment.amount_cents do
-        Decimal.div(Decimal.new(payment.amount_cents), Decimal.new(100))
-        |> Decimal.to_float()
-      else
-        nil
-      end
-
-    customer_amount_pesos =
-      if payment.customer_amount_cents do
-        Decimal.div(Decimal.new(payment.customer_amount_cents), Decimal.new(100))
-        |> Decimal.to_float()
-      else
-        nil
-      end
-
-    partner_amount_pesos =
-      if payment.partner_amount_cents do
-        Decimal.div(Decimal.new(payment.partner_amount_cents), Decimal.new(100))
-        |> Decimal.to_float()
-      else
-        nil
-      end
+    amount_pesos = if payment.amount_cents, do: MoneyHelper.cents_to_pesos(payment.amount_cents), else: nil
+    customer_amount_pesos = if payment.customer_amount_cents, do: MoneyHelper.cents_to_pesos(payment.customer_amount_cents), else: nil
+    partner_amount_pesos = if payment.partner_amount_cents, do: MoneyHelper.cents_to_pesos(payment.partner_amount_cents), else: nil
 
     attrs = %{
       "payment_date" => payment.payment_date,
@@ -71,53 +52,9 @@ defmodule MrMunchMeAccountingAppWeb.OrderPaymentController do
     payment = Orders.get_order_payment!(id)
 
     # Convert amounts from pesos to cents
-    amount_cents =
-      if params["amount"] do
-        case Decimal.parse(params["amount"]) do
-          {dec, ""} ->
-            dec
-            |> Decimal.mult(Decimal.new(100))
-            |> Decimal.round(0)
-            |> Decimal.to_integer()
-
-          _ ->
-            payment.amount_cents
-        end
-      else
-        payment.amount_cents
-      end
-
-    customer_amount_cents =
-      if params["customer_amount"] do
-        case Decimal.parse(params["customer_amount"]) do
-          {dec, ""} ->
-            dec
-            |> Decimal.mult(Decimal.new(100))
-            |> Decimal.round(0)
-            |> Decimal.to_integer()
-
-          _ ->
-            payment.customer_amount_cents
-        end
-      else
-        payment.customer_amount_cents
-      end
-
-    partner_amount_cents =
-      if params["partner_amount"] do
-        case Decimal.parse(params["partner_amount"]) do
-          {dec, ""} ->
-            dec
-            |> Decimal.mult(Decimal.new(100))
-            |> Decimal.round(0)
-            |> Decimal.to_integer()
-
-          _ ->
-            payment.partner_amount_cents
-        end
-      else
-        payment.partner_amount_cents
-      end
+    amount_cents = if params["amount"], do: MoneyHelper.pesos_to_cents(params["amount"]), else: payment.amount_cents
+    customer_amount_cents = if params["customer_amount"], do: MoneyHelper.pesos_to_cents(params["customer_amount"]), else: payment.customer_amount_cents
+    partner_amount_cents = if params["partner_amount"], do: MoneyHelper.pesos_to_cents(params["partner_amount"]), else: payment.partner_amount_cents
 
     attrs =
       params
