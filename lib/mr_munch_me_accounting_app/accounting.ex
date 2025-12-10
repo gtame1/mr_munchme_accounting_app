@@ -694,6 +694,41 @@ defmodule MrMunchMeAccountingApp.Accounting do
     |> put_totals()
   end
 
+  def list_journal_lines_by_account(account_id, opts \\ []) do
+    import Ecto.Query
+
+    date_from = Keyword.get(opts, :date_from)
+    date_to = Keyword.get(opts, :date_to)
+
+    query =
+      from jl in JournalLine,
+        where: jl.account_id == ^account_id,
+        join: je in assoc(jl, :journal_entry),
+        join: a in assoc(jl, :account),
+        preload: [journal_entry: je, account: a],
+        order_by: [desc: je.date, desc: je.inserted_at, desc: jl.id]
+
+    query =
+      cond do
+        date_from && date_to ->
+          from [jl, je] in query,
+            where: je.date >= ^date_from and je.date <= ^date_to
+
+        date_from ->
+          from [jl, je] in query,
+            where: je.date >= ^date_from
+
+        date_to ->
+          from [jl, je] in query,
+            where: je.date <= ^date_to
+
+        true ->
+          query
+      end
+
+    Repo.all(query)
+  end
+
   def change_journal_entry(%JournalEntry{} = entry, attrs \\ %{}) do
     JournalEntry.changeset(entry, attrs)
   end
