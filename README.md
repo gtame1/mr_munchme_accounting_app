@@ -11,13 +11,12 @@
 - Maybe: Split total inventory by inventory location
 - Change all forms that accept cents to full pesos.
 - Edit specific inventory used in each order. Some orders (few) use a bit more or a bit less inventory, or some might use more ingredients or less. How can we add something that can allow us to edit the order used inventory?
-- Add inventory reconciliation tool
-- Add accounting reconciliation tool
 - Why is order status update so slow?
 - What happens if i delete a customer with an active order? Do we need to catch that error?
 - Should we add UI to add new balance sheet accounts?
 - Add quantity to orders?
 - Add "last 30 days"-type filters to the date filters in the dashboards.
+- Move canceled orders out of the order list.
 
 
 ## Using github

@@ -285,3 +285,82 @@
     </div>
   <% end %>
 </section>
+
+<!-- Finished Orders Section (Canceled) -->
+<%= if @filters.status != "canceled" do %>
+<section class="card" style="margin-top: 2rem;">
+  <div class="card-header">
+    <h2 class="card-title">Finished Orders (Canceled)</h2>
+    <p class="card-subtitle">
+      Orders that have been canceled.
+    </p>
+  </div>
+
+  <div class="table-wrapper">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Customer</th>
+          <th>Product</th>
+          <th>Delivery Date</th>
+          <th>Type</th>
+          <th>Status</th>
+          <th>Prep Location</th>
+          <th>Payment Status</th>
+        </tr>
+      </thead>
+
+      <tbody>
+        <%= if Enum.empty?(@canceled_orders) do %>
+          <tr>
+            <td colspan="8">No canceled orders.</td>
+          </tr>
+        <% else %>
+          <%= for order <- @canceled_orders do %>
+            <tr>
+              <td>
+                <.link navigate={~p"/orders/#{order.id}"} class="link-text">
+                  <%= order.id %>
+                </.link>
+              </td>
+              <td><%= order.customer_name %></td>
+              <td><%= order.product && order.product.name %></td>
+              <td><%= order.delivery_date %></td>
+              <td><%= String.capitalize(order.delivery_type || "") %></td>
+
+              <td>
+                <.status_badge status={order.status} />
+              </td>
+
+              <td><.location_badge location={order.prep_location} /></td>
+              <td>
+                <%= if order.payment_summary do %>
+                  <%= cond do %>
+                    <% order.payment_summary.fully_paid? -> %>
+                      <span class="status-badge status-paid">Paid</span>
+                    <% order.payment_summary.partially_paid? -> %>
+                      <span class="status-badge status-partial">Partially paid</span>
+                    <% true -> %>
+                      <span class="status-badge status-unpaid">Unpaid</span>
+                  <% end %>
+                <% else %>
+                  <span class="status-badge status-unpaid">Unpaid</span>
+                <% end %>
+              </td>
+            </tr>
+          <% end %>
+        <% end %>
+      </tbody>
+    </table>
+  </div>
+
+  <%= if @has_more_canceled do %>
+    <div class="actions" style="margin-top: 1rem; text-align: center;">
+      <.link navigate={~p"/orders?#{Map.merge(@filters, %{canceled_offset: @canceled_offset + 50})}"} class="btn">
+        Load More
+      </.link>
+    </div>
+  <% end %>
+</section>
+<% end %>

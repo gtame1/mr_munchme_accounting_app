@@ -4,6 +4,7 @@ defmodule MrMunchMeAccountingAppWeb.OrderController do
   alias MrMunchMeAccountingApp.Orders
   alias MrMunchMeAccountingApp.Orders.{Order, OrderPayment}
   alias MrMunchMeAccountingApp.{Inventory, Accounting, Repo, Customers, Partners}
+  alias MrMunchMeAccountingAppWeb.Helpers.MoneyHelper
 
   def index(conn, params) do
     # 1) Apply defaults directly to params
@@ -53,7 +54,28 @@ defmodule MrMunchMeAccountingAppWeb.OrderController do
     # If we got exactly what we asked for, there might be more
     has_more_completed = length(completed_orders_with_payment_status) >= total_to_load
 
-    # 5) Build filters map from the same params (so UI & query are in sync)
+    # 5) Get canceled orders (finished orders)
+    canceled_limit = 50
+    canceled_offset =
+      case params["canceled_offset"] do
+        nil -> 0
+        "" -> 0
+        val -> String.to_integer(val)
+      end
+
+    total_canceled_to_load = canceled_offset + canceled_limit
+    canceled_orders = Orders.list_canceled_orders(total_canceled_to_load, 0)
+
+    # Calculate payment summaries for canceled orders
+    canceled_orders_with_payment_status =
+      Enum.map(canceled_orders, fn order ->
+        payment_summary = Orders.payment_summary(order)
+        Map.put(order, :payment_summary, payment_summary)
+      end)
+
+    has_more_canceled = length(canceled_orders_with_payment_status) >= total_canceled_to_load
+
+    # 6) Build filters map from the same params (so UI & query are in sync)
     filters = %{
       status: params["status"] || "",
       delivery_type: params["delivery_type"] || "",
@@ -70,6 +92,9 @@ defmodule MrMunchMeAccountingAppWeb.OrderController do
       completed_orders: completed_orders_with_payment_status,
       completed_offset: completed_offset,
       has_more_completed: has_more_completed,
+      canceled_orders: canceled_orders_with_payment_status,
+      canceled_offset: canceled_offset,
+      has_more_canceled: has_more_canceled,
       filters: filters,
       product_filter_options: Orders.product_select_options(),
       location_filter_options: Inventory.list_locations() |> Enum.map(&{&1.name, &1.id})

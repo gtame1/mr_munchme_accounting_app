@@ -70,13 +70,39 @@ defmodule MrMunchMeAccountingApp.Orders do
         as: :customer,
         preload: [product: p, prep_location: l, customer: c]
 
-    base_query
+    # Exclude canceled orders by default unless explicitly filtering for canceled status
+    query =
+      if params["status"] == "canceled" do
+        base_query
+      else
+        from o in base_query, where: o.status != "canceled"
+      end
+
+    query
     |> maybe_filter_status(params["status"])
     |> maybe_filter_delivery_type(params["delivery_type"])
     |> maybe_filter_date_range(params["date_from"], params["date_to"])
     |> maybe_filter_product_id(params["product_id"])
     |> maybe_filter_prep_location(params["prep_location_id"])
     |> apply_sort(params["sort_by"], params["sort_dir"])
+    |> Repo.all()
+  end
+
+  def list_canceled_orders(limit \\ 50, offset \\ 0) do
+    import Ecto.Query
+
+    canceled_orders =
+      from o in Order,
+        where: o.status == "canceled",
+        join: p in assoc(o, :product),
+        join: l in assoc(o, :prep_location),
+        left_join: c in assoc(o, :customer),
+        preload: [product: p, prep_location: l, customer: c],
+        order_by: [desc: o.delivery_date, desc: o.id],
+        limit: ^limit,
+        offset: ^offset
+
+    canceled_orders
     |> Repo.all()
   end
 
