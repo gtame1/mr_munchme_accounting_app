@@ -1,6 +1,8 @@
 defmodule MrMunchMeAccountingAppWeb.OrderController do
   use MrMunchMeAccountingAppWeb, :controller
 
+  require Logger
+
   alias MrMunchMeAccountingApp.Orders
   alias MrMunchMeAccountingApp.Orders.{Order, OrderPayment}
   alias MrMunchMeAccountingApp.{Inventory, Accounting, Repo, Customers, Partners}
@@ -127,7 +129,8 @@ defmodule MrMunchMeAccountingAppWeb.OrderController do
           changeset: changeset,
           action: ~p"/orders",
           product_options: Orders.product_select_options(),
-          location_options: Inventory.list_locations() |> Enum.map(&{&1.name, &1.id})
+          location_options: Inventory.list_locations() |> Enum.map(&{&1.name, &1.id}),
+          customer_options: Customers.customer_select_options()
         )
     end
   end
@@ -137,24 +140,10 @@ defmodule MrMunchMeAccountingAppWeb.OrderController do
     payments = Orders.list_payments_for_order(order.id)
     payment_summary = Orders.payment_summary(order)
 
-    # Get recipe lines for this product
-    recipe_date = order.delivery_date || Date.utc_today()
-    recipe_lines = MrMunchMeAccountingApp.Inventory.Recepies.recipe_for_product(order.product, recipe_date)
-
-    # Get ingredient options for dropdown
-    ingredient_options = Inventory.ingredient_select_options()
-    location_code = case order.prep_location do
-      %{code: code} when is_binary(code) -> code
-      _ -> "CASA_AG"
-    end
-
     render(conn, :show,
       order: order,
       payments: payments,
-      payment_summary: payment_summary,
-      recipe_lines: recipe_lines,
-      ingredient_options: ingredient_options,
-      default_location_code: location_code
+      payment_summary: payment_summary
     )
   end
 
@@ -273,39 +262,93 @@ defmodule MrMunchMeAccountingAppWeb.OrderController do
   def create_payment(conn, %{"id" => id, "order_payment" => params}) do
     order = Orders.get_order!(id)
 
+    # Log incoming params for debugging
+    Logger.info("Creating payment for order #{order.id}")
+    Logger.debug("Payment params received: #{inspect(params)}")
+
     # Parse payment_date string to Date for comparison
-    payment_date = Date.from_iso8601!(params["payment_date"])
+    {payment_date, date_parse_error} =
+      case Date.from_iso8601(params["payment_date"]) do
+        {:ok, date} -> {date, nil}
+        {:error, reason} -> {nil, reason}
+      end
 
-    # Convert amounts from pesos to cents
-    amount_cents = if params["amount"], do: MoneyHelper.pesos_to_cents(params["amount"]), else: nil
-    customer_amount_cents = if params["customer_amount"], do: MoneyHelper.pesos_to_cents(params["customer_amount"]), else: nil
-    partner_amount_cents = if params["partner_amount"], do: MoneyHelper.pesos_to_cents(params["partner_amount"]), else: nil
+    if date_parse_error do
+      Logger.error("Invalid payment_date format: #{params["payment_date"]}, error: #{inspect(date_parse_error)}")
+      changeset =
+        Orders.change_order_payment(%OrderPayment{order_id: order.id})
+        |> Ecto.Changeset.add_error(:payment_date, "Invalid date format")
 
-    # Make sure we tie the payment to the correct order_id explicitly
-    attrs =
-      params
-      |> Map.put("order_id", order.id)
-      |> Map.put("is_deposit", payment_date < order.delivery_date)
-      |> Map.put("amount_cents", amount_cents)
-      |> Map.put("customer_amount_cents", customer_amount_cents)
-      |> Map.put("partner_amount_cents", partner_amount_cents)
-      |> Map.drop(["customer_amount", "partner_amount", "amount"])
+      changeset = Map.put(changeset, :action, :insert)
 
-    case Orders.create_order_payment(attrs) do
-      {:ok, _payment} ->
-        conn
-        |> put_flash(:info, "Payment recorded successfully.")
-        |> redirect(to: ~p"/orders/#{order.id}")
+      render(conn, :new_payment,
+        order: order,
+        changeset: changeset,
+        action: ~p"/orders/#{order.id}/payments",
+        paid_to_account_options: Accounting.cash_or_payable_account_options(),
+        partner_options: Partners.partner_select_options(),
+        liability_account_options: Accounting.liability_account_options()
+      )
+    else
+      # Convert amounts from pesos to cents
+      amount_cents = if params["amount"] && params["amount"] != "", do: MoneyHelper.pesos_to_cents(params["amount"]), else: nil
 
-      {:error, %Ecto.Changeset{} = changeset} ->
-        render(conn, :new_payment,
-          order: order,
-          changeset: changeset,
-          action: ~p"/orders/#{order.id}/payments",
-          paid_to_account_options: Accounting.cash_or_payable_account_options(),
-          partner_options: Partners.partner_select_options(),
-          liability_account_options: Accounting.liability_account_options()
-        )
+      # Only set split payment fields if they're actually provided (not empty strings)
+      customer_amount_cents =
+        if params["customer_amount"] && params["customer_amount"] != "" do
+          MoneyHelper.pesos_to_cents(params["customer_amount"])
+        else
+          nil
+        end
+
+      partner_amount_cents =
+        if params["partner_amount"] && params["partner_amount"] != "" do
+          MoneyHelper.pesos_to_cents(params["partner_amount"])
+        else
+          nil
+        end
+
+      Logger.debug("Converted amounts - total: #{amount_cents}, customer: #{inspect(customer_amount_cents)}, partner: #{inspect(partner_amount_cents)}")
+
+      # Make sure we tie the payment to the correct order_id explicitly
+      attrs =
+        params
+        |> Map.put("order_id", order.id)
+        |> Map.put("is_deposit", payment_date < order.delivery_date)
+        |> Map.put("amount_cents", amount_cents)
+        |> Map.put("customer_amount_cents", customer_amount_cents)
+        |> Map.put("partner_amount_cents", partner_amount_cents)
+        |> Map.drop(["customer_amount", "partner_amount", "amount"])
+
+      Logger.debug("Final attrs for payment creation: #{inspect(attrs)}")
+
+      case Orders.create_order_payment(attrs) do
+        {:ok, payment} ->
+          Logger.info("Payment created successfully: payment_id=#{payment.id}, order_id=#{order.id}")
+          conn
+          |> put_flash(:info, "Payment recorded successfully.")
+          |> redirect(to: ~p"/orders/#{order.id}")
+
+        {:error, %Ecto.Changeset{} = changeset} ->
+          # Log errors for debugging
+          Logger.error("Payment creation failed for order #{order.id}")
+          Logger.error("Changeset errors: #{inspect(changeset.errors)}")
+          Logger.error("Changeset changes: #{inspect(changeset.changes)}")
+          Logger.error("Params received: #{inspect(params)}")
+          Logger.error("Processed attrs: #{inspect(attrs)}")
+
+          # Mark changeset as having an attempted action so errors show in UI
+          changeset = Map.put(changeset, :action, :insert)
+
+          render(conn, :new_payment,
+            order: order,
+            changeset: changeset,
+            action: ~p"/orders/#{order.id}/payments",
+            paid_to_account_options: Accounting.cash_or_payable_account_options(),
+            partner_options: Partners.partner_select_options(),
+            liability_account_options: Accounting.liability_account_options()
+          )
+      end
     end
   end
 

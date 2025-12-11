@@ -8,13 +8,14 @@ defmodule MrMunchMeAccountingApp.Inventory.RecipeLine do
     belongs_to :recipe, Recipe
     field :ingredient_code, :string
     field :quantity, :decimal
+    field :comment, :string
 
     timestamps()
   end
 
   def changeset(recipe_line, attrs) do
     recipe_line
-    |> cast(attrs, [:ingredient_code, :quantity])
+    |> cast(attrs, [:ingredient_code, :quantity, :comment])
     |> validate_required([:ingredient_code, :quantity])
     |> validate_number(:quantity, greater_than: 0)
   end

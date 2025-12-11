@@ -775,15 +775,15 @@
   }
   
   .status-badge.ready {
-    background: #dcfce7;          /* green-100 */
-    color: #166534;               /* green-800 */
-    border-color: #86efac;        /* green-300 */
+    background: #fed7aa;          /* orange-200 */
+    color: #9a3412;               /* orange-800 */
+    border-color: #fdba74;        /* orange-300 */
   }
   
   .status-badge.delivered {
-    background: #e2e8f0;          /* slate-200 */
-    color: #0f172a;               /* slate-900 */
-    border-color: #cbd5e1;        /* slate-300 */
+    background: #dcfce7;          /* green-100 */
+    color: #166534;               /* green-800 */
+    border-color: #86efac;        /* green-300 */
   }
   .status-badge.canceled {
     background: #fee2e2;

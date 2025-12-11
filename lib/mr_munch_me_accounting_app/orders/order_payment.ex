@@ -48,29 +48,28 @@ defmodule MrMunchMeAccountingApp.Orders.OrderPayment do
     amount_cents = get_field(changeset, :amount_cents)
     customer_amount_cents = get_field(changeset, :customer_amount_cents)
     partner_amount_cents = get_field(changeset, :partner_amount_cents)
+    partner_id = get_field(changeset, :partner_id)
 
-    # If customer_amount_cents is not set, default to amount_cents
-    customer_amount_cents = customer_amount_cents || amount_cents
-    partner_amount_cents = partner_amount_cents || 0
+    # Determine if this is a split payment
+    # It's a split payment if partner_amount_cents is explicitly set and > 0
+    # OR if partner_id is set (indicating split payment intent)
+    is_split_payment = (partner_amount_cents && partner_amount_cents > 0) || (partner_id && partner_id != "")
 
-    changeset =
-      if customer_amount_cents != amount_cents do
-        put_change(changeset, :customer_amount_cents, customer_amount_cents)
-      else
-        changeset
-      end
+    if is_split_payment do
+      # This is a split payment - validate split payment requirements
+      customer_amount_cents = customer_amount_cents || amount_cents
+      partner_amount_cents = partner_amount_cents || 0
 
-    # If partner_amount_cents is set, partner_id and partner_payable_account_id must be set
-    if partner_amount_cents > 0 do
       changeset
       |> validate_required([:partner_id, :partner_payable_account_id])
       |> validate_split_amounts(customer_amount_cents, partner_amount_cents, amount_cents)
     else
-      # Clear partner fields if no partner amount
+      # Not a split payment - clear split payment fields and set customer_amount to total
       changeset
+      |> put_change(:customer_amount_cents, nil)
+      |> put_change(:partner_amount_cents, nil)
       |> put_change(:partner_id, nil)
       |> put_change(:partner_payable_account_id, nil)
-      |> validate_split_amounts(customer_amount_cents, partner_amount_cents, amount_cents)
     end
   end
 

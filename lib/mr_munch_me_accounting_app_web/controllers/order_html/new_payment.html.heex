@@ -7,7 +7,23 @@
   <.form :let={f} for={@changeset} as={:order_payment} action={@action} class="form-grid">
     <%= if @changeset.action do %>
       <div class="alert alert-error">
-        <p>There were problems with this payment. Please review the fields below.</p>
+        <p><strong>There were problems with this payment. Please review the errors below:</strong></p>
+        <% base_errors = Keyword.get_values(@changeset.errors, :base) %>
+        <%= if base_errors != [] do %>
+          <ul class="pretty-list" style="margin-top: 0.5rem;">
+            <%= for {msg, _opts} <- base_errors do %>
+              <li><%= msg %></li>
+            <% end %>
+          </ul>
+        <% end %>
+        <% field_errors = Enum.reject(@changeset.errors, fn {field, _} -> field == :base end) %>
+        <%= if field_errors != [] do %>
+          <ul class="pretty-list" style="margin-top: 0.5rem;">
+            <%= for {field, {msg, _opts}} <- field_errors do %>
+              <li><strong><%= Phoenix.Naming.humanize(field) %>:</strong> <%= msg %></li>
+            <% end %>
+          </ul>
+        <% end %>
       </div>
     <% end %>
 

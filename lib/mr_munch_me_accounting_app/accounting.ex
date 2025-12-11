@@ -109,6 +109,7 @@ defmodule MrMunchMeAccountingApp.Accounting do
 
     ar    = get_account_by_code!(@ar_code)
     sales = get_account_by_code!(@sales_code)
+    customer_deposits = get_account_by_code!(@customer_deposits_code)
 
     # For now, ALL COGS → Ingredients Used (5000).
     # Later we can split into ingredients vs packaging if we have separate numbers.
@@ -123,6 +124,20 @@ defmodule MrMunchMeAccountingApp.Accounting do
       reference: "Order ##{order.id}",
       description: "Delivered order ##{order.id}"
     }
+
+    # Calculate total deposits paid before delivery
+    # Deposits are payments where is_deposit == true
+    # Use customer_amount_cents if set, otherwise use amount_cents
+    deposit_total_cents =
+      from(p in OrderPayment,
+        where: p.order_id == ^order.id and p.is_deposit == true,
+        select: sum(fragment("COALESCE(?, ?)", p.customer_amount_cents, p.amount_cents))
+      )
+      |> Repo.one()
+      |> case do
+        nil -> 0
+        total -> total
+      end
 
     # 1) Revenue: DR AR, CR Sales
     revenue_lines =
@@ -150,7 +165,30 @@ defmodule MrMunchMeAccountingApp.Accounting do
         []
       end
 
-    # 2) COGS: DR COGS, CR WIP
+    # 2) Transfer deposits from Customer Deposits to AR
+    # When order is delivered, deposits should reduce AR
+    # DR Customer Deposits, CR AR
+    deposit_transfer_lines =
+      if deposit_total_cents > 0 do
+        [
+          %{
+            account_id: customer_deposits.id,
+            debit_cents: deposit_total_cents,
+            credit_cents: 0,
+            description: "Transfer Customer Deposits to AR for order ##{order.id}"
+          },
+          %{
+            account_id: ar.id,
+            debit_cents: 0,
+            credit_cents: deposit_total_cents,
+            description: "Reduce AR by deposit amount for order ##{order.id}"
+          }
+        ]
+      else
+        []
+      end
+
+    # 3) COGS: DR COGS, CR WIP
     # For now, post all cost to Ingredients COGS (5000).
     cogs_lines =
       if cost_cents > 0 do
@@ -172,7 +210,7 @@ defmodule MrMunchMeAccountingApp.Accounting do
         []
       end
 
-    lines = revenue_lines ++ cogs_lines
+    lines = revenue_lines ++ deposit_transfer_lines ++ cogs_lines
 
     create_journal_entry_with_lines(entry_attrs, lines)
   end

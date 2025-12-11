@@ -73,7 +73,7 @@ defmodule MrMunchMeAccountingApp.Orders do
     # Exclude canceled orders by default unless explicitly filtering for canceled status
     query =
       if params["status"] == "canceled" do
-        base_query
+    base_query
       else
         from o in base_query, where: o.status != "canceled"
       end

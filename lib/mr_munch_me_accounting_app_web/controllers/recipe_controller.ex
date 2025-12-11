@@ -107,7 +107,8 @@ defmodule MrMunchMeAccountingAppWeb.RecipeController do
         Enum.map(original_recipe.recipe_lines || [], fn line ->
           %{
             "ingredient_code" => line.ingredient_code,
-            "quantity" => Decimal.to_string(line.quantity)
+            "quantity" => Decimal.to_string(line.quantity),
+            "comment" => line.comment
           }
         end)
     }

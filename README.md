@@ -16,7 +16,11 @@
 - Should we add UI to add new balance sheet accounts?
 - Add quantity to orders?
 - Add "last 30 days"-type filters to the date filters in the dashboards.
-- Move canceled orders out of the order list.
+- Move canceled orders out of the order list, maybe move to finished orders list or something like that?
+- Fix bug when moving from existing->new->existing user glitches.
+- Search feature for existing users.
+- Check customer deposits, number doesnt sound right.
+- Add dashboard to see all transactions per account.
 
 
 ## Using github
