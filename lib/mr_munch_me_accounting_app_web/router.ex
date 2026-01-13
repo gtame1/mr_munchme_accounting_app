@@ -50,6 +50,7 @@ defmodule MrMunchMeAccountingAppWeb.Router do
     get  "/inventory/purchases/:id/edit", InventoryController, :edit_purchase
     put  "/inventory/purchases/:id", InventoryController, :update_purchase
     delete "/inventory/purchases/:id", InventoryController, :delete_purchase
+    post "/inventory/purchases/:id/return", InventoryController, :return_purchase
     get  "/inventory/movements/new", InventoryController, :new_movement
     post "/inventory/movements",     InventoryController, :create_movement
     get  "/inventory/movements/:id/edit", InventoryController, :edit_movement

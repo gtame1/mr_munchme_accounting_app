@@ -21,8 +21,10 @@
 - Search feature for existing users.
 - Check customer deposits, number doesnt sound right.
 - Add functionality to "undo" or create a return of inventory. For example, whenever the user purchases inventory but then returns it. We should create the inventory movement and the accounting ledger.
-- Allow search or filtering in inventory movements table, its complicated to search for old movements.
 - Add cutoff for when reconciliation was made in UI. Like "reconciled on x date" and show a line that divides the table or something like that.
+- Fix how account balances are listed. Should be from newest to oldest and the balance should be updating as we move up.
+- Manual: Fix inventory value.
+- Add "all dates" button to all views that have a date filters. Use the same logic as the p&l button.
 
 ## Using github
 

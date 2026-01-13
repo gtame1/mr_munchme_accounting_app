@@ -472,6 +472,83 @@ defmodule MrMunchMeAccountingApp.Accounting do
   end
 
   @doc """
+  Record an inventory return (reverse of purchase):
+    - Credit Ingredients Inventory (1200) - reduces inventory
+    - Debit Cash/Account (1000) - refunds the payment
+
+  This is the reverse of `record_inventory_purchase`.
+  """
+  def record_inventory_return(total_cost_cents, opts \\ []) do
+    # 1) Decide which inventory account we're crediting (reversing the purchase)
+    {inv_account, inventory_type} =
+      cond do
+        Keyword.get(opts, :packing, false) -> {get_account_by_code!(@packing_inventory_code), "Packing"}
+        Keyword.get(opts, :kitchen, false) -> {get_account_by_code!(@kitchen_inventory_code), "Kitchen"}
+        true -> {get_account_by_code!(@ingredients_inventory_code), "Ingredients"}
+      end
+
+    # 2) Decide which account we're DEBITING (refund to)
+    paid_from_account =
+      cond do
+        # already have an account struct
+        acc = Keyword.get(opts, :paid_from_account) -> acc
+        id = Keyword.get(opts, :paid_from_account_id) ->
+          id =
+            case id do
+              i when is_binary(i) ->
+                case Integer.parse(i) do
+                  {parsed, _} -> parsed
+                  :error -> raise "Invalid paid_from_account_id: #{inspect(id)}"
+                end
+
+              i when is_integer(i) ->
+                i
+            end
+
+          Repo.get!(MrMunchMeAccountingApp.Accounting.Account, id)
+
+        # passed an account code like "1010"
+        code = Keyword.get(opts, :paid_from_account_code) -> get_account_by_code!(code)
+
+        # fallback → cash
+        true -> get_account_by_code!(@cash_code)
+      end
+
+    date = Keyword.get(opts, :return_date, Date.utc_today())
+    reference = Keyword.get(opts, :reference)
+
+    description =
+      Keyword.get(opts, :description,
+        "#{inventory_type} inventory return (refund to #{paid_from_account.code})"
+      )
+
+    entry_attrs = %{
+      date: date,
+      entry_type: "inventory_purchase",  # Use same type for consistency, or we could add "inventory_return"
+      reference: reference,
+      description: description
+    }
+
+    # Reverse the purchase: CR Inventory, DR Paid From Account
+    lines = [
+      %{
+        account_id: inv_account.id,
+        debit_cents: 0,
+        credit_cents: total_cost_cents,
+        description: "Decrease #{inventory_type} inventory (return)"
+      },
+      %{
+        account_id: paid_from_account.id,
+        debit_cents: total_cost_cents,
+        credit_cents: 0,
+        description: "Refund to #{paid_from_account.code} – #{paid_from_account.name}"
+      }
+    ]
+
+    create_journal_entry_with_lines(entry_attrs, lines)
+  end
+
+  @doc """
   Record multiple inventory purchases in a single journal entry.
   Creates debit lines for each inventory type (ingredients, packing, kitchen)
   and a single credit line for the total payment.
@@ -667,6 +744,28 @@ defmodule MrMunchMeAccountingApp.Accounting do
 
   def list_accounts do
     Repo.all(from a in Account, order_by: [asc: a.code])
+  end
+
+  @doc """
+  Returns the earliest and latest dates from journal entries.
+  Returns {earliest_date, latest_date} or {nil, nil} if no entries exist.
+  """
+  def journal_entry_date_range do
+    result =
+      from(je in JournalEntry,
+        select: %{
+          earliest: fragment("MIN(?)", je.date),
+          latest: fragment("MAX(?)", je.date)
+        }
+      )
+      |> Repo.one()
+
+    case result do
+      %{earliest: earliest, latest: latest} when not is_nil(earliest) and not is_nil(latest) ->
+        {earliest, latest}
+      _ ->
+        {nil, nil}
+    end
   end
 
   def get_account!(id), do: Repo.get!(Account, id)

@@ -286,6 +286,7 @@
               <select name="movement_type" style="width: 100%;">
                 <option value="">All Types</option>
                 <option value="purchase" selected={assigns[:filter_params] && @filter_params.movement_type == "purchase"}>Purchase</option>
+                <option value="return" selected={assigns[:filter_params] && @filter_params.movement_type == "return"}>Return</option>
                 <option value="usage" selected={assigns[:filter_params] && @filter_params.movement_type == "usage"}>Usage</option>
                 <option value="transfer" selected={assigns[:filter_params] && @filter_params.movement_type == "transfer"}>Transfer</option>
                 <option value="write_off" selected={assigns[:filter_params] && @filter_params.movement_type == "write_off"}>Write Off</option>
@@ -354,10 +355,19 @@
             </div>
           </div>
 
-          <div class="form-block" style="display: flex; gap: 0.5rem; margin-top: 1rem;">
+          <div class="form-block" style="display: flex; gap: 0.5rem; margin-top: 1rem; flex-wrap: wrap;">
             <button type="submit" class="btn primary" id="apply-filters-btn">
               Apply Filters
             </button>
+            <%= if @earliest_date && @latest_date do %>
+              <.link 
+                navigate={~p"/inventory?all_dates=true&scroll=movements"} 
+                class="btn"
+                style="white-space: nowrap;"
+              >
+                All dates
+              </.link>
+            <% end %>
             <.link navigate={~p"/inventory?scroll=movements"} class="btn" id="clear-filters-btn">
               Clear Filters
             </.link>
@@ -424,9 +434,18 @@
                   <td>
                     <%= cond do %>
                       <% m.movement_type == "purchase" -> %>
-                        <div style="display: flex; gap: 0.5rem;">
+                        <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
                           <.link navigate={~p"/inventory/purchases/#{m.id}/edit"} class="btn btn-sm">
                             Edit
+                          </.link>
+                          <.link
+                            href={~p"/inventory/purchases/#{m.id}/return"}
+                            method="post"
+                            data-confirm="Are you sure you want to return this purchase? This will create a return movement and reverse the accounting entry."
+                            class="btn btn-sm"
+                            style="background-color: #f59e0b; color: white;"
+                          >
+                            Return
                           </.link>
                           <.link
                             href={~p"/inventory/purchases/#{m.id}"}

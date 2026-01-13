@@ -25,9 +25,20 @@
 
           <div class="field">
             <label>&nbsp;</label>
-            <button type="submit" class="btn primary">
-              Update period
-            </button>
+            <div style="display: flex; gap: 0.5rem;">
+              <button type="submit" class="btn primary">
+                Update period
+              </button>
+              <%= if @earliest_date && @latest_date do %>
+                <.link 
+                  navigate={~p"/reports/cash_flow?all_dates=true"} 
+                  class="btn"
+                  style="white-space: nowrap;"
+                >
+                  All dates
+                </.link>
+              <% end %>
+            </div>
           </div>
         </div>
       </.form>

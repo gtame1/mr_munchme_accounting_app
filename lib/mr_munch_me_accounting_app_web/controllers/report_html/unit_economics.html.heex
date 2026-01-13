@@ -37,9 +37,20 @@
 
           <div class="field">
             <label>&nbsp;</label>
-            <button type="submit" class="btn primary">
-              Update
-            </button>
+            <div style="display: flex; gap: 0.5rem;">
+              <button type="submit" class="btn primary">
+                Update
+              </button>
+              <%= if @earliest_date && @latest_date && @selected_product_id do %>
+                <.link 
+                  navigate={~p"/reports/unit_economics?all_dates=true&product_id=#{@selected_product_id}"} 
+                  class="btn"
+                  style="white-space: nowrap;"
+                >
+                  All dates
+                </.link>
+              <% end %>
+            </div>
           </div>
         </div>
       </.form>

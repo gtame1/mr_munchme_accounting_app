@@ -42,6 +42,15 @@
             <label>&nbsp;</label>
             <div style="display: flex; gap: 0.5rem;">
               <button class="btn primary" type="submit">Apply Filters</button>
+              <%= if @earliest_date && @latest_date do %>
+                <.link 
+                  navigate={~p"/account-transactions?account_id=#{@filters.account_id}&all_dates=true"} 
+                  class="btn"
+                  style="white-space: nowrap;"
+                >
+                  All dates
+                </.link>
+              <% end %>
               <%= if @filters.account_id != "" do %>
                 <.link navigate={~p"/account-transactions"} class="btn">
                   Clear Filters

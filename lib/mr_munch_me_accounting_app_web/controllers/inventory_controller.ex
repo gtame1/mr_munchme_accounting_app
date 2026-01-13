@@ -21,6 +21,18 @@ defmodule MrMunchMeAccountingAppWeb.InventoryController do
         Inventory.inventory_type(stock.ingredient.code)
       end)
 
+    # Handle all_dates parameter
+    {date_from_param, date_to_param} =
+      if conn.params["all_dates"] == "true" do
+        {earliest_date, latest_date} = Inventory.movement_date_range()
+        {
+          if(earliest_date, do: Date.to_iso8601(earliest_date), else: nil),
+          if(latest_date, do: Date.to_iso8601(latest_date), else: nil)
+        }
+      else
+        {conn.params["date_from"], conn.params["date_to"]}
+      end
+
     # Check if we have search/filter params
     has_filters =
       conn.params["search"] != nil ||
@@ -28,8 +40,9 @@ defmodule MrMunchMeAccountingAppWeb.InventoryController do
       conn.params["ingredient_id"] != nil ||
       conn.params["from_location_id"] != nil ||
       conn.params["to_location_id"] != nil ||
-      conn.params["date_from"] != nil ||
-      conn.params["date_to"] != nil
+      date_from_param != nil ||
+      date_to_param != nil ||
+      conn.params["all_dates"] == "true"
 
     {recent_movements, movements_limit, has_more} =
       if has_filters do
@@ -40,8 +53,8 @@ defmodule MrMunchMeAccountingAppWeb.InventoryController do
           ingredient_code: conn.params["ingredient_id"],  # ingredient_id param actually contains the code
           from_location_id: parse_integer(conn.params["from_location_id"]),
           to_location_id: parse_integer(conn.params["to_location_id"]),
-          date_from: parse_date(conn.params["date_from"]),
-          date_to: parse_date(conn.params["date_to"]),
+          date_from: parse_date(date_from_param),
+          date_to: parse_date(date_to_param),
           limit: 500  # Higher limit for filtered results
         ]
 
@@ -62,6 +75,18 @@ defmodule MrMunchMeAccountingAppWeb.InventoryController do
     total_value_cents = Inventory.total_inventory_value_cents()
     ingredient_options = Inventory.ingredient_select_options()
     location_options = Inventory.location_select_options()
+    {earliest_date, latest_date} = Inventory.movement_date_range()
+
+    # Build filter params for template
+    filter_params = %{
+      search: conn.params["search"],
+      movement_type: conn.params["movement_type"],
+      ingredient_id: conn.params["ingredient_id"],
+      from_location_id: conn.params["from_location_id"],
+      to_location_id: conn.params["to_location_id"],
+      date_from: date_from_param || "",
+      date_to: date_to_param || ""
+    }
 
     render(conn, :index,
       stock_items: stock_items,
@@ -72,15 +97,9 @@ defmodule MrMunchMeAccountingAppWeb.InventoryController do
       total_value_cents: total_value_cents,
       ingredient_options: ingredient_options,
       location_options: location_options,
-      filter_params: %{
-        search: conn.params["search"],
-        movement_type: conn.params["movement_type"],
-        ingredient_id: conn.params["ingredient_id"],
-        from_location_id: conn.params["from_location_id"],
-        to_location_id: conn.params["to_location_id"],
-        date_from: conn.params["date_from"],
-        date_to: conn.params["date_to"]
-      }
+      filter_params: filter_params,
+      earliest_date: earliest_date,
+      latest_date: latest_date
     )
   end
 
@@ -342,6 +361,47 @@ defmodule MrMunchMeAccountingAppWeb.InventoryController do
       {:error, _reason} ->
         conn
         |> put_flash(:error, "Failed to delete purchase.")
+        |> redirect(to: ~p"/inventory")
+    end
+  end
+
+  def return_purchase(conn, %{"id" => id}) do
+    return_date = case conn.params["return_date"] do
+      nil -> nil
+      date_str when is_binary(date_str) ->
+        case Date.from_iso8601(date_str) do
+          {:ok, date} -> date
+          _ -> nil
+        end
+      _ -> nil
+    end
+
+    note = conn.params["note"]
+
+    case Inventory.return_purchase(id, return_date, note) do
+      {:ok, _result} ->
+        conn
+        |> put_flash(:info, "Purchase returned successfully.")
+        |> redirect(to: ~p"/inventory#recent_movements_card")
+
+      {:error, :not_a_purchase} ->
+        conn
+        |> put_flash(:error, "This movement is not a purchase.")
+        |> redirect(to: ~p"/inventory")
+
+      {:error, {:insufficient_quantity, message}} ->
+        conn
+        |> put_flash(:error, message)
+        |> redirect(to: ~p"/inventory")
+
+      {:error, reason} when is_binary(reason) ->
+        conn
+        |> put_flash(:error, reason)
+        |> redirect(to: ~p"/inventory")
+
+      {:error, _reason} ->
+        conn
+        |> put_flash(:error, "Failed to return purchase.")
         |> redirect(to: ~p"/inventory")
     end
   end

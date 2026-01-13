@@ -9,13 +9,16 @@ defmodule MrMunchMeAccountingAppWeb.ReportController do
 
   def dashboard(conn, params) do
     {start_date, end_date} = resolve_period(params)
+    {earliest_date, latest_date} = Inventory.movement_date_range()
 
     metrics = Reporting.dashboard_metrics(start_date, end_date)
 
     render(conn, :dashboard,
       metrics: metrics,
       start_date: start_date,
-      end_date: end_date
+      end_date: end_date,
+      earliest_date: earliest_date,
+      latest_date: latest_date
     )
   end
 
@@ -93,24 +96,31 @@ defmodule MrMunchMeAccountingAppWeb.ReportController do
         nil
       end
 
+    {earliest_date, latest_date} = Inventory.movement_date_range()
+
     render(conn, :unit_economics,
       unit_economics: unit_economics_data,
       product_options: product_options,
       selected_product_id: product_id,
       start_date: start_date,
-      end_date: end_date
+      end_date: end_date,
+      earliest_date: earliest_date,
+      latest_date: latest_date
     )
   end
 
   def cash_flow(conn, params) do
     {start_date, end_date} = resolve_period(params)
+    {earliest_date, latest_date} = Inventory.movement_date_range()
 
     cash_flow_data = Reporting.cash_flow(start_date, end_date)
 
     render(conn, :cash_flow,
       cash_flow: cash_flow_data,
       start_date: start_date,
-      end_date: end_date
+      end_date: end_date,
+      earliest_date: earliest_date,
+      latest_date: latest_date
     )
   end
 
