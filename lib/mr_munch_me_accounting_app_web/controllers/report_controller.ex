@@ -4,6 +4,7 @@ defmodule MrMunchMeAccountingAppWeb.ReportController do
   alias MrMunchMeAccountingApp.Accounting
   alias MrMunchMeAccountingApp.Reporting
   alias MrMunchMeAccountingApp.Orders
+  alias MrMunchMeAccountingApp.Inventory
   alias MrMunchMeAccountingApp.Inventory.Verification
 
   def dashboard(conn, params) do
@@ -21,6 +22,7 @@ defmodule MrMunchMeAccountingAppWeb.ReportController do
   # P&L for a period (default: current month)
   def pnl(conn, params) do
     {start_date, end_date} = resolve_period(params)
+    {earliest_date, latest_date} = Inventory.movement_date_range()
 
     summary  = Accounting.profit_and_loss(start_date, end_date)
     monthly  = Accounting.profit_and_loss_monthly(5)  # last 6 months including current
@@ -29,7 +31,9 @@ defmodule MrMunchMeAccountingAppWeb.ReportController do
       summary: summary,
       monthly: monthly,
       start_date: start_date,
-      end_date: end_date
+      end_date: end_date,
+      earliest_date: earliest_date,
+      latest_date: latest_date
     )
   end
 
@@ -148,6 +152,20 @@ defmodule MrMunchMeAccountingAppWeb.ReportController do
   end
 
   # Helpers
+
+  defp resolve_period(%{"all_dates" => "true"}) do
+    {earliest_date, latest_date} = Inventory.movement_date_range()
+
+    case {earliest_date, latest_date} do
+      {nil, nil} ->
+        # No movements exist, default to current month
+        today = Date.utc_today()
+        start_of_month = %Date{today | day: 1}
+        {start_of_month, today}
+      {earliest, latest} ->
+        {earliest, latest}
+    end
+  end
 
   defp resolve_period(%{"start_date" => s, "end_date" => e}) when s != "" and e != "" do
     {:ok, start_date} = Date.from_iso8601(s)

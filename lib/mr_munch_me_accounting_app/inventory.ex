@@ -673,6 +673,26 @@ defmodule MrMunchMeAccountingApp.Inventory do
   end
 
   @doc """
+  Get the earliest and latest movement dates from all inventory movements.
+  Returns {earliest_date, latest_date} or {nil, nil} if no movements exist.
+  """
+  def movement_date_range do
+    earliest =
+      from(m in InventoryMovement,
+        select: min(m.movement_date)
+      )
+      |> Repo.one()
+
+    latest =
+      from(m in InventoryMovement,
+        select: max(m.movement_date)
+      )
+      |> Repo.one()
+
+    {earliest, latest}
+  end
+
+  @doc """
   Check if there are more movements beyond the current limit.
   """
   def has_more_movements?(current_limit) do

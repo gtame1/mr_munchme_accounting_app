@@ -125,12 +125,16 @@ defmodule MrMunchMeAccountingApp.Accounting do
       description: "Delivered order ##{order.id}"
     }
 
-    # Calculate total deposits paid before delivery
+    # Calculate total payments received before delivery
+    # We need to check payments that were recorded before the delivery date
+    delivery_date = order.delivery_date || Date.utc_today()
+
     # Deposits are payments where is_deposit == true
     # Use customer_amount_cents if set, otherwise use amount_cents
     deposit_total_cents =
       from(p in OrderPayment,
         where: p.order_id == ^order.id and p.is_deposit == true,
+        where: p.payment_date <= ^delivery_date,
         select: sum(fragment("COALESCE(?, ?)", p.customer_amount_cents, p.amount_cents))
       )
       |> Repo.one()
@@ -139,15 +143,34 @@ defmodule MrMunchMeAccountingApp.Accounting do
         total -> total
       end
 
-    # 1) Revenue: DR AR, CR Sales
+    # Non-deposit payments received before delivery
+    # These already credited AR, so we need to account for them
+    non_deposit_payments_before_delivery_cents =
+      from(p in OrderPayment,
+        where: p.order_id == ^order.id and p.is_deposit == false,
+        where: p.payment_date <= ^delivery_date,
+        select: sum(fragment("COALESCE(?, ?)", p.customer_amount_cents, p.amount_cents))
+      )
+      |> Repo.one()
+      |> case do
+        nil -> 0
+        total -> total
+      end
+
+    # Net AR to recognize = revenue - deposits - non-deposit payments before delivery
+    # (Deposits will be transferred from Customer Deposits, non-deposit payments already credited AR)
+    net_ar_cents = revenue_cents - deposit_total_cents - non_deposit_payments_before_delivery_cents
+
+    # 1) Revenue: DR AR (net amount), CR Sales (full revenue)
+    # We only debit AR for the net amount (revenue minus payments received before delivery)
     revenue_lines =
       if revenue_cents > 0 do
         [
           %{
             account_id: ar.id,
-            debit_cents: revenue_cents,
+            debit_cents: net_ar_cents,
             credit_cents: 0,
-            description: "Recognize AR for order ##{order.id}"
+            description: "Recognize AR for order ##{order.id} (net of pre-delivery payments)"
           },
           %{
             account_id: sales.id,
