@@ -21,25 +21,92 @@ defmodule MrMunchMeAccountingAppWeb.InventoryController do
         Inventory.inventory_type(stock.ingredient.code)
       end)
 
-    # Get limit from query params, default to 10
-    limit = case Integer.parse(conn.params["movements_limit"] || "10") do
-      {parsed_limit, _} when parsed_limit > 0 -> parsed_limit
-      _ -> 10
-    end
+    # Check if we have search/filter params
+    has_filters =
+      conn.params["search"] != nil ||
+      conn.params["movement_type"] != nil ||
+      conn.params["ingredient_id"] != nil ||
+      conn.params["from_location_id"] != nil ||
+      conn.params["to_location_id"] != nil ||
+      conn.params["date_from"] != nil ||
+      conn.params["date_to"] != nil
 
-    recent_movements = Inventory.list_recent_movements(limit)
-    has_more = Inventory.has_more_movements?(limit)
+    {recent_movements, movements_limit, has_more} =
+      if has_filters do
+        # Use search/filter function
+        search_opts = [
+          search: conn.params["search"],
+          movement_type: conn.params["movement_type"],
+          ingredient_id: parse_integer(conn.params["ingredient_id"]),
+          from_location_id: parse_integer(conn.params["from_location_id"]),
+          to_location_id: parse_integer(conn.params["to_location_id"]),
+          date_from: parse_date(conn.params["date_from"]),
+          date_to: parse_date(conn.params["date_to"]),
+          limit: 500  # Higher limit for filtered results
+        ]
+
+        movements = Inventory.search_movements(search_opts)
+        {movements, length(movements), false}
+      else
+        # Use default recent movements with limit
+        limit = case Integer.parse(conn.params["movements_limit"] || "10") do
+          {parsed_limit, _} when parsed_limit > 0 -> parsed_limit
+          _ -> 10
+        end
+
+        movements = Inventory.list_recent_movements(limit)
+        has_more = Inventory.has_more_movements?(limit)
+        {movements, limit, has_more}
+      end
+
     total_value_cents = Inventory.total_inventory_value_cents()
+    ingredient_options = Inventory.ingredient_select_options()
+    location_options = Inventory.location_select_options()
 
     render(conn, :index,
       stock_items: stock_items,
       stock_by_type: stock_by_type,
       recent_movements: recent_movements,
-      movements_limit: limit,
+      movements_limit: movements_limit,
       has_more_movements: has_more,
-      total_value_cents: total_value_cents
+      total_value_cents: total_value_cents,
+      ingredient_options: ingredient_options,
+      location_options: location_options,
+      filter_params: %{
+        search: conn.params["search"],
+        movement_type: conn.params["movement_type"],
+        ingredient_id: conn.params["ingredient_id"],
+        from_location_id: conn.params["from_location_id"],
+        to_location_id: conn.params["to_location_id"],
+        date_from: conn.params["date_from"],
+        date_to: conn.params["date_to"]
+      }
     )
   end
+
+  # Helper to parse integer from string, returns nil if invalid
+  defp parse_integer(nil), do: nil
+  defp parse_integer(""), do: nil
+  defp parse_integer(str) when is_binary(str) do
+    case Integer.parse(str) do
+      {int, _} -> int
+      :error -> nil
+    end
+  end
+  defp parse_integer(int) when is_integer(int), do: int
+  defp parse_integer(_), do: nil
+
+  # Helper to parse date from string, returns nil if invalid
+  defp parse_date(nil), do: nil
+  defp parse_date(""), do: nil
+  defp parse_date(str) when is_binary(str) do
+    case Date.from_iso8601(str) do
+      {:ok, date} -> date
+      {:error, _} -> nil
+    end
+  end
+  defp parse_date(%Date{} = date), do: date
+  defp parse_date(_), do: nil
 
   # -------- New purchase form --------
 

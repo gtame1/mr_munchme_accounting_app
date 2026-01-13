@@ -673,6 +673,109 @@ defmodule MrMunchMeAccountingApp.Inventory do
   end
 
   @doc """
+  Search and filter inventory movements with various criteria.
+
+  Options:
+  - search: text search in ingredient name/code or note
+  - movement_type: filter by type (purchase, usage, transfer, write_off)
+  - ingredient_id: filter by specific ingredient
+  - from_location_id: filter by source location
+  - to_location_id: filter by destination location
+  - date_from: filter movements from this date onwards
+  - date_to: filter movements up to this date
+  - limit: maximum number of results (default: 100)
+  """
+  def search_movements(opts \\ []) do
+    search = Keyword.get(opts, :search)
+    movement_type = Keyword.get(opts, :movement_type)
+    ingredient_id = Keyword.get(opts, :ingredient_id)
+    from_location_id = Keyword.get(opts, :from_location_id)
+    to_location_id = Keyword.get(opts, :to_location_id)
+    date_from = Keyword.get(opts, :date_from)
+    date_to = Keyword.get(opts, :date_to)
+    limit = Keyword.get(opts, :limit, 100)
+
+    query =
+      from(m in InventoryMovement,
+        join: i in assoc(m, :ingredient),
+        preload: [:ingredient, :from_location, :to_location],
+        order_by: [desc: m.movement_date, desc: m.inserted_at]
+      )
+
+    # Apply search filter (ingredient name, code, or note)
+    query =
+      if search && String.trim(search) != "" do
+        search_term = "%#{String.trim(search)}%"
+        from([m, i] in query,
+          where:
+            ilike(i.name, ^search_term) or
+            ilike(i.code, ^search_term) or
+            ilike(m.note, ^search_term)
+        )
+      else
+        query
+      end
+
+    # Apply movement type filter
+    query =
+      if movement_type && movement_type != "" do
+        from(m in query, where: m.movement_type == ^movement_type)
+      else
+        query
+      end
+
+    # Apply ingredient filter
+    query =
+      if ingredient_id do
+        from(m in query, where: m.ingredient_id == ^ingredient_id)
+      else
+        query
+      end
+
+    # Apply from_location filter
+    query =
+      if from_location_id do
+        from(m in query, where: m.from_location_id == ^from_location_id)
+      else
+        query
+      end
+
+    # Apply to_location filter
+    query =
+      if to_location_id do
+        from(m in query, where: m.to_location_id == ^to_location_id)
+      else
+        query
+      end
+
+    # Apply date_from filter
+    query =
+      if date_from do
+        from(m in query, where: m.movement_date >= ^date_from)
+      else
+        query
+      end
+
+    # Apply date_to filter
+    query =
+      if date_to do
+        from(m in query, where: m.movement_date <= ^date_to)
+      else
+        query
+      end
+
+    # Apply limit
+    query =
+      if limit do
+        from(m in query, limit: ^limit)
+      else
+        query
+      end
+
+    Repo.all(query)
+  end
+
+  @doc """
   Get the earliest and latest movement dates from all inventory movements.
   Returns {earliest_date, latest_date} or {nil, nil} if no movements exist.
   """
