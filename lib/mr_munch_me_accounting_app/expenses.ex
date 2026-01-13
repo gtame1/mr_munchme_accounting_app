@@ -36,7 +36,6 @@ defmodule MrMunchMeAccountingApp.Expenses do
   def update_expense_with_journal(%Expense{} = expense, attrs) do
     # amount_cents should already be in cents (converted in controller)
     # No conversion needed here
-    attrs
 
     Repo.transaction(fn ->
       with {:ok, updated_expense} <-
@@ -58,9 +57,6 @@ defmodule MrMunchMeAccountingApp.Expenses do
   def create_expense_with_journal(attrs) do
     # amount_cents should already be in cents (converted in controller)
     # No conversion needed here
-    attrs
-
-    IO.inspect(attrs, label: "Attrs after conversion")
 
     Repo.transaction(fn ->
       with {:ok, expense} <-

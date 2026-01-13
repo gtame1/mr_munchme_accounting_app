@@ -101,7 +101,7 @@ defmodule MrMunchMeAccountingAppWeb.ReconciliationController do
     Logger.info("Parsed values - ingredient_id: #{inspect(ingredient_id)}, location_id: #{inspect(location_id)}, actual_quantity_str: #{inspect(actual_quantity_str)}, date_str: #{inspect(date_str)}")
 
     if is_nil(ingredient_id) or is_nil(location_id) or is_nil(actual_quantity_str) or is_nil(date_str) do
-      Logger.warn("Missing required fields in inventory adjust")
+      Logger.warning("Missing required fields in inventory adjust")
       conn
       |> put_flash(:error, "Missing required fields")
       |> redirect(to: ~p"/reconciliation/inventory")
@@ -126,7 +126,7 @@ defmodule MrMunchMeAccountingAppWeb.ReconciliationController do
             |> redirect(to: ~p"/reconciliation/inventory")
 
           {:error, reason} when is_binary(reason) ->
-            Logger.warn("Inventory reconciliation error (string): #{reason}")
+            Logger.warning("Inventory reconciliation error (string): #{reason}")
             conn
             |> put_flash(:error, reason)
             |> redirect(to: ~p"/reconciliation/inventory")
@@ -141,12 +141,6 @@ defmodule MrMunchMeAccountingAppWeb.ReconciliationController do
 
             conn
             |> put_flash(:error, error_msg)
-            |> redirect(to: ~p"/reconciliation/inventory")
-
-          other ->
-            Logger.error("Unexpected result from create_inventory_reconciliation: #{inspect(other)}")
-            conn
-            |> put_flash(:error, "Unexpected error: #{inspect(other)}")
             |> redirect(to: ~p"/reconciliation/inventory")
         end
       rescue

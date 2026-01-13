@@ -106,13 +106,6 @@ defmodule MrMunchMeAccountingAppWeb.InventoryController do
           paid_from_account_options: Accounting.cash_or_payable_account_options(),
           purchase_date: purchase_params["purchase_date"] || Date.utc_today()
         )
-
-      other ->
-        Logger.error("❌ Inventory.create_purchase_list/1 returned unexpected: #{inspect(other)}")
-
-        conn
-        |> put_flash(:error, "Unexpected error while saving purchase list.")
-        |> redirect(to: ~p"/inventory/purchases/new")
     end
   end
 

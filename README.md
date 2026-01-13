@@ -20,7 +20,6 @@
 - Fix bug when moving from existing->new->existing user glitches.
 - Search feature for existing users.
 - Check customer deposits, number doesnt sound right.
-- Add dashboard to see all transactions per account.
 
 
 ## Using github

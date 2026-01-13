@@ -19,9 +19,6 @@ defmodule Mix.Tasks.BackfillMovementCosts do
     case Inventory.backfill_movement_costs() do
       {:ok, count} ->
         IO.puts("✅ Successfully updated #{count} movement(s) with correct costs.")
-
-      {:error, reason} ->
-        IO.puts("❌ Error: #{inspect(reason)}")
     end
   end
 end

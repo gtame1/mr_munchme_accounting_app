@@ -6,7 +6,7 @@ defmodule MrMunchMeAccountingApp.Inventory.Verification do
   import Ecto.Query
   alias MrMunchMeAccountingApp.{Repo, Accounting}
   alias MrMunchMeAccountingApp.Accounting.{JournalEntry, JournalLine}
-  alias MrMunchMeAccountingApp.Inventory.{Ingredient, Location, InventoryItem, InventoryMovement}
+  alias MrMunchMeAccountingApp.Inventory.{InventoryItem, InventoryMovement}
 
   @ingredients_account_code "1200"
   @wip_account_code "1220"
@@ -418,6 +418,4 @@ defmodule MrMunchMeAccountingApp.Inventory.Verification do
     sign = if cents < 0, do: "-", else: ""
     "#{sign}#{pesos}.#{String.pad_leading(Integer.to_string(cents_remainder), 2, "0")} MXN"
   end
-
-  defp format_currency(_), do: "0.00 MXN"
 end

@@ -51,7 +51,6 @@
                       action={~p"/reconciliation/accounting/adjust"} 
                       class="inline-form"
                       id={"adjust-form-#{account.id}"}
-                      :let={f}
                     >
                       <input type="hidden" name="account_id" value={account.id} />
                       <input type="hidden" name="adjustment_date" value={@as_of} />

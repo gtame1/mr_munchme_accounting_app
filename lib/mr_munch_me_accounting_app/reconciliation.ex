@@ -6,7 +6,7 @@ defmodule MrMunchMeAccountingApp.Reconciliation do
   import Ecto.Query, warn: false
   alias MrMunchMeAccountingApp.Repo
   alias MrMunchMeAccountingApp.Accounting
-  alias MrMunchMeAccountingApp.Accounting.{Account, JournalEntry, JournalLine}
+  alias MrMunchMeAccountingApp.Accounting.{Account, JournalLine}
   alias MrMunchMeAccountingApp.Inventory
   alias MrMunchMeAccountingApp.Inventory.{Ingredient, Location, InventoryItem}
 
@@ -245,7 +245,7 @@ defmodule MrMunchMeAccountingApp.Reconciliation do
         # If avg_cost is 0, we can't calculate value difference, so use a default cost
         # This handles cases where inventory was never purchased but exists physically
         effective_avg_cost = if avg_cost == 0 do
-          Logger.warn("No average cost for #{ingredient.code}, using ingredient default cost or 1 cent")
+          Logger.warning("No average cost for #{ingredient.code}, using ingredient default cost or 1 cent")
           ingredient.cost_per_unit_cents || 1
         else
           avg_cost
@@ -262,7 +262,6 @@ defmodule MrMunchMeAccountingApp.Reconciliation do
           case raw_value do
             val when is_float(val) -> round(val)
             val when is_integer(val) -> val
-            _ -> round(raw_value)
           end
 
         Logger.info("Value difference calculated: difference=#{difference}, effective_avg_cost=#{effective_avg_cost}, raw_value=#{raw_value}, value_difference_cents=#{value_difference_cents}")

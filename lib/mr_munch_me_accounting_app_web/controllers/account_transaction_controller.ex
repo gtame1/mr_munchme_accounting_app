@@ -103,7 +103,6 @@ end
 
 defmodule MrMunchMeAccountingAppWeb.AccountTransactionHTML do
   use MrMunchMeAccountingAppWeb, :html
-  import MrMunchMeAccountingAppWeb.CoreComponents
 
   embed_templates "account_transaction_html/*"
 end

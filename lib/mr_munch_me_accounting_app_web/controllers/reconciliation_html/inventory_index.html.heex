@@ -38,7 +38,6 @@
                       action={~p"/reconciliation/inventory/adjust"} 
                       class="inline-form"
                       id={"adjust-form-#{item.ingredient.id}-#{item.location.id}"}
-                      :let={f}
                     >
                       <input type="hidden" name="ingredient_id" value={item.ingredient.id} />
                       <input type="hidden" name="location_id" value={item.location.id} />

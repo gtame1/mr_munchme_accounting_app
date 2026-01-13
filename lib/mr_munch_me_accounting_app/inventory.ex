@@ -1055,10 +1055,6 @@ defmodule MrMunchMeAccountingApp.Inventory do
                 Logger.error("❌ create_movement/1 returned changeset error: #{inspect(item_changeset.errors)}")
                 # Rollback with the inner error so the transaction stops
                 Repo.rollback(item_changeset)
-
-              {:error, other} ->
-                Logger.error("❌ create_movement/1 returned non-changeset error: #{inspect(other)}")
-                Repo.rollback(other)
             end
           end)
 
@@ -1434,10 +1430,8 @@ defmodule MrMunchMeAccountingApp.Inventory do
     end
   end
 
-  @doc """
-  Calculates the cumulative average cost for an ingredient at a location as of a specific date.
-  This is used to backfill costs for movements that were recorded with $0 cost.
-  """
+  # Calculates the cumulative average cost for an ingredient at a location as of a specific date.
+  # This is used to backfill costs for movements that were recorded with $0 cost.
   defp calculate_cumulative_avg_cost_as_of_date(ingredient_id, location_id, as_of_date) do
     result =
       from(m in InventoryMovement,

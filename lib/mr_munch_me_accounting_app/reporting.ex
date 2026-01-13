@@ -135,7 +135,7 @@ defmodule MrMunchMeAccountingApp.Reporting do
             [first_pattern] ->
               base_query
               |> where([je], ilike(je.reference, ^first_pattern))
-            [first_pattern | rest_patterns] when length(rest_patterns) > 0 ->
+            [first_pattern | rest_patterns] when rest_patterns != [] ->
               initial_query = base_query |> where([je], ilike(je.reference, ^first_pattern))
               Enum.reduce(rest_patterns, initial_query, fn pattern, acc_q ->
                 or_where(acc_q, [je], ilike(je.reference, ^pattern))

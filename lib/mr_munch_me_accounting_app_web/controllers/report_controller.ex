@@ -5,7 +5,6 @@ defmodule MrMunchMeAccountingAppWeb.ReportController do
   alias MrMunchMeAccountingApp.Reporting
   alias MrMunchMeAccountingApp.Orders
   alias MrMunchMeAccountingApp.Inventory.Verification
-  alias MrMunchMeAccountingApp.Repo
 
   def dashboard(conn, params) do
     {start_date, end_date} = resolve_period(params)
@@ -111,7 +110,7 @@ defmodule MrMunchMeAccountingAppWeb.ReportController do
     )
   end
 
-  def inventory_verification(conn, params) do
+  def inventory_verification(conn, _params) do
     results = Verification.run_all_checks()
 
     # Handle repair action (POST request)
