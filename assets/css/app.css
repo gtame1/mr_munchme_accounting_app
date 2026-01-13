@@ -1116,8 +1116,165 @@
     background: #6b7280;
   }
 
-  /* Responsive: stack on smaller screens */
-  @media (max-width: 900px) {
+  /* ==============================
+     Responsive Design
+     ============================== */
+
+  /* Tablet and below (max-width: 1024px) */
+  @media (max-width: 1024px) {
+    .app-layout {
+      grid-template-columns: 220px minmax(0, 1fr);
+    }
+
+    .content {
+      padding: 1.25rem 1.5rem;
+    }
+
+    .dashboard-metrics {
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    }
+
+    .summary-grid {
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    }
+  }
+
+  /* Mobile and small tablets (max-width: 768px) */
+  @media (max-width: 768px) {
+    /* Layout: Stack sidebar and content vertically */
+    .app-layout {
+      grid-template-columns: 1fr;
+      grid-template-rows: auto 1fr;
+    }
+
+    .sidebar {
+      padding: 1rem 0.75rem;
+      max-height: 60vh;
+      overflow-y: auto;
+      border-bottom: 2px solid rgba(253, 245, 238, 0.2);
+    }
+
+    .sidebar-header {
+      padding: 0.5rem 0.75rem;
+    }
+
+    .app-logo {
+      font-size: 1.2rem;
+    }
+
+    .app-title {
+      font-size: 0.85rem;
+    }
+
+    .nav {
+      margin-top: 0.5rem;
+    }
+
+    .nav-link,
+    .nav-dropdown-toggle {
+      font-size: 0.85rem;
+      padding: 0.5rem 0.75rem;
+    }
+
+    /* Content */
+    .content {
+      padding: 1rem;
+    }
+
+    .content-header {
+      margin-bottom: 0.75rem;
+    }
+
+    .page-title {
+      font-size: 1.2rem;
+    }
+
+    .card {
+      padding: 1rem;
+      border-radius: var(--radius-md);
+    }
+
+    .card-title {
+      font-size: 1rem;
+    }
+
+    .card-subtitle {
+      font-size: 0.8rem;
+    }
+
+    /* Forms */
+    .form-grid {
+      gap: 1rem;
+      margin: 1rem 0;
+    }
+
+    .form-block {
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+
+    .field {
+      min-width: 100%;
+      width: 100%;
+    }
+
+    .form-section {
+      padding: 1rem;
+    }
+
+    /* Dashboard metrics */
+    .dashboard-metrics {
+      grid-template-columns: 1fr;
+      gap: 0.75rem;
+    }
+
+    .summary-grid {
+      grid-template-columns: 1fr;
+      gap: 0.75rem;
+      padding: 1rem;
+    }
+
+    /* Tables */
+    .table-wrapper {
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .table {
+      font-size: 0.85rem;
+      min-width: 600px; /* Ensure table doesn't get too compressed */
+    }
+
+    .table th,
+    .table td {
+      padding: 0.5rem 0.6rem;
+    }
+
+    .table th {
+      font-size: 0.7rem;
+    }
+
+    /* Buttons */
+    .btn {
+      padding: 0.5rem 0.9rem;
+      font-size: 0.85rem;
+    }
+
+    .actions {
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .actions .btn {
+      width: 100%;
+      justify-content: center;
+    }
+
+    /* Purchase form specific */
+    .purchase-item-row {
+      padding: 1rem;
+    }
+
     .purchase-item-row > div {
       flex-wrap: wrap;
     }
@@ -1131,5 +1288,124 @@
       width: 100%;
       padding-top: 0.5rem;
       justify-content: flex-end;
+    }
+
+    /* Calendar */
+    .calendar-page {
+      padding: 0.5rem;
+    }
+
+    .calendar-header {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 0.75rem;
+    }
+
+    .calendar-header-actions {
+      width: 100%;
+      justify-content: flex-start;
+    }
+
+    .calendar-grid {
+      font-size: 0.7rem;
+    }
+
+    .calendar-day {
+      min-height: 3rem;
+      padding: 0.3rem;
+    }
+
+    .calendar-order-item {
+      padding: 0.25rem 0.3rem;
+    }
+
+    .calendar-legend-items {
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+  }
+
+  /* Small mobile (max-width: 480px) */
+  @media (max-width: 480px) {
+    .content {
+      padding: 0.75rem;
+    }
+
+    .card {
+      padding: 0.75rem;
+    }
+
+    .page-title {
+      font-size: 1.1rem;
+    }
+
+    .card-title {
+      font-size: 0.95rem;
+    }
+
+    .metric-value {
+      font-size: 1.1rem;
+    }
+
+    .summary-value {
+      font-size: 1rem;
+    }
+
+    .table {
+      font-size: 0.8rem;
+      min-width: 500px;
+    }
+
+    .table th,
+    .table td {
+      padding: 0.4rem 0.5rem;
+    }
+
+    .btn {
+      padding: 0.45rem 0.8rem;
+      font-size: 0.8rem;
+    }
+
+    .sidebar {
+      padding: 0.75rem 0.5rem;
+    }
+
+    .nav-link,
+    .nav-dropdown-toggle {
+      font-size: 0.8rem;
+      padding: 0.45rem 0.65rem;
+    }
+
+    /* Form fields on very small screens */
+    input[type="text"],
+    input[type="email"],
+    input[type="date"],
+    input[type="tel"],
+    input[type="number"],
+    select,
+    textarea {
+      font-size: 16px; /* Prevents zoom on iOS */
+      padding: 0.5rem;
+    }
+
+    /* Ensure buttons and links are touch-friendly */
+    .btn,
+    .nav-link,
+    .link-text {
+      min-height: 44px; /* iOS touch target minimum */
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+  }
+
+  /* Landscape mobile optimization */
+  @media (max-width: 768px) and (orientation: landscape) {
+    .sidebar {
+      max-height: 40vh;
+    }
+
+    .content {
+      padding: 0.75rem 1rem;
     }
   }
