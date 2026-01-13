@@ -20,11 +20,13 @@
 - Fix bug when moving from existing->new->existing user glitches.
 - Search feature for existing users.
 - Check customer deposits, number doesnt sound right.
-
+- Add functionality to "undo" or create a return of inventory. For example, whenever the user purchases inventory but then returns it. We should create the inventory movement and the accounting ledger.
+- Allow search or filtering in inventory movements table, its complicated to search for old movements.
+- Add cutoff for when reconciliation was made in UI. Like "reconciled on x date" and show a line that divides the table or something like that.
 
 ## Using github
 
-- git status         # should show modified file
+- git status         # should show modified files
 - git add .
 - git commit -m "Tweak inventory purchase form"
 - git push

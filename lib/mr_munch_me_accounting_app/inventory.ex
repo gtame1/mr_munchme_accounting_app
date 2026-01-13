@@ -678,7 +678,8 @@ defmodule MrMunchMeAccountingApp.Inventory do
   Options:
   - search: text search in ingredient name/code or note
   - movement_type: filter by type (purchase, usage, transfer, write_off)
-  - ingredient_id: filter by specific ingredient
+  - ingredient_id: filter by specific ingredient ID
+  - ingredient_code: filter by specific ingredient code
   - from_location_id: filter by source location
   - to_location_id: filter by destination location
   - date_from: filter movements from this date onwards
@@ -689,6 +690,7 @@ defmodule MrMunchMeAccountingApp.Inventory do
     search = Keyword.get(opts, :search)
     movement_type = Keyword.get(opts, :movement_type)
     ingredient_id = Keyword.get(opts, :ingredient_id)
+    ingredient_code = Keyword.get(opts, :ingredient_code)
     from_location_id = Keyword.get(opts, :from_location_id)
     to_location_id = Keyword.get(opts, :to_location_id)
     date_from = Keyword.get(opts, :date_from)
@@ -724,12 +726,17 @@ defmodule MrMunchMeAccountingApp.Inventory do
         query
       end
 
-    # Apply ingredient filter
+    # Apply ingredient filter (by ID or code)
     query =
-      if ingredient_id do
-        from(m in query, where: m.ingredient_id == ^ingredient_id)
-      else
-        query
+      cond do
+        ingredient_id ->
+          from(m in query, where: m.ingredient_id == ^ingredient_id)
+
+        ingredient_code && ingredient_code != "" ->
+          from([m, i] in query, where: i.code == ^ingredient_code)
+
+        true ->
+          query
       end
 
     # Apply from_location filter

@@ -297,8 +297,8 @@
               <label>Ingredient</label>
               <select name="ingredient_id" style="width: 100%;">
                 <option value="">All Ingredients</option>
-                <%= for {name, id} <- @ingredient_options do %>
-                  <option value={id} selected={assigns[:filter_params] && @filter_params.ingredient_id == to_string(id)}>
+                <%= for {name, code} <- @ingredient_options do %>
+                  <option value={code} selected={assigns[:filter_params] && @filter_params.ingredient_id == code}>
                     <%= name %>
                   </option>
                 <% end %>

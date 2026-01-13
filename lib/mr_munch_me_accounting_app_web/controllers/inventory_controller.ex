@@ -37,7 +37,7 @@ defmodule MrMunchMeAccountingAppWeb.InventoryController do
         search_opts = [
           search: conn.params["search"],
           movement_type: conn.params["movement_type"],
-          ingredient_id: parse_integer(conn.params["ingredient_id"]),
+          ingredient_code: conn.params["ingredient_id"],  # ingredient_id param actually contains the code
           from_location_id: parse_integer(conn.params["from_location_id"]),
           to_location_id: parse_integer(conn.params["to_location_id"]),
           date_from: parse_date(conn.params["date_from"]),
