@@ -1,0 +1,122 @@
+<section class="content">
+  <header class="content-header">
+    <h1 class="page-title">Unit Economics - All Products</h1>
+  </header>
+
+  <div class="content-body">
+    <!-- Period selector -->
+    <section class="card">
+      <h2 class="card-title">Period</h2>
+      <p class="card-subtitle">
+        Select a date range to view unit economics for all products.
+      </p>
+
+      <.form for={%{}} method="get" action={~p"/reports/unit_economics_list"} class="form-grid" :let={_f}>
+        <div class="form-block">
+          <div class="field">
+            <label>Start date</label>
+            <input type="date" name="start_date" value={@start_date} />
+          </div>
+
+          <div class="field">
+            <label>End date</label>
+            <input type="date" name="end_date" value={@end_date} />
+          </div>
+
+          <div class="field">
+            <label>&nbsp;</label>
+            <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+              <button type="submit" class="btn primary">
+                Update
+              </button>
+              <.link navigate={~p"/reports/unit_economics_list?period=last_7_days"} class="btn">Last 7 days</.link>
+              <.link navigate={~p"/reports/unit_economics_list?period=this_month"} class="btn">This month</.link>
+              <.link navigate={~p"/reports/unit_economics_list?period=last_90_days"} class="btn">Last 90 days</.link>
+              <.link navigate={~p"/reports/unit_economics_list?period=all_time"} class="btn">All time</.link>
+            </div>
+          </div>
+        </div>
+      </.form>
+    </section>
+
+    <!-- Navigation link to single product view -->
+    <div style="margin-bottom: 1rem;">
+      <.link navigate={~p"/reports/unit_economics"} class="btn">
+        View Single Product Details
+      </.link>
+    </div>
+
+    <%= if Enum.empty?(@all_unit_economics) do %>
+      <section class="card">
+        <p class="card-subtitle">
+          No products with sales found in the selected period.
+        </p>
+      </section>
+    <% else %>
+      <!-- Unit Economics List Table -->
+      <section class="card">
+        <h2 class="card-title">Unit Economics Summary</h2>
+        <p class="card-subtitle">
+          Period: <%= @start_date %> to <%= @end_date %>
+        </p>
+
+        <div class="table-wrapper" style="margin-top: 1rem;">
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Product</th>
+                <th class="numeric">Units Sold</th>
+                <th class="numeric">Revenue</th>
+                <th class="numeric">COGS</th>
+                <th class="numeric">Gross Margin</th>
+                <th class="numeric">GM %</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              <%= for ue <- @all_unit_economics do %>
+                <tr>
+                  <td>
+                    <strong><%= ue.product.name %></strong>
+                    <%= if ue.product.sku do %>
+                      <br/><small class="text-muted"><%= ue.product.sku %></small>
+                    <% end %>
+                  </td>
+                  <td class="numeric"><%= ue.units_sold %></td>
+                  <td class="numeric"><%= format_currency(ue.revenue_cents) %></td>
+                  <td class="numeric"><%= format_currency(ue.cogs_cents) %></td>
+                  <td class="numeric"><%= format_currency(ue.gross_margin_cents) %></td>
+                  <td class="numeric">
+                    <span class={cond do
+                      ue.gross_margin_percent >= 50 -> "text-success"
+                      ue.gross_margin_percent >= 30 -> ""
+                      true -> "text-danger"
+                    end}>
+                      <%= ue.gross_margin_percent %>%
+                    </span>
+                  </td>
+                  <td>
+                    <.link navigate={~p"/reports/unit_economics?product_id=#{ue.product.id}&start_date=#{Date.to_iso8601(@start_date)}&end_date=#{Date.to_iso8601(@end_date)}"} class="btn btn-sm">
+                      Details
+                    </.link>
+                  </td>
+                </tr>
+              <% end %>
+            </tbody>
+            <tfoot style="background-color: #f0f9ff; font-weight: 600;">
+              <tr>
+                <td><strong>TOTAL</strong></td>
+                <td class="numeric"><%= @totals.units_sold %></td>
+                <td class="numeric"><%= format_currency(@totals.revenue_cents) %></td>
+                <td class="numeric"><%= format_currency(@totals.cogs_cents) %></td>
+                <td class="numeric"><%= format_currency(@totals.gross_margin_cents) %></td>
+                <td class="numeric"><%= @totals.gross_margin_percent %>%</td>
+                <td></td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      </section>
+    <% end %>
+  </div>
+</section>

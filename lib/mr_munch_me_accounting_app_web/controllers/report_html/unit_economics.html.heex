@@ -4,6 +4,12 @@
   </header>
 
   <div class="content-body">
+    <!-- Navigation link to list view -->
+    <div style="margin-bottom: 1rem;">
+      <.link navigate={~p"/reports/unit_economics_list?start_date=#{Date.to_iso8601(@start_date)}&end_date=#{Date.to_iso8601(@end_date)}"} class="btn">
+        View All Products
+      </.link>
+    </div>
     <!-- Product selector and period -->
     <section class="card">
       <h2 class="card-title">Product &amp; Period</h2>

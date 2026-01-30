@@ -397,6 +397,36 @@ defmodule MrMunchMeAccountingApp.Reporting do
   end
 
   @doc """
+  Calculate unit economics for all active products.
+  Returns a list of unit economics maps for each product.
+  """
+  def all_unit_economics(start_date \\ nil, end_date \\ nil) do
+    # Default to all time if no dates provided
+    {start_date, end_date} =
+      case {start_date, end_date} do
+        {nil, nil} -> {~D[2000-01-01], Date.utc_today()}
+        {s, e} when not is_nil(s) and not is_nil(e) -> {s, e}
+        {s, nil} -> {s, Date.utc_today()}
+        {nil, e} -> {~D[2000-01-01], e}
+      end
+
+    # Get all active products
+    products =
+      from(p in Product,
+        where: p.active == true,
+        order_by: [asc: p.name]
+      )
+      |> Repo.all()
+
+    # Calculate unit economics for each product
+    products
+    |> Enum.map(fn product ->
+      unit_economics(product.id, start_date, end_date)
+    end)
+    |> Enum.filter(fn ue -> ue.units_sold > 0 end)
+  end
+
+  @doc """
   Calculate cash flow for a date range.
   Returns cash inflows, outflows, and net cash flow.
   """

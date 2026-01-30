@@ -124,6 +124,62 @@ defmodule MrMunchMeAccountingAppWeb.ReportController do
     )
   end
 
+  def unit_economics_list(conn, params) do
+    {start_date, end_date} = resolve_period(params)
+    {earliest_date, latest_date} = Inventory.movement_date_range()
+
+    all_unit_economics = Reporting.all_unit_economics(start_date, end_date)
+
+    # Calculate totals across all products
+    totals = calculate_totals(all_unit_economics)
+
+    render(conn, :unit_economics_list,
+      all_unit_economics: all_unit_economics,
+      totals: totals,
+      start_date: start_date,
+      end_date: end_date,
+      earliest_date: earliest_date,
+      latest_date: latest_date
+    )
+  end
+
+  defp calculate_totals(all_unit_economics) do
+    Enum.reduce(all_unit_economics, %{
+      units_sold: 0,
+      revenue_cents: 0,
+      cogs_cents: 0,
+      gross_margin_cents: 0,
+      net_profit_cents: 0
+    }, fn ue, acc ->
+      %{
+        units_sold: acc.units_sold + ue.units_sold,
+        revenue_cents: acc.revenue_cents + ue.revenue_cents,
+        cogs_cents: acc.cogs_cents + ue.cogs_cents,
+        gross_margin_cents: acc.gross_margin_cents + ue.gross_margin_cents,
+        net_profit_cents: acc.net_profit_cents + ue.net_profit_cents
+      }
+    end)
+    |> then(fn totals ->
+      gross_margin_percent =
+        if totals.revenue_cents > 0 do
+          Float.round(totals.gross_margin_cents / totals.revenue_cents * 100, 2)
+        else
+          0.0
+        end
+
+      net_margin_percent =
+        if totals.revenue_cents > 0 do
+          Float.round(totals.net_profit_cents / totals.revenue_cents * 100, 2)
+        else
+          0.0
+        end
+
+      totals
+      |> Map.put(:gross_margin_percent, gross_margin_percent)
+      |> Map.put(:net_margin_percent, net_margin_percent)
+    end)
+  end
+
   def inventory_verification(conn, _params) do
     results = Verification.run_all_checks()
 
