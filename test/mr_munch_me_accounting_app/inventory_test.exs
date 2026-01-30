@@ -320,4 +320,319 @@ defmodule MrMunchMeAccountingApp.InventoryTest do
       assert Repo.get(InventoryMovement, movement.id)
     end
   end
+
+  describe "ingredients CRUD" do
+    test "list_ingredients/0 returns all ingredients ordered by name" do
+      {:ok, apple} = Inventory.create_ingredient(%{code: "APPLE", name: "Apple", unit: "g"})
+      {:ok, banana} = Inventory.create_ingredient(%{code: "BANANA", name: "Banana", unit: "g"})
+
+      ingredients = Inventory.list_ingredients()
+      names = Enum.map(ingredients, & &1.name)
+
+      # Should be sorted alphabetically
+      assert "Apple" in names
+      assert "Banana" in names
+      apple_idx = Enum.find_index(names, &(&1 == "Apple"))
+      banana_idx = Enum.find_index(names, &(&1 == "Banana"))
+      assert apple_idx < banana_idx
+    end
+
+    test "get_ingredient!/1 returns ingredient by id", %{ingredient: ingredient} do
+      result = Inventory.get_ingredient!(ingredient.id)
+      assert result.id == ingredient.id
+      assert result.code == ingredient.code
+    end
+
+    test "create_ingredient/1 creates with valid attrs" do
+      attrs = %{code: "SUGAR", name: "Sugar", unit: "g", cost_per_unit_cents: 2}
+      assert {:ok, %Ingredient{} = ingredient} = Inventory.create_ingredient(attrs)
+      assert ingredient.code == "SUGAR"
+      assert ingredient.name == "Sugar"
+    end
+
+    test "update_ingredient/2 updates the ingredient", %{ingredient: ingredient} do
+      assert {:ok, updated} = Inventory.update_ingredient(ingredient, %{name: "Whole Wheat Flour"})
+      assert updated.name == "Whole Wheat Flour"
+    end
+
+    test "delete_ingredient/1 deletes the ingredient" do
+      {:ok, ingredient} = Inventory.create_ingredient(%{code: "TEMP", name: "Temp", unit: "g"})
+      assert {:ok, _} = Inventory.delete_ingredient(ingredient)
+      assert_raise Ecto.NoResultsError, fn -> Inventory.get_ingredient!(ingredient.id) end
+    end
+
+    test "change_ingredient/2 returns a changeset", %{ingredient: ingredient} do
+      changeset = Inventory.change_ingredient(ingredient, %{name: "New Name"})
+      assert %Ecto.Changeset{} = changeset
+    end
+  end
+
+  describe "locations" do
+    test "list_locations/0 returns all locations", %{location: location, from_location: from_location} do
+      locations = Inventory.list_locations()
+      codes = Enum.map(locations, & &1.code)
+
+      assert location.code in codes
+      assert from_location.code in codes
+    end
+
+    test "location_select_options/0 returns formatted options", %{location: location} do
+      options = Inventory.location_select_options()
+      assert is_list(options)
+      # Options are {name, code} tuples
+      assert Enum.any?(options, fn {_name, code} -> code == location.code end)
+    end
+  end
+
+  describe "stock management" do
+    test "get_or_create_stock!/2 creates stock if not exists", %{ingredient: ingredient, location: location} do
+      stock = Inventory.get_or_create_stock!(ingredient.id, location.id)
+      assert stock.quantity_on_hand == 0
+      assert stock.avg_cost_per_unit_cents == 0
+    end
+
+    test "get_or_create_stock!/2 returns existing stock", %{cash_account: cash_account, ingredient: ingredient, location: location} do
+      # Create initial stock via purchase
+      purchase_attrs = %{
+        "ingredient_code" => ingredient.code,
+        "location_code" => location.code,
+        "quantity" => 500,
+        "total_cost_pesos" => "25.00",
+        "paid_from_account_id" => to_string(cash_account.id),
+        "purchase_date" => Date.utc_today()
+      }
+      {:ok, _} = Inventory.create_purchase(purchase_attrs)
+
+      # Get stock - should return existing
+      stock = Inventory.get_or_create_stock!(ingredient.id, location.id)
+      assert stock.quantity_on_hand == 500
+    end
+
+    test "list_stock_items/0 returns stock with preloaded associations", %{cash_account: cash_account, ingredient: ingredient, location: location} do
+      # Create stock
+      purchase_attrs = %{
+        "ingredient_code" => ingredient.code,
+        "location_code" => location.code,
+        "quantity" => 100,
+        "total_cost_pesos" => "10.00",
+        "paid_from_account_id" => to_string(cash_account.id),
+        "purchase_date" => Date.utc_today()
+      }
+      {:ok, _} = Inventory.create_purchase(purchase_attrs)
+
+      items = Inventory.list_stock_items()
+      assert length(items) >= 1
+
+      # Check preloads are available
+      item = Enum.find(items, fn i -> i.ingredient_id == ingredient.id end)
+      assert item.ingredient != nil
+      assert item.location != nil
+    end
+  end
+
+  describe "inventory_type/1" do
+    test "returns :packing for packing ingredients" do
+      # Create a packing ingredient
+      {:ok, packing} = Inventory.create_ingredient(%{code: "PAQ_BOX", name: "Box", unit: "pcs", inventory_type: "packing"})
+      assert Inventory.inventory_type(packing) == :packing
+    end
+
+    test "returns :kitchen for kitchen ingredients" do
+      # Create a kitchen ingredient
+      {:ok, kitchen} = Inventory.create_ingredient(%{code: "EQUIP_MIXER", name: "Mixer", unit: "pcs", inventory_type: "kitchen"})
+      assert Inventory.inventory_type(kitchen) == :kitchen
+    end
+
+    test "returns :ingredients for regular ingredients" do
+      {:ok, flour} = Inventory.create_ingredient(%{code: "FLOUR2", name: "Flour", unit: "g"})
+      assert Inventory.inventory_type(flour) == :ingredients
+    end
+
+    test "defaults to :ingredients when no inventory_type set", %{ingredient: ingredient} do
+      assert Inventory.inventory_type(ingredient) == :ingredients
+    end
+  end
+
+  describe "movements" do
+    test "list_recent_movements/1 returns movements", %{cash_account: cash_account, ingredient: ingredient, location: location} do
+      # Create a purchase
+      purchase_attrs = %{
+        "ingredient_code" => ingredient.code,
+        "location_code" => location.code,
+        "quantity" => 100,
+        "total_cost_pesos" => "10.00",
+        "paid_from_account_id" => to_string(cash_account.id),
+        "purchase_date" => Date.utc_today()
+      }
+      {:ok, _} = Inventory.create_purchase(purchase_attrs)
+
+      movements = Inventory.list_recent_movements(10)
+      assert length(movements) >= 1
+
+      # Verify preloads
+      movement = hd(movements)
+      assert movement.ingredient != nil
+    end
+
+    test "get_movement!/1 returns movement by id", %{cash_account: cash_account, ingredient: ingredient, location: location} do
+      purchase_attrs = %{
+        "ingredient_code" => ingredient.code,
+        "location_code" => location.code,
+        "quantity" => 100,
+        "total_cost_pesos" => "10.00",
+        "paid_from_account_id" => to_string(cash_account.id),
+        "purchase_date" => Date.utc_today()
+      }
+      {:ok, _} = Inventory.create_purchase(purchase_attrs)
+
+      movement =
+        Repo.one(
+          from m in InventoryMovement,
+            where: m.ingredient_id == ^ingredient.id,
+            limit: 1
+        )
+
+      result = Inventory.get_movement!(movement.id)
+      assert result.id == movement.id
+    end
+
+    test "search_movements/1 filters by ingredient", %{cash_account: cash_account, ingredient: ingredient, location: location} do
+      purchase_attrs = %{
+        "ingredient_code" => ingredient.code,
+        "location_code" => location.code,
+        "quantity" => 100,
+        "total_cost_pesos" => "10.00",
+        "paid_from_account_id" => to_string(cash_account.id),
+        "purchase_date" => Date.utc_today()
+      }
+      {:ok, _} = Inventory.create_purchase(purchase_attrs)
+
+      movements = Inventory.search_movements(ingredient_id: ingredient.id)
+      assert length(movements) >= 1
+      assert Enum.all?(movements, fn m -> m.ingredient_id == ingredient.id end)
+    end
+
+    test "search_movements/1 filters by movement_type", %{cash_account: cash_account, ingredient: ingredient, location: location} do
+      purchase_attrs = %{
+        "ingredient_code" => ingredient.code,
+        "location_code" => location.code,
+        "quantity" => 100,
+        "total_cost_pesos" => "10.00",
+        "paid_from_account_id" => to_string(cash_account.id),
+        "purchase_date" => Date.utc_today()
+      }
+      {:ok, _} = Inventory.create_purchase(purchase_attrs)
+
+      movements = Inventory.search_movements(movement_type: "purchase")
+      assert length(movements) >= 1
+      assert Enum.all?(movements, fn m -> m.movement_type == "purchase" end)
+    end
+  end
+
+  describe "total_inventory_value_cents/0" do
+    test "calculates total inventory value", %{cash_account: cash_account, ingredient: ingredient, location: location} do
+      # Create a purchase
+      purchase_attrs = %{
+        "ingredient_code" => ingredient.code,
+        "location_code" => location.code,
+        "quantity" => 1000,
+        "total_cost_pesos" => "50.00",
+        "paid_from_account_id" => to_string(cash_account.id),
+        "purchase_date" => Date.utc_today()
+      }
+      {:ok, _} = Inventory.create_purchase(purchase_attrs)
+
+      value = Inventory.total_inventory_value_cents()
+      # 1000 units at 5 cents = 5000 cents
+      assert value >= 5000
+    end
+  end
+
+  describe "ingredient_quick_infos/0" do
+    test "returns quick info for ingredients with purchases", %{cash_account: cash_account, ingredient: ingredient, location: location} do
+      # Create a purchase
+      purchase_attrs = %{
+        "ingredient_code" => ingredient.code,
+        "location_code" => location.code,
+        "quantity" => 1000,
+        "total_cost_pesos" => "50.00",
+        "paid_from_account_id" => to_string(cash_account.id),
+        "purchase_date" => Date.utc_today()
+      }
+      {:ok, _} = Inventory.create_purchase(purchase_attrs)
+
+      infos = Inventory.ingredient_quick_infos()
+      # Returns a map with {code => %{"unit" => ..., "avg_cost_cents" => ...}}
+      info = Map.get(infos, ingredient.code)
+
+      assert info != nil
+      assert info["avg_cost_cents"] == 5  # 5000 cents / 1000 units = 5 cents
+    end
+  end
+
+  describe "return_purchase/3" do
+    test "creates a return movement and reverses inventory", %{cash_account: cash_account, ingredient: ingredient, location: location} do
+      # Create initial purchase
+      purchase_attrs = %{
+        "ingredient_code" => ingredient.code,
+        "location_code" => location.code,
+        "quantity" => 1000,
+        "total_cost_pesos" => "50.00",
+        "paid_from_account_id" => to_string(cash_account.id),
+        "purchase_date" => Date.utc_today()
+      }
+      {:ok, _} = Inventory.create_purchase(purchase_attrs)
+
+      # Get the purchase movement
+      purchase_movement =
+        Repo.one(
+          from m in InventoryMovement,
+            where: m.movement_type == "purchase" and m.ingredient_id == ^ingredient.id,
+            limit: 1
+        )
+
+      # Return the purchase
+      {:ok, _return_movement} = Inventory.return_purchase(purchase_movement.id)
+
+      # Verify stock was reduced
+      stock = Inventory.get_or_create_stock!(ingredient.id, location.id)
+      assert stock.quantity_on_hand == 0
+    end
+  end
+
+  describe "record_write_off/4" do
+    test "creates write-off movement and reduces inventory", %{cash_account: cash_account, ingredient: ingredient, location: location} do
+      # Create required waste expense account
+      {:ok, _waste_account} = Accounting.create_account(%{
+        code: "6060",
+        name: "Inventory Waste",
+        type: "expense",
+        normal_balance: "debit",
+        is_cash: false
+      })
+
+      # First create stock
+      purchase_attrs = %{
+        "ingredient_code" => ingredient.code,
+        "location_code" => location.code,
+        "quantity" => 1000,
+        "total_cost_pesos" => "50.00",
+        "paid_from_account_id" => to_string(cash_account.id),
+        "purchase_date" => Date.utc_today()
+      }
+      {:ok, _} = Inventory.create_purchase(purchase_attrs)
+
+      # Record write-off (uses positional args)
+      {:ok, _movement} = Inventory.record_write_off(
+        ingredient.code,
+        location.code,
+        200,
+        Date.utc_today()
+      )
+
+      # Verify stock was reduced
+      stock = Inventory.get_or_create_stock!(ingredient.id, location.id)
+      assert stock.quantity_on_hand == 800
+    end
+  end
 end
