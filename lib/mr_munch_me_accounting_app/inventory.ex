@@ -231,17 +231,20 @@ defmodule MrMunchMeAccountingApp.Inventory do
 
       stock = get_or_create_stock!(ingredient.id, location.id)
 
-      # TODO: Uncomment this when we have a way to handle insufficient stock
-      # if stock.quantity_on_hand < quantity do
-      #   Repo.rollback({:error, :insufficient_stock})
-      # end
+      # Warn if insufficient stock
+      if stock.quantity_on_hand < quantity do
+        Logger.warning("⚠️ Insufficient stock for #{ingredient_code} at #{location_code}: have #{stock.quantity_on_hand}, need #{quantity}")
+      end
 
-      # Use current average cost, with fallback to ingredient's cost_per_unit_cents
+      # Use current average cost, with fallback to historical purchase average, then ingredient catalog cost
       unit_cost_cents =
-        if stock.avg_cost_per_unit_cents && stock.avg_cost_per_unit_cents > 0 do
-          stock.avg_cost_per_unit_cents
-        else
-          ingredient.cost_per_unit_cents || 0
+        cond do
+          stock.avg_cost_per_unit_cents && stock.avg_cost_per_unit_cents > 0 ->
+            stock.avg_cost_per_unit_cents
+          true ->
+            # Fall back to historical average from purchase movements
+            calculate_cumulative_avg_cost(ingredient.id, location.id) ||
+              ingredient.cost_per_unit_cents || 0
         end
       total_cost_cents = quantity * unit_cost_cents
 
@@ -994,25 +997,25 @@ defmodule MrMunchMeAccountingApp.Inventory do
   end
 
   def ingredient_quick_infos do
-
+    # Calculate average cost directly from purchase history (total spent / total purchased)
+    # This is more reliable than weighted average by current inventory, which breaks
+    # when inventory goes to zero or negative
     query =
       from i in Ingredient,
-        left_join: inv in InventoryItem,
-        on: inv.ingredient_id == i.id,
-        group_by: [i.id, i.code, i.name, i.unit],
+        left_join: m in InventoryMovement,
+          on: m.ingredient_id == i.id and m.movement_type == "purchase",
+        group_by: [i.id, i.code, i.unit],
         select: %{
           code: i.code,
           unit: i.unit,
-          # weighted avg across locations based only on actual purchases
-          # returns NULL if no stock/purchases yet
-          # uses ROUND() to avoid truncation and maintain precision
+          # Historical average: total_cost_cents / quantity from all purchases
+          # returns NULL if no purchases yet
           avg_cost_cents:
             fragment(
-              "CASE WHEN SUM(?) > 0 THEN ROUND(CAST(SUM(? * ?) AS NUMERIC) / SUM(?)) ELSE NULL END",
-              inv.quantity_on_hand,
-              inv.quantity_on_hand,
-              inv.avg_cost_per_unit_cents,
-              inv.quantity_on_hand
+              "CASE WHEN SUM(?) > 0 THEN ROUND(CAST(SUM(?) AS NUMERIC) / SUM(?)) ELSE NULL END",
+              m.quantity,
+              m.total_cost_cents,
+              m.quantity
             )
         }
 
@@ -1497,11 +1500,10 @@ defmodule MrMunchMeAccountingApp.Inventory do
         removed_qty = movement.quantity
         new_qty = old_qty - removed_qty
 
-        # Update stock
+        # Update stock - preserve avg_cost even when quantity depletes to 0
         stock
         |> InventoryItem.changeset(%{
-          quantity_on_hand: max(new_qty, 0),
-          avg_cost_per_unit_cents: if(new_qty <= 0, do: 0, else: stock.avg_cost_per_unit_cents)
+          quantity_on_hand: max(new_qty, 0)
         })
         |> Repo.update!()
 
@@ -1627,10 +1629,10 @@ defmodule MrMunchMeAccountingApp.Inventory do
         old_to_qty = to_stock.quantity_on_hand
         new_to_qty = old_to_qty - transfer_qty
 
+        # Update stock - preserve avg_cost even when quantity depletes to 0
         to_stock
         |> InventoryItem.changeset(%{
-          quantity_on_hand: max(new_to_qty, 0),
-          avg_cost_per_unit_cents: if(new_to_qty <= 0, do: 0, else: to_stock.avg_cost_per_unit_cents)
+          quantity_on_hand: max(new_to_qty, 0)
         })
         |> Repo.update!()
 

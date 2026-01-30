@@ -64,6 +64,15 @@ defmodule MrMunchMeAccountingApp.Accounting.InventoryMovementAccountingTest do
         is_cash: false
       })
 
+    {:ok, _customer_deposits_account} =
+      Accounting.create_account(%{
+        code: "2200",
+        name: "Customer Deposits",
+        type: "liability",
+        normal_balance: "credit",
+        is_cash: false
+      })
+
     # Create ingredients
     {:ok, flour} =
       %Ingredient{}
