@@ -37,18 +37,15 @@
 
           <div class="field">
             <label>&nbsp;</label>
-            <div style="display: flex; gap: 0.5rem;">
+            <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
               <button type="submit" class="btn primary">
                 Update
               </button>
-              <%= if @earliest_date && @latest_date && @selected_product_id do %>
-                <.link 
-                  navigate={~p"/reports/unit_economics?all_dates=true&product_id=#{@selected_product_id}"} 
-                  class="btn"
-                  style="white-space: nowrap;"
-                >
-                  All dates
-                </.link>
+              <%= if @selected_product_id do %>
+                <.link navigate={~p"/reports/unit_economics?period=last_7_days&product_id=#{@selected_product_id}"} class="btn">Last 7 days</.link>
+                <.link navigate={~p"/reports/unit_economics?period=this_month&product_id=#{@selected_product_id}"} class="btn">This month</.link>
+                <.link navigate={~p"/reports/unit_economics?period=last_90_days&product_id=#{@selected_product_id}"} class="btn">Last 90 days</.link>
+                <.link navigate={~p"/reports/unit_economics?period=all_time&product_id=#{@selected_product_id}"} class="btn">All time</.link>
               <% end %>
             </div>
           </div>

@@ -163,6 +163,22 @@ defmodule MrMunchMeAccountingAppWeb.ReportController do
 
   # Helpers
 
+  defp resolve_period(%{"period" => "last_7_days"}) do
+    today = Date.utc_today()
+    {Date.add(today, -6), today}
+  end
+
+  defp resolve_period(%{"period" => "this_month"}) do
+    today = Date.utc_today()
+    start_of_month = %Date{today | day: 1}
+    {start_of_month, today}
+  end
+
+  defp resolve_period(%{"period" => "last_90_days"}) do
+    today = Date.utc_today()
+    {Date.add(today, -89), today}
+  end
+
   defp resolve_period(%{"all_dates" => "true"}) do
     {earliest_date, latest_date} = Inventory.movement_date_range()
 
@@ -176,6 +192,9 @@ defmodule MrMunchMeAccountingAppWeb.ReportController do
         {earliest, latest}
     end
   end
+
+  # Alias for "all_time" period
+  defp resolve_period(%{"period" => "all_time"}), do: resolve_period(%{"all_dates" => "true"})
 
   defp resolve_period(%{"start_date" => s, "end_date" => e}) when s != "" and e != "" do
     {:ok, start_date} = Date.from_iso8601(s)
