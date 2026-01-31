@@ -33,8 +33,13 @@ defmodule Mix.Tasks.DiagnoseCogs do
           Application.get_env(:mr_munch_me_accounting_app, MrMunchMeAccountingApp.Repo)
 
         url ->
-          # Production - parse DATABASE_URL
-          [url: url, pool_size: 2]
+          # Production - parse DATABASE_URL with SSL enabled for Render
+          [
+            url: url,
+            pool_size: 2,
+            ssl: true,
+            ssl_opts: [verify: :verify_none]
+          ]
       end
 
     Application.ensure_all_started(:postgrex)
