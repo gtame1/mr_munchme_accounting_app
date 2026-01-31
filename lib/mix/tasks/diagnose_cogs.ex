@@ -21,10 +21,11 @@ defmodule Mix.Tasks.DiagnoseCogs do
   @shortdoc "Diagnose COGS calculation issues"
 
   def run(args) do
-    # Start only the Repo, not the full app (avoids port conflicts)
+    # Load app config and start only required services (not the web server)
+    Mix.Task.run("app.config")
     Application.ensure_all_started(:postgrex)
-    Application.ensure_all_started(:ecto)
-    MrMunchMeAccountingApp.Repo.start_link()
+    Application.ensure_all_started(:ecto_sql)
+    {:ok, _} = MrMunchMeAccountingApp.Repo.start_link()
 
     {opts, _, _} = OptionParser.parse(args, switches: [product: :string, fix: :boolean])
 
