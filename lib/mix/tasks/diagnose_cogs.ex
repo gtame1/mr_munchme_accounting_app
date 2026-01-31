@@ -22,10 +22,24 @@ defmodule Mix.Tasks.DiagnoseCogs do
 
   def run(args) do
     # Load app config and start only required services (not the web server)
-    Mix.Task.run("app.config")
+    # This handles both dev (Mix) and prod (DATABASE_URL) environments
+    Application.load(:mr_munch_me_accounting_app)
+
+    # In production, DATABASE_URL is set - parse it for Repo config
+    repo_config =
+      case System.get_env("DATABASE_URL") do
+        nil ->
+          # Dev environment - use config from app
+          Application.get_env(:mr_munch_me_accounting_app, MrMunchMeAccountingApp.Repo)
+
+        url ->
+          # Production - parse DATABASE_URL
+          [url: url, pool_size: 2]
+      end
+
     Application.ensure_all_started(:postgrex)
     Application.ensure_all_started(:ecto_sql)
-    {:ok, _} = MrMunchMeAccountingApp.Repo.start_link()
+    {:ok, _} = MrMunchMeAccountingApp.Repo.start_link(repo_config)
 
     {opts, _, _} = OptionParser.parse(args, switches: [product: :string, fix: :boolean])
 
