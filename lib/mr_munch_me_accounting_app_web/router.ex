@@ -61,7 +61,6 @@ defmodule MrMunchMeAccountingAppWeb.Router do
 
     resources "/products", ProductController, only: [:index, :new, :create, :edit, :update, :delete]
     resources "/customers", CustomerController
-    get "/api/customers/:id", CustomerController, :api_show
     resources "/ingredients", IngredientController, only: [:index, :new, :create, :edit, :update, :delete]
     resources "/recipes", RecipeController, only: [:index, :new, :create, :show, :edit, :delete]
     post "/recipes/new_version/:id", RecipeController, :create_new_version
@@ -77,10 +76,38 @@ defmodule MrMunchMeAccountingAppWeb.Router do
     resources "/expenses", ExpenseController, only: [:index, :new, :create, :show, :edit, :update, :delete]
   end
 
-  # Other scopes may use custom stacks.
-  # scope "/api", MrMunchMeAccountingAppWeb do
-  #   pipe_through :api
-  # end
+  # API endpoints
+  scope "/api", MrMunchMeAccountingAppWeb do
+    pipe_through :api
+
+    # Products
+    get "/products", ApiController, :list_products
+    get "/products/:id", ApiController, :show_product
+
+    # Orders
+    get "/orders", ApiController, :list_orders
+    get "/orders/:id", ApiController, :show_order
+
+    # Customers
+    get "/customers", ApiController, :list_customers
+    get "/customers/:id", ApiController, :show_customer
+
+    # Inventory
+    get "/ingredients", ApiController, :list_ingredients
+    get "/ingredients/:id", ApiController, :show_ingredient
+    get "/stock", ApiController, :list_stock
+    get "/locations", ApiController, :list_locations
+
+    # Accounting
+    get "/accounts", ApiController, :list_accounts
+    get "/accounts/:id", ApiController, :show_account
+    get "/journal_entries", ApiController, :list_journal_entries
+    get "/journal_entries/:id", ApiController, :show_journal_entry
+
+    # Reports
+    get "/reports/balance_sheet", ApiController, :balance_sheet
+    get "/reports/profit_and_loss", ApiController, :profit_and_loss
+  end
 
   # Enable LiveDashboard and Swoosh mailbox preview in development
   if Application.compile_env(:mr_munch_me_accounting_app, :dev_routes) do
