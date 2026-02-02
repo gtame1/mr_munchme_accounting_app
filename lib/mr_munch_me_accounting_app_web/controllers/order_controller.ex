@@ -266,8 +266,8 @@ defmodule MrMunchMeAccountingAppWeb.OrderController do
     Logger.info("Creating payment for order #{order.id}")
     Logger.debug("Payment params received: #{inspect(params)}")
 
-    # Parse payment_date string to Date for comparison
-    {payment_date, date_parse_error} =
+    # Parse payment_date string to Date for validation
+    {_payment_date, date_parse_error} =
       case Date.from_iso8601(params["payment_date"]) do
         {:ok, date} -> {date, nil}
         {:error, reason} -> {nil, reason}
@@ -311,10 +311,15 @@ defmodule MrMunchMeAccountingAppWeb.OrderController do
       Logger.debug("Converted amounts - total: #{amount_cents}, customer: #{inspect(customer_amount_cents)}, partner: #{inspect(partner_amount_cents)}")
 
       # Make sure we tie the payment to the correct order_id explicitly
+      # is_deposit is true if the order has NOT been delivered yet
+      # (unearned revenue goes to Customer Deposits account 2200)
+      # Once delivered, payments reduce AR (account 1100)
+      is_deposit = order.status != "delivered"
+
       attrs =
         params
         |> Map.put("order_id", order.id)
-        |> Map.put("is_deposit", payment_date < order.delivery_date)
+        |> Map.put("is_deposit", is_deposit)
         |> Map.put("amount_cents", amount_cents)
         |> Map.put("customer_amount_cents", customer_amount_cents)
         |> Map.put("partner_amount_cents", partner_amount_cents)

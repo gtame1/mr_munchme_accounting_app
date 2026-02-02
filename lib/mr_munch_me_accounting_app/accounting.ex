@@ -58,36 +58,66 @@ defmodule MrMunchMeAccountingApp.Accounting do
     Cr Ingredients Inventory (1200)
   """
   def record_order_in_prep(%Order{} = order, total_cost_cents) do
-    wip        = get_account_by_code!(@wip_inventory_code)
-    ingredients = get_account_by_code!(@ingredients_inventory_code)
+    reference = "Order ##{order.id}"
 
-    entry_attrs = %{
-      date: order.delivery_date || Date.utc_today(),
-      entry_type: "order_in_prep",
-      reference: "Order ##{order.id}",
-      description: "Move ingredients to WIP for order ##{order.id}"
-    }
+    # Check if already recorded to prevent duplicates
+    existing =
+      from(je in JournalEntry,
+        where: je.entry_type == "order_in_prep" and je.reference == ^reference
+      )
+      |> Repo.one()
 
-    lines = [
-      %{
-        account_id: wip.id,
-        debit_cents: total_cost_cents,
-        credit_cents: 0,
-        description: "WIP for order ##{order.id}"
-      },
-      %{
-        account_id: ingredients.id,
-        debit_cents: 0,
-        credit_cents: total_cost_cents,
-        description: "Ingredients used for order ##{order.id}"
+    if existing do
+      {:ok, existing}
+    else
+      wip        = get_account_by_code!(@wip_inventory_code)
+      ingredients = get_account_by_code!(@ingredients_inventory_code)
+
+      entry_attrs = %{
+        date: order.delivery_date || Date.utc_today(),
+        entry_type: "order_in_prep",
+        reference: reference,
+        description: "Move ingredients to WIP for order ##{order.id}"
       }
-    ]
 
-    create_journal_entry_with_lines(entry_attrs, lines)
+      lines = [
+        %{
+          account_id: wip.id,
+          debit_cents: total_cost_cents,
+          credit_cents: 0,
+          description: "WIP for order ##{order.id}"
+        },
+        %{
+          account_id: ingredients.id,
+          debit_cents: 0,
+          credit_cents: total_cost_cents,
+          description: "Ingredients used for order ##{order.id}"
+        }
+      ]
+
+      create_journal_entry_with_lines(entry_attrs, lines)
+    end
   end
 
 
   def record_order_delivered(%Order{} = order) do
+    reference = "Order ##{order.id}"
+
+    # Check if already recorded to prevent duplicates
+    existing =
+      from(je in JournalEntry,
+        where: je.entry_type == "order_delivered" and je.reference == ^reference
+      )
+      |> Repo.one()
+
+    if existing do
+      {:ok, existing}
+    else
+      do_record_order_delivered(order, reference)
+    end
+  end
+
+  defp do_record_order_delivered(order, reference) do
     order = Repo.preload(order, :product)
 
     base_revenue  = order.product.price_cents || 0
@@ -121,7 +151,7 @@ defmodule MrMunchMeAccountingApp.Accounting do
     entry_attrs = %{
       date: date,
       entry_type: "order_delivered",
-      reference: "Order ##{order.id}",
+      reference: reference,
       description: "Delivered order ##{order.id}"
     }
 

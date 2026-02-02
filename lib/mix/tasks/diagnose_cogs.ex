@@ -8,6 +8,7 @@ defmodule Mix.Tasks.DiagnoseCogs do
     mix diagnose_cogs                    # Run full diagnostics
     mix diagnose_cogs --product SKU      # Diagnose specific product
     mix diagnose_cogs --fix              # Fix duplicate entries (requires confirmation)
+    mix diagnose_cogs --fix --yes        # Fix duplicate entries (no confirmation, runs until clean)
   """
   use Mix.Task
 
@@ -46,7 +47,7 @@ defmodule Mix.Tasks.DiagnoseCogs do
     Application.ensure_all_started(:ecto_sql)
     {:ok, _} = MrMunchMeAccountingApp.Repo.start_link(repo_config)
 
-    {opts, _, _} = OptionParser.parse(args, switches: [product: :string, fix: :boolean])
+    {opts, _, _} = OptionParser.parse(args, switches: [product: :string, fix: :boolean, yes: :boolean])
 
     IO.puts("\n🔍 COGS Diagnostic Report")
     IO.puts(String.duplicate("=", 70))
@@ -65,8 +66,9 @@ defmodule Mix.Tasks.DiagnoseCogs do
     end
 
     # 3. If --fix flag is passed and duplicates found, offer to fix
-    if Keyword.get(opts, :fix) && length(duplicates.in_prep) + length(duplicates.delivered) > 0 do
-      fix_duplicates(duplicates)
+    total_dupes = length(duplicates.in_prep) + length(duplicates.delivered)
+    if Keyword.get(opts, :fix) && total_dupes > 0 do
+      fix_duplicates(duplicates, Keyword.get(opts, :yes, false))
     end
 
     IO.puts("\n" <> String.duplicate("=", 70))
@@ -290,7 +292,7 @@ defmodule Mix.Tasks.DiagnoseCogs do
     end
   end
 
-  defp fix_duplicates(duplicates) do
+  defp fix_duplicates(duplicates, auto_yes) do
     IO.puts("\n🔧 FIXING DUPLICATE ENTRIES")
     IO.puts(String.duplicate("-", 50))
 
@@ -298,10 +300,16 @@ defmodule Mix.Tasks.DiagnoseCogs do
     IO.puts("Found #{total_dupes} orders with duplicate entries.")
     IO.puts("This will keep the FIRST entry and delete subsequent duplicates.")
 
-    IO.write("\nProceed? [y/N]: ")
-    response = IO.gets("") |> String.trim() |> String.downcase()
+    should_proceed = if auto_yes do
+      IO.puts("\n--yes flag passed, proceeding automatically...")
+      true
+    else
+      IO.write("\nProceed? [y/N]: ")
+      response = IO.gets("") |> String.trim() |> String.downcase()
+      response == "y"
+    end
 
-    if response == "y" do
+    if should_proceed do
       # Fix in_prep duplicates
       Enum.each(duplicates.in_prep, fn {reference, _count} ->
         delete_duplicate_entries(reference, "order_in_prep")
@@ -312,9 +320,42 @@ defmodule Mix.Tasks.DiagnoseCogs do
         delete_duplicate_entries(reference, "order_delivered")
       end)
 
-      IO.puts("✅ Duplicates removed successfully!")
+      IO.puts("✅ First pass complete!")
+
+      # Re-check for any remaining duplicates and fix them automatically
+      remaining = check_duplicate_entries()
+      remaining_count = length(remaining.in_prep) + length(remaining.delivered)
+
+      if remaining_count > 0 do
+        IO.puts("\n⚠️  Found #{remaining_count} more duplicates, fixing automatically...")
+        fix_remaining_duplicates(remaining)
+      else
+        IO.puts("✅ All duplicates removed successfully!")
+      end
     else
       IO.puts("Aborted. No changes made.")
+    end
+  end
+
+  defp fix_remaining_duplicates(duplicates) do
+    # Fix without prompting (already got permission)
+    Enum.each(duplicates.in_prep, fn {reference, _count} ->
+      delete_duplicate_entries(reference, "order_in_prep")
+    end)
+
+    Enum.each(duplicates.delivered, fn {reference, _count} ->
+      delete_duplicate_entries(reference, "order_delivered")
+    end)
+
+    # Check again recursively until clean
+    remaining = check_duplicate_entries()
+    remaining_count = length(remaining.in_prep) + length(remaining.delivered)
+
+    if remaining_count > 0 do
+      IO.puts("   Found #{remaining_count} more, continuing...")
+      fix_remaining_duplicates(remaining)
+    else
+      IO.puts("✅ All duplicates removed successfully!")
     end
   end
 

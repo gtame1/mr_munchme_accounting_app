@@ -672,6 +672,131 @@ defmodule MrMunchMeAccountingApp.Accounting.InventoryMovementAccountingTest do
     end
   end
 
+  describe "duplicate entry prevention" do
+    test "calling handle_order_status_change('in_prep') twice creates only one entry", %{
+      product: product,
+      location: location
+    } do
+      # Create order
+      {:ok, order} =
+        %Order{}
+        |> Order.changeset(%{
+          customer_name: "Test Customer",
+          customer_email: "test@example.com",
+          customer_phone: "1234567890",
+          product_id: product.id,
+          delivery_date: Date.utc_today(),
+          delivery_type: "delivery",
+          status: "new_order",
+          prep_location_id: location.id
+        })
+        |> Repo.insert()
+
+      # Call in_prep TWICE
+      Accounting.handle_order_status_change(order, "in_prep")
+      Accounting.handle_order_status_change(order, "in_prep")
+
+      # Verify only ONE journal entry exists
+      reference = "Order ##{order.id}"
+      entries =
+        from(je in JournalEntry,
+          where: je.entry_type == "order_in_prep" and je.reference == ^reference
+        )
+        |> Repo.all()
+
+      assert length(entries) == 1, "Expected 1 order_in_prep entry, got #{length(entries)}"
+    end
+
+    test "calling handle_order_status_change('delivered') twice creates only one entry", %{
+      product: product,
+      location: location
+    } do
+      # Create order
+      {:ok, order} =
+        %Order{}
+        |> Order.changeset(%{
+          customer_name: "Test Customer",
+          customer_email: "test@example.com",
+          customer_phone: "1234567890",
+          product_id: product.id,
+          delivery_date: Date.utc_today(),
+          delivery_type: "delivery",
+          status: "new_order",
+          prep_location_id: location.id
+        })
+        |> Repo.insert()
+
+      # Move to in_prep first
+      Accounting.handle_order_status_change(order, "in_prep")
+
+      # Call delivered TWICE
+      Accounting.handle_order_status_change(order, "delivered")
+      Accounting.handle_order_status_change(order, "delivered")
+
+      # Verify only ONE journal entry exists
+      reference = "Order ##{order.id}"
+      entries =
+        from(je in JournalEntry,
+          where: je.entry_type == "order_delivered" and je.reference == ^reference
+        )
+        |> Repo.all()
+
+      assert length(entries) == 1, "Expected 1 order_delivered entry, got #{length(entries)}"
+    end
+
+    test "COGS is not duplicated even with multiple status transitions", %{
+      wip_account: wip_account,
+      cogs_account: cogs_account,
+      product: product,
+      location: location
+    } do
+      # Create order
+      {:ok, order} =
+        %Order{}
+        |> Order.changeset(%{
+          customer_name: "Test Customer",
+          customer_email: "test@example.com",
+          customer_phone: "1234567890",
+          product_id: product.id,
+          delivery_date: Date.utc_today(),
+          delivery_type: "delivery",
+          status: "new_order",
+          prep_location_id: location.id
+        })
+        |> Repo.insert()
+
+      # Move to in_prep multiple times
+      Accounting.handle_order_status_change(order, "in_prep")
+      Accounting.handle_order_status_change(order, "in_prep")
+      Accounting.handle_order_status_change(order, "in_prep")
+
+      # Get expected WIP/COGS from the single in_prep entry
+      reference = "Order ##{order.id}"
+      in_prep_entry =
+        Repo.one(
+          from je in JournalEntry,
+            where: je.entry_type == "order_in_prep" and je.reference == ^reference,
+            preload: :journal_lines
+        )
+
+      expected_cogs =
+        in_prep_entry.journal_lines
+        |> Enum.find(fn line -> line.account_id == wip_account.id && line.debit_cents > 0 end)
+        |> Map.get(:debit_cents)
+
+      # Deliver multiple times
+      Accounting.handle_order_status_change(order, "delivered")
+      Accounting.handle_order_status_change(order, "delivered")
+      Accounting.handle_order_status_change(order, "delivered")
+
+      # Get actual COGS balance
+      actual_cogs = get_account_balance(cogs_account.id)
+
+      assert actual_cogs == expected_cogs,
+             "COGS should be #{expected_cogs} but was #{actual_cogs} (possible duplication)"
+    end
+  end
+
   # Helper function to get account balance
   defp get_account_balance(account_id) do
     result =
