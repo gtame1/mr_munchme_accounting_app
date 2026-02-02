@@ -22,30 +22,12 @@ defmodule Mix.Tasks.FixWithdrawalAccounts do
   @shortdoc "Fix historical withdrawal entries that debited Owner's Equity instead of Owner's Drawings"
 
   def run(args) do
-    # Load app config and start only required services (not the web server)
-    # This handles both dev (Mix) and prod (DATABASE_URL) environments
-    Application.load(:mr_munch_me_accounting_app)
-
-    # In production, DATABASE_URL is set - parse it for Repo config
-    repo_config =
-      case System.get_env("DATABASE_URL") do
-        nil ->
-          # Dev environment - use config from app
-          Application.get_env(:mr_munch_me_accounting_app, MrMunchMeAccountingApp.Repo)
-
-        url ->
-          # Production - parse DATABASE_URL with SSL enabled for Render
-          [
-            url: url,
-            pool_size: 2,
-            ssl: true,
-            ssl_opts: [verify: :verify_none]
-          ]
-      end
-
-    Application.ensure_all_started(:postgrex)
-    Application.ensure_all_started(:ecto_sql)
-    {:ok, _} = MrMunchMeAccountingApp.Repo.start_link(repo_config)
+    # Start the application without the web server
+    # This works in both dev (no DATABASE_URL) and prod (with DATABASE_URL via runtime.exs)
+    Application.put_env(:mr_munch_me_accounting_app, MrMunchMeAccountingAppWeb.Endpoint,
+      server: false
+    )
+    Mix.Task.run("app.start")
 
     fix_mode = "--fix" in args
 
