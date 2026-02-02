@@ -128,20 +128,15 @@ defmodule MrMunchMeAccountingApp.Reporting do
                 je.date <= ^end_date
           )
 
+        # Use exact matching with IN clause instead of ilike patterns
+        # ilike("Order #1") would wrongly match "Order #10", "Order #11", etc.
         query =
           case reference_patterns do
             [] ->
               base_query
-            [first_pattern] ->
+            patterns ->
               base_query
-              |> where([je], ilike(je.reference, ^first_pattern))
-            [first_pattern | rest_patterns] when rest_patterns != [] ->
-              initial_query = base_query |> where([je], ilike(je.reference, ^first_pattern))
-              Enum.reduce(rest_patterns, initial_query, fn pattern, acc_q ->
-                or_where(acc_q, [je], ilike(je.reference, ^pattern))
-              end)
-            _ ->
-              base_query
+              |> where([je], je.reference in ^patterns)
           end
 
         from([je, jl, acc] in query,
@@ -306,17 +301,11 @@ defmodule MrMunchMeAccountingApp.Reporting do
                 je.date <= ^end_date
           )
 
-        # Add the first reference pattern with where, then use or_where for the rest
-        [first_pattern | rest_patterns] = reference_patterns
-
+        # Use exact matching with IN clause instead of ilike patterns
+        # ilike("Order #1") would wrongly match "Order #10", "Order #11", etc.
         query =
           query
-          |> where([je], ilike(je.reference, ^first_pattern))
-
-        query =
-          Enum.reduce(rest_patterns, query, fn pattern, q ->
-            or_where(q, [je], ilike(je.reference, ^pattern))
-          end)
+          |> where([je], je.reference in ^reference_patterns)
 
         from([je, jl, acc] in query,
           select: sum(jl.debit_cents)
