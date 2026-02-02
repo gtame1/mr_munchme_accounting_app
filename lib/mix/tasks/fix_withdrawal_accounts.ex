@@ -22,7 +22,10 @@ defmodule Mix.Tasks.FixWithdrawalAccounts do
   @shortdoc "Fix historical withdrawal entries that debited Owner's Equity instead of Owner's Drawings"
 
   def run(args) do
-    Mix.Task.run("app.start")
+    # Start only the Repo, not the full application (avoids port conflicts)
+    {:ok, _} = Application.ensure_all_started(:postgrex)
+    {:ok, _} = Application.ensure_all_started(:ecto)
+    MrMunchMeAccountingApp.Repo.start_link()
 
     fix_mode = "--fix" in args
 

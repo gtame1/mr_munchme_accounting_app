@@ -9,10 +9,14 @@ defmodule MrMunchMeAccountingAppWeb.InvestmentController do
     total_invested = Partners.total_invested_cents()
     recent_contributions = Partners.list_recent_contributions()
 
+    # Get equity account balances from accounting
+    equity_summary = Accounting.get_equity_summary()
+
     render(conn, :index,
       partner_totals: partner_totals,
       total_invested_cents: total_invested,
-      recent_contributions: recent_contributions
+      recent_contributions: recent_contributions,
+      equity_summary: equity_summary
     )
   end
 

@@ -1,39 +1,77 @@
 <section class="content">
   <header class="content-header">
-    <h1 class="page-title">Partner Investments</h1>
-
-    
+    <h1 class="page-title">Equity & Investments</h1>
   </header>
 
   <div class="content-body">
-    <!-- Summary -->
+    <!-- Equity Overview -->
     <section class="card">
-      <h2 class="card-title">Overview</h2>
+      <h2 class="card-title">Equity Overview</h2>
       <p class="card-subtitle">
-        Total capital invested and each partner's share.
+        Total owner's equity breakdown as of today.
+        <%= if @equity_summary.last_close_date do %>
+          Last year-end close: <%= @equity_summary.last_close_date %>
+        <% end %>
       </p>
 
       <div class="dashboard-metrics">
         <div class="metric-card">
-          <div class="metric-label">Total Invested</div>
+          <div class="metric-label">Owner's Equity (3000)</div>
           <div class="metric-value">
-            <%= format_currency(@total_invested_cents) %>
+            <%= format_currency(@equity_summary.owners_equity_cents) %>
+          </div>
+          <div class="metric-sublabel">Capital contributions</div>
+        </div>
+
+        <div class="metric-card">
+          <div class="metric-label">Retained Earnings (3050)</div>
+          <div class="metric-value">
+            <%= format_currency(@equity_summary.retained_earnings_cents) %>
+          </div>
+          <div class="metric-sublabel">Closed prior periods</div>
+        </div>
+
+        <div class="metric-card">
+          <div class="metric-label">Owner's Drawings (3100)</div>
+          <div class="metric-value" style="color: #dc2626;">
+            (<%= format_currency(@equity_summary.owners_drawings_cents) %>)
+          </div>
+          <div class="metric-sublabel">Withdrawals (contra-equity)</div>
+        </div>
+
+        <div class="metric-card">
+          <div class="metric-label">Current Net Income</div>
+          <div class="metric-value" style={if @equity_summary.current_net_income_cents >= 0, do: "color: #16a34a;", else: "color: #dc2626;"}>
+            <%= format_currency(@equity_summary.current_net_income_cents) %>
+          </div>
+          <div class="metric-sublabel">
+            <%= if @equity_summary.last_close_date do %>
+              Since <%= @equity_summary.last_close_date %>
+            <% else %>
+              All time (not yet closed)
+            <% end %>
           </div>
         </div>
-        <div class="metric-card">
-          <div class="metric-label">Number of Partners</div>
-          <div class="metric-value">
-            <%= Enum.count(@partner_totals) %>
+      </div>
+
+      <div class="dashboard-metrics" style="margin-top: 1rem;">
+        <div class="metric-card" style="background-color: #f0fdf4; border: 2px solid #16a34a;">
+          <div class="metric-label" style="color: #166534;">Total Equity</div>
+          <div class="metric-value" style="color: #166534; font-size: 1.75rem;">
+            <%= format_currency(@equity_summary.total_equity_cents) %>
+          </div>
+          <div class="metric-sublabel" style="color: #166534;">
+            = Owner's Equity + Retained Earnings - Drawings + Net Income
           </div>
         </div>
       </div>
     </section>
 
-    <!-- Partner breakdown -->
+    <!-- Partner Contributions -->
     <section class="card">
-      <h2 class="card-title">By Partner</h2>
+      <h2 class="card-title">Partner Contributions</h2>
       <p class="card-subtitle">
-        Contributions and ownership percentage (based on capital invested).
+        Capital invested by each partner (Owner's Equity breakdown).
       </p>
 
       <div class="header-actions" style="margin-bottom: 1rem;">
@@ -51,8 +89,8 @@
             <tr>
               <th>Partner</th>
               <th>Email</th>
-              <th class="numeric">Invested</th>
-              <th class="numeric">% of Total</th>
+              <th class="numeric">Capital Invested</th>
+              <th class="numeric">% of Capital</th>
             </tr>
           </thead>
           <tbody>
@@ -79,15 +117,22 @@
               <% end %>
             <% end %>
           </tbody>
+          <tfoot>
+            <tr style="font-weight: bold; background-color: #f9fafb;">
+              <td colspan="2">Total Capital Invested</td>
+              <td class="numeric"><%= format_currency(@total_invested_cents) %></td>
+              <td class="numeric">100%</td>
+            </tr>
+          </tfoot>
         </table>
       </div>
     </section>
 
-    <!-- Recent contributions -->
+    <!-- Recent Activity -->
     <section class="card">
-      <h2 class="card-title">Recent Contributions</h2>
+      <h2 class="card-title">Recent Activity</h2>
       <p class="card-subtitle">
-        Latest capital contributions into the business.
+        Latest investments and withdrawals.
       </p>
 
       <div class="table-wrapper">
@@ -96,6 +141,7 @@
             <tr>
               <th>Date</th>
               <th>Partner</th>
+              <th>Type</th>
               <th class="numeric">Amount</th>
               <th>Note</th>
             </tr>
@@ -103,13 +149,20 @@
           <tbody>
             <%= if @recent_contributions == [] do %>
               <tr>
-                <td colspan="4">No contributions yet.</td>
+                <td colspan="5">No activity yet.</td>
               </tr>
             <% else %>
               <%= for c <- @recent_contributions do %>
                 <tr>
                   <td><%= c.date %></td>
                   <td><%= c.partner && c.partner.name %></td>
+                  <td>
+                    <%= if c.direction == "out" do %>
+                      <span style="color: #dc2626;">Withdrawal</span>
+                    <% else %>
+                      <span style="color: #16a34a;">Investment</span>
+                    <% end %>
+                  </td>
                   <td class="numeric">
                     <% signed_cents =
                         if c.direction == "out",
@@ -126,6 +179,18 @@
             <% end %>
           </tbody>
         </table>
+      </div>
+    </section>
+
+    <!-- Accounting Info -->
+    <section class="card" style="background-color: #eff6ff; border: 1px solid #3b82f6;">
+      <h2 class="card-title" style="color: #1e40af;">How Equity Accounting Works</h2>
+      <div style="color: #1e3a8a; font-size: 0.9rem; line-height: 1.6;">
+        <p><strong>Owner's Equity (3000)</strong> - Capital contributed by partners. Increases when partners invest money.</p>
+        <p><strong>Retained Earnings (3050)</strong> - Accumulated profits from prior closed periods. Updated during year-end close.</p>
+        <p><strong>Owner's Drawings (3100)</strong> - Withdrawals taken by partners. This is a contra-equity account (reduces total equity).</p>
+        <p><strong>Current Net Income</strong> - Profit/loss from the current period (since last year-end close). Calculated from P&L.</p>
+        <p style="margin-top: 1rem;"><strong>Year-End Close Process:</strong> At fiscal year-end, Net Income and Owner's Drawings are transferred to Retained Earnings. This resets the current period and locks in historical results. Use the Balance Sheet page to perform year-end close.</p>
       </div>
     </section>
   </div>

@@ -806,6 +806,57 @@ defmodule MrMunchMeAccountingApp.Accounting do
   def get_account_by_code(code), do: Repo.get_by(Account, code: code)
   def get_account_by_code!(code), do: Repo.get_by!(Account, code: code)
 
+  @doc """
+  Returns a summary of equity account balances for the investments page.
+  """
+  def get_equity_summary do
+    # Get balance for each equity account
+    owners_equity_cents = get_account_balance("3000")
+    retained_earnings_cents = get_account_balance("3050")
+    owners_drawings_cents = get_account_balance("3100")
+
+    # Get current period net income (unclosed)
+    last_close_date = get_last_year_end_close_date()
+    pnl_start_date = if last_close_date, do: Date.add(last_close_date, 1), else: ~D[2000-01-01]
+    pnl = profit_and_loss(pnl_start_date, Date.utc_today())
+    current_net_income_cents = pnl.net_income_cents
+
+    # Total equity = Owner's Equity + Retained Earnings - Owner's Drawings + Current Net Income
+    total_equity_cents = owners_equity_cents + retained_earnings_cents - owners_drawings_cents + current_net_income_cents
+
+    %{
+      owners_equity_cents: owners_equity_cents,
+      retained_earnings_cents: retained_earnings_cents,
+      owners_drawings_cents: owners_drawings_cents,
+      current_net_income_cents: current_net_income_cents,
+      total_equity_cents: total_equity_cents,
+      last_close_date: last_close_date
+    }
+  end
+
+  defp get_account_balance(code) do
+    account = get_account_by_code(code)
+
+    if account do
+      result = from(jl in JournalLine,
+        join: je in assoc(jl, :journal_entry),
+        where: jl.account_id == ^account.id,
+        select: %{
+          debits: coalesce(sum(jl.debit_cents), 0),
+          credits: coalesce(sum(jl.credit_cents), 0)
+        }
+      ) |> Repo.one()
+
+      case account.normal_balance do
+        "credit" -> (result.credits || 0) - (result.debits || 0)
+        "debit" -> (result.debits || 0) - (result.credits || 0)
+        _ -> 0
+      end
+    else
+      0
+    end
+  end
+
   def create_account(attrs \\ %{}) do
     %Account{}
     |> Account.changeset(attrs)
