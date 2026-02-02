@@ -1839,9 +1839,18 @@ defmodule MrMunchMeAccountingApp.Accounting do
               }
 
             "equity" ->
+              # For contra-equity accounts (debit normal balance like Owner's Drawings),
+              # their positive balance should REDUCE total equity
+              equity_contribution =
+                if account.normal_balance == "debit" do
+                  -amount_cents  # Contra-equity reduces total equity
+                else
+                  amount_cents   # Normal equity increases total equity
+                end
+
               %{acc |
                 equity: acc.equity ++ [%{account: account, amount_cents: amount_cents}],
-                total_equity_cents: acc.total_equity_cents + amount_cents
+                total_equity_cents: acc.total_equity_cents + equity_contribution
               }
           end
         end
