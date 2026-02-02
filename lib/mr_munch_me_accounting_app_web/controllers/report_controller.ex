@@ -174,9 +174,17 @@ defmodule MrMunchMeAccountingAppWeb.ReportController do
           0.0
         end
 
+      # Calculate per-unit averages
+      revenue_per_unit_cents = if totals.units_sold > 0, do: div(totals.revenue_cents, totals.units_sold), else: 0
+      cogs_per_unit_cents = if totals.units_sold > 0, do: div(totals.cogs_cents, totals.units_sold), else: 0
+      gross_margin_per_unit_cents = if totals.units_sold > 0, do: div(totals.gross_margin_cents, totals.units_sold), else: 0
+
       totals
       |> Map.put(:gross_margin_percent, gross_margin_percent)
       |> Map.put(:net_margin_percent, net_margin_percent)
+      |> Map.put(:revenue_per_unit_cents, revenue_per_unit_cents)
+      |> Map.put(:cogs_per_unit_cents, cogs_per_unit_cents)
+      |> Map.put(:gross_margin_per_unit_cents, gross_margin_per_unit_cents)
     end)
   end
 

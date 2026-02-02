@@ -5,7 +5,6 @@
 - Unit economics - CHECK
 - Cash flow - CHECK
 - Add error handling to forms to any forms missing it
-- Add purchase link to inventory
 - Add notes to inventory purchases
 - Add shorcut to shipping expense in inventory purchase form in case the purchase involves shipping/delivery expenses.
 - Maybe: Split total inventory by inventory location
@@ -24,7 +23,9 @@
 - Add cutoff for when reconciliation was made in UI. Like "reconciled on x date" and show a line that divides the table or something like that.
 - Fix how account balances are listed. Should be from newest to oldest and the balance should be updating as we move up.
 - Manual: Fix inventory value.
-- Add "all dates" button to all views that have a date filters. Use the same logic as the p&l button.
+- Gross profit calc in overall dashboard is not calculated correctly.
+- Add mobile responsiveness css.
+- Should add "retained earnings" account in the balance sheet right? And adjust retroactively?
 
 ## Using github
 

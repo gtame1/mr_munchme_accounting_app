@@ -65,10 +65,13 @@
             <thead>
               <tr>
                 <th>Product</th>
-                <th class="numeric">Units Sold</th>
+                <th class="numeric">Units</th>
                 <th class="numeric">Revenue</th>
+                <th class="numeric">Rev/Unit</th>
                 <th class="numeric">COGS</th>
+                <th class="numeric">COGS/Unit</th>
                 <th class="numeric">Gross Margin</th>
+                <th class="numeric">GM/Unit</th>
                 <th class="numeric">GM %</th>
                 <th>Actions</th>
               </tr>
@@ -84,8 +87,11 @@
                   </td>
                   <td class="numeric"><%= ue.units_sold %></td>
                   <td class="numeric"><%= format_currency(ue.revenue_cents) %></td>
+                  <td class="numeric"><%= format_currency(ue.revenue_per_unit_cents) %></td>
                   <td class="numeric"><%= format_currency(ue.cogs_cents) %></td>
+                  <td class="numeric"><%= format_currency(ue.cogs_per_unit_cents) %></td>
                   <td class="numeric"><%= format_currency(ue.gross_margin_cents) %></td>
+                  <td class="numeric"><%= format_currency(ue.gross_margin_per_unit_cents) %></td>
                   <td class="numeric">
                     <span class={cond do
                       ue.gross_margin_percent >= 50 -> "text-success"
@@ -108,8 +114,11 @@
                 <td><strong>TOTAL</strong></td>
                 <td class="numeric"><%= @totals.units_sold %></td>
                 <td class="numeric"><%= format_currency(@totals.revenue_cents) %></td>
+                <td class="numeric"><%= format_currency(@totals.revenue_per_unit_cents) %></td>
                 <td class="numeric"><%= format_currency(@totals.cogs_cents) %></td>
+                <td class="numeric"><%= format_currency(@totals.cogs_per_unit_cents) %></td>
                 <td class="numeric"><%= format_currency(@totals.gross_margin_cents) %></td>
+                <td class="numeric"><%= format_currency(@totals.gross_margin_per_unit_cents) %></td>
                 <td class="numeric"><%= @totals.gross_margin_percent %>%</td>
                 <td></td>
               </tr>

@@ -1,0 +1,348 @@
+{
+	"info": {
+		"_postman_id": "mr-munch-me-api",
+		"name": "Mr Munch Me Accounting API",
+		"description": "REST API for querying data from the Mr Munch Me Accounting App",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"variable": [
+		{
+			"key": "baseUrl",
+			"value": "http://localhost:4000",
+			"type": "string"
+		}
+	],
+	"item": [
+		{
+			"name": "Products",
+			"item": [
+				{
+					"name": "List all products",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/products",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "products"]
+						}
+					}
+				},
+				{
+					"name": "Get product by ID",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/products/:id",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "products", ":id"],
+							"variable": [
+								{
+									"key": "id",
+									"value": "1"
+								}
+							]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Orders",
+			"item": [
+				{
+					"name": "List all orders",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/orders",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "orders"]
+						}
+					}
+				},
+				{
+					"name": "List orders with filters",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/orders?status=delivered&date_from=2024-01-01&date_to=2024-12-31",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "orders"],
+							"query": [
+								{
+									"key": "status",
+									"value": "delivered",
+									"description": "Filter by status: new_order, in_prep, ready, delivered, canceled"
+								},
+								{
+									"key": "date_from",
+									"value": "2024-01-01",
+									"description": "Filter orders from this date (YYYY-MM-DD)"
+								},
+								{
+									"key": "date_to",
+									"value": "2024-12-31",
+									"description": "Filter orders until this date (YYYY-MM-DD)"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Get order by ID",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/orders/:id",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "orders", ":id"],
+							"variable": [
+								{
+									"key": "id",
+									"value": "1"
+								}
+							]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Customers",
+			"item": [
+				{
+					"name": "List all customers",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/customers",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "customers"]
+						}
+					}
+				},
+				{
+					"name": "Get customer by ID",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/customers/:id",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "customers", ":id"],
+							"variable": [
+								{
+									"key": "id",
+									"value": "1"
+								}
+							]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Inventory",
+			"item": [
+				{
+					"name": "List all ingredients",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/ingredients",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "ingredients"]
+						}
+					}
+				},
+				{
+					"name": "Get ingredient by ID",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/ingredients/:id",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "ingredients", ":id"],
+							"variable": [
+								{
+									"key": "id",
+									"value": "1"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "List stock levels",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/stock",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "stock"]
+						},
+						"description": "Returns stock items with total inventory value"
+					}
+				},
+				{
+					"name": "List locations",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/locations",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "locations"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Accounting",
+			"item": [
+				{
+					"name": "List all accounts",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/accounts",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "accounts"]
+						}
+					}
+				},
+				{
+					"name": "Get account by ID",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/accounts/:id",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "accounts", ":id"],
+							"variable": [
+								{
+									"key": "id",
+									"value": "1"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "List journal entries",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/journal_entries",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "journal_entries"]
+						}
+					}
+				},
+				{
+					"name": "Get journal entry by ID",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/journal_entries/:id",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "journal_entries", ":id"],
+							"variable": [
+								{
+									"key": "id",
+									"value": "1"
+								}
+							]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Reports",
+			"item": [
+				{
+					"name": "Balance Sheet (today)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/reports/balance_sheet",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "reports", "balance_sheet"]
+						}
+					}
+				},
+				{
+					"name": "Balance Sheet (specific date)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/reports/balance_sheet?as_of_date=2024-12-31",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "reports", "balance_sheet"],
+							"query": [
+								{
+									"key": "as_of_date",
+									"value": "2024-12-31",
+									"description": "Date for balance sheet (YYYY-MM-DD)"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Profit & Loss (current month)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/reports/profit_and_loss",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "reports", "profit_and_loss"]
+						}
+					}
+				},
+				{
+					"name": "Profit & Loss (date range)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/reports/profit_and_loss?start_date=2024-01-01&end_date=2024-12-31",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "reports", "profit_and_loss"],
+							"query": [
+								{
+									"key": "start_date",
+									"value": "2024-01-01",
+									"description": "Start date (YYYY-MM-DD)"
+								},
+								{
+									"key": "end_date",
+									"value": "2024-12-31",
+									"description": "End date (YYYY-MM-DD)"
+								}
+							]
+						}
+					}
+				}
+			]
+		}
+	]
+}
