@@ -334,15 +334,8 @@ defmodule MrMunchMeAccountingApp.AccountingTest do
   describe "record_investment/2 and record_withdrawal/2" do
     setup do
       accounts = standard_accounts_fixture()
-      # Create owners equity account
-      {:ok, equity} = Accounting.create_account(%{
-        code: "3000",
-        name: "Owner's Equity",
-        type: "equity",
-        normal_balance: "credit",
-        is_cash: false
-      })
-      {:ok, accounts: Map.put(accounts, "3000", equity)}
+      # Owner's Equity (3000) and Retained Earnings (3050) are now included in standard_accounts_fixture
+      {:ok, accounts: accounts}
     end
 
     test "record_investment creates correct journal entry", %{accounts: accounts} do
@@ -375,7 +368,7 @@ defmodule MrMunchMeAccountingApp.AccountingTest do
 
     test "record_withdrawal creates correct journal entry", %{accounts: accounts} do
       cash = accounts["1000"]
-      equity = accounts["3000"]
+      owners_drawings = accounts["3100"]
 
       {:ok, entry} = Accounting.record_withdrawal(50000, [
         cash_account_id: cash.id,
@@ -387,11 +380,11 @@ defmodule MrMunchMeAccountingApp.AccountingTest do
 
       assert entry.entry_type == "withdrawal"
 
-      # Equity debit (reduce equity)
-      equity_line = Enum.find(entry.journal_lines, fn l ->
-        l.account_id == equity.id && l.debit_cents > 0
+      # Owner's Drawings debit (contra-equity increases)
+      drawings_line = Enum.find(entry.journal_lines, fn l ->
+        l.account_id == owners_drawings.id && l.debit_cents > 0
       end)
-      assert equity_line.debit_cents == 50000
+      assert drawings_line.debit_cents == 50000
 
       # Cash credit (pay out)
       cash_line = Enum.find(entry.journal_lines, fn l ->
@@ -586,15 +579,8 @@ defmodule MrMunchMeAccountingApp.AccountingTest do
   describe "balance_sheet/1" do
     setup do
       accounts = standard_accounts_fixture()
-      # Create owners equity account
-      {:ok, equity} = Accounting.create_account(%{
-        code: "3000",
-        name: "Owner's Equity",
-        type: "equity",
-        normal_balance: "credit",
-        is_cash: false
-      })
-      {:ok, accounts: Map.put(accounts, "3000", equity)}
+      # Owner's Equity (3000) is now included in standard_accounts_fixture
+      {:ok, accounts: accounts}
     end
 
     test "returns asset, liability, and equity totals", %{accounts: accounts} do

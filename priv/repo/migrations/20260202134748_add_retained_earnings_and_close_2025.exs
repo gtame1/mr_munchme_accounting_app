@@ -2,13 +2,18 @@ defmodule MrMunchMeAccountingApp.Repo.Migrations.AddRetainedEarningsAndClose2025
   use Ecto.Migration
   import Ecto.Query
 
+  @close_date ~D[2025-12-31]
+
   def up do
     # Step 1: Insert Retained Earnings account if it doesn't exist
-    retained_earnings_account = insert_retained_earnings_account()
+    retained_earnings_account = insert_account_if_not_exists("3050", "Retained Earnings", "equity", "credit")
 
-    # Step 2: Calculate net income through 2025-12-31 and create closing entry
+    # Step 2: Ensure Owner's Drawings account exists
+    owners_drawings_account = insert_account_if_not_exists("3100", "Owner's Drawings", "equity", "debit")
+
+    # Step 3: Calculate amounts and create closing entry
     if retained_earnings_account do
-      create_closing_entry(retained_earnings_account.id)
+      create_closing_entry(retained_earnings_account.id, owners_drawings_account)
     end
   end
 
@@ -24,16 +29,12 @@ defmodule MrMunchMeAccountingApp.Repo.Migrations.AddRetainedEarningsAndClose2025
     execute """
     DELETE FROM journal_entries WHERE entry_type = 'year_end_close'
     """
-
-    # Optionally remove the account (commented out to preserve data)
-    # execute "DELETE FROM accounts WHERE code = '3050'"
   end
 
-  defp insert_retained_earnings_account do
-    # Check if account already exists
+  defp insert_account_if_not_exists(code, name, type, normal_balance) do
     existing = MrMunchMeAccountingApp.Repo.one(
       from a in "accounts",
-      where: a.code == "3050",
+      where: a.code == ^code,
       select: %{id: a.id}
     )
 
@@ -46,10 +47,10 @@ defmodule MrMunchMeAccountingApp.Repo.Migrations.AddRetainedEarningsAndClose2025
         "accounts",
         [
           %{
-            code: "3050",
-            name: "Retained Earnings",
-            type: "equity",
-            normal_balance: "credit",
+            code: code,
+            name: name,
+            type: type,
+            normal_balance: normal_balance,
             is_cash: false,
             inserted_at: now,
             updated_at: now
@@ -62,7 +63,7 @@ defmodule MrMunchMeAccountingApp.Repo.Migrations.AddRetainedEarningsAndClose2025
     end
   end
 
-  defp create_closing_entry(retained_earnings_account_id) do
+  defp create_closing_entry(retained_earnings_account_id, owners_drawings_account) do
     # Check if closing entry already exists
     existing_close = MrMunchMeAccountingApp.Repo.one(
       from je in "journal_entries",
@@ -74,12 +75,28 @@ defmodule MrMunchMeAccountingApp.Repo.Migrations.AddRetainedEarningsAndClose2025
       # Already closed, skip
       :ok
     else
-      # Calculate net income through 2025-12-31
-      close_date = ~D[2025-12-31]
-      net_income_cents = calculate_net_income(close_date)
+      # Calculate net income through close date
+      net_income_cents = calculate_net_income(@close_date)
 
-      if net_income_cents != 0 do
-        create_closing_journal_entry(retained_earnings_account_id, net_income_cents, close_date)
+      # Calculate Owner's Drawings balance through close date
+      owners_drawings_cents = if owners_drawings_account do
+        calculate_owners_drawings(@close_date, owners_drawings_account.id)
+      else
+        0
+      end
+
+      # Amount to credit Retained Earnings = Net Income - Owner's Drawings
+      # (Owner's Drawings reduces the amount transferred to Retained Earnings)
+      amount_to_close = net_income_cents - owners_drawings_cents
+
+      if amount_to_close != 0 or owners_drawings_cents != 0 do
+        create_closing_journal_entry(
+          retained_earnings_account_id,
+          owners_drawings_account,
+          net_income_cents,
+          owners_drawings_cents,
+          amount_to_close
+        )
       end
     end
   end
@@ -90,7 +107,7 @@ defmodule MrMunchMeAccountingApp.Repo.Migrations.AddRetainedEarningsAndClose2025
       join: jl in "journal_lines", on: jl.journal_entry_id == je.id,
       join: a in "accounts", on: jl.account_id == a.id,
       where: a.type == "revenue" and je.date <= ^end_date,
-      select: sum(jl.credit_cents) - sum(jl.debit_cents)
+      select: coalesce(sum(jl.credit_cents), 0) - coalesce(sum(jl.debit_cents), 0)
 
     revenue_cents = MrMunchMeAccountingApp.Repo.one(revenue_query) || 0
 
@@ -99,7 +116,7 @@ defmodule MrMunchMeAccountingApp.Repo.Migrations.AddRetainedEarningsAndClose2025
       join: jl in "journal_lines", on: jl.journal_entry_id == je.id,
       join: a in "accounts", on: jl.account_id == a.id,
       where: a.type == "expense" and je.date <= ^end_date,
-      select: sum(jl.debit_cents) - sum(jl.credit_cents)
+      select: coalesce(sum(jl.debit_cents), 0) - coalesce(sum(jl.credit_cents), 0)
 
     expense_cents = MrMunchMeAccountingApp.Repo.one(expense_query) || 0
 
@@ -107,7 +124,24 @@ defmodule MrMunchMeAccountingApp.Repo.Migrations.AddRetainedEarningsAndClose2025
     revenue_cents - expense_cents
   end
 
-  defp create_closing_journal_entry(retained_earnings_account_id, net_income_cents, close_date) do
+  defp calculate_owners_drawings(end_date, owners_drawings_account_id) do
+    # Owner's Drawings has a debit normal balance
+    # Sum debits - credits to get the balance
+    query = from je in "journal_entries",
+      join: jl in "journal_lines", on: jl.journal_entry_id == je.id,
+      where: jl.account_id == ^owners_drawings_account_id and je.date <= ^end_date,
+      select: coalesce(sum(jl.debit_cents), 0) - coalesce(sum(jl.credit_cents), 0)
+
+    MrMunchMeAccountingApp.Repo.one(query) || 0
+  end
+
+  defp create_closing_journal_entry(
+    retained_earnings_account_id,
+    owners_drawings_account,
+    _net_income_cents,
+    owners_drawings_cents,
+    amount_to_close
+  ) do
     now = NaiveDateTime.utc_now() |> NaiveDateTime.truncate(:second)
 
     # Create the journal entry
@@ -115,10 +149,10 @@ defmodule MrMunchMeAccountingApp.Repo.Migrations.AddRetainedEarningsAndClose2025
       "journal_entries",
       [
         %{
-          date: close_date,
+          date: @close_date,
           entry_type: "year_end_close",
           reference: "Year-End Close 2025",
-          description: "Close 2025 net income to retained earnings",
+          description: "Close 2025 net income and owner's drawings to retained earnings",
           inserted_at: now,
           updated_at: now
         }
@@ -126,56 +160,55 @@ defmodule MrMunchMeAccountingApp.Repo.Migrations.AddRetainedEarningsAndClose2025
       returning: [:id]
     )
 
-    # For a closing entry, we need balanced debits and credits
-    # If net_income is positive (profit): Cr Retained Earnings
-    # If net_income is negative (loss): Dr Retained Earnings
-    #
-    # We'll use a "dummy" offset that doesn't affect the balance sheet
-    # by using the same account with opposite sign (net zero effect on the account
-    # but allows the entry to balance)
-    #
-    # Actually, the proper accounting way:
-    # - The closing entry should offset the P&L calculation
-    # - Since balance_sheet will now only calculate P&L from 2026-01-01 onward,
-    #   we just need to credit Retained Earnings for the amount
-    #
-    # To make a balanced entry, we'll use a debit to an "Income Summary" concept
-    # But since we don't have that account, we'll use a self-balancing approach:
-    # Credit Retained Earnings, and the offset comes from the P&L not being
-    # double-counted (since we'll update balance_sheet to start from close date + 1)
+    lines = []
 
-    {debit_cents, credit_cents} = if net_income_cents >= 0 do
-      {net_income_cents, 0}  # Debit side (we need something to balance)
+    # Line 1: Close Owner's Drawings (credit to zero it out)
+    lines = if owners_drawings_cents > 0 and owners_drawings_account do
+      lines ++ [
+        %{
+          journal_entry_id: journal_entry.id,
+          account_id: owners_drawings_account.id,
+          debit_cents: 0,
+          credit_cents: owners_drawings_cents,
+          description: "Close owner's drawings",
+          inserted_at: now,
+          updated_at: now
+        }
+      ]
     else
-      {0, abs(net_income_cents)}  # Credit side for loss
+      lines
     end
 
-    # For simplicity, we'll create a single line that just establishes the balance
-    # This works because we're going to update the balance_sheet function to
-    # calculate current period P&L separately
-    #
-    # Actually, let's do this properly with balanced entries:
-    # Credit Retained Earnings for the net income
-    # The "debit" side comes from reducing the revenue/expense accounts
-    # But we don't want to zero those out (would mess up P&L history)
-    #
-    # Simplest approach: Create a credit to Retained Earnings
-    # The balance_sheet function will be updated to not double-count
-
-    MrMunchMeAccountingApp.Repo.insert_all(
-      "journal_lines",
-      [
+    # Line 2: Credit/Debit Retained Earnings for the net amount
+    lines = if amount_to_close >= 0 do
+      lines ++ [
         %{
           journal_entry_id: journal_entry.id,
           account_id: retained_earnings_account_id,
-          debit_cents: if(net_income_cents < 0, do: abs(net_income_cents), else: 0),
-          credit_cents: if(net_income_cents >= 0, do: net_income_cents, else: 0),
+          debit_cents: 0,
+          credit_cents: amount_to_close,
           description: "Net income closed to retained earnings",
           inserted_at: now,
           updated_at: now
         }
       ]
-    )
+    else
+      lines ++ [
+        %{
+          journal_entry_id: journal_entry.id,
+          account_id: retained_earnings_account_id,
+          debit_cents: abs(amount_to_close),
+          credit_cents: 0,
+          description: "Net loss closed to retained earnings",
+          inserted_at: now,
+          updated_at: now
+        }
+      ]
+    end
+
+    if length(lines) > 0 do
+      MrMunchMeAccountingApp.Repo.insert_all("journal_lines", lines)
+    end
 
     :ok
   end

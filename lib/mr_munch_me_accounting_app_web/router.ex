@@ -33,6 +33,7 @@ defmodule MrMunchMeAccountingAppWeb.Router do
     get "/", ReportController, :dashboard
     get "/reports/pnl", ReportController, :pnl
     get "/reports/balance_sheet", ReportController, :balance_sheet
+    post "/reports/year_end_close", ReportController, :year_end_close
     get "/reports/unit_economics", ReportController, :unit_economics
     get "/reports/unit_economics_list", ReportController, :unit_economics_list
     get "/reports/cash_flow", ReportController, :cash_flow

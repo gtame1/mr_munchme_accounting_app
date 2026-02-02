@@ -17,6 +17,9 @@ defmodule MrMunchMeAccountingApp.AccountingFixtures do
       %{code: "1210", name: "Packing Inventory", type: "asset", normal_balance: "debit", is_cash: false},
       %{code: "1220", name: "WIP Inventory", type: "asset", normal_balance: "debit", is_cash: false},
       %{code: "2200", name: "Customer Deposits", type: "liability", normal_balance: "credit", is_cash: false},
+      %{code: "3000", name: "Owner's Equity", type: "equity", normal_balance: "credit", is_cash: false},
+      %{code: "3050", name: "Retained Earnings", type: "equity", normal_balance: "credit", is_cash: false},
+      %{code: "3100", name: "Owner's Drawings", type: "equity", normal_balance: "debit", is_cash: false},
       %{code: "4000", name: "Sales Revenue", type: "revenue", normal_balance: "credit", is_cash: false},
       %{code: "5000", name: "Ingredients COGS", type: "expense", normal_balance: "debit", is_cash: false},
       %{code: "5100", name: "Packing COGS", type: "expense", normal_balance: "debit", is_cash: false}
@@ -24,8 +27,14 @@ defmodule MrMunchMeAccountingApp.AccountingFixtures do
 
     created_accounts =
       Enum.map(accounts, fn attrs ->
-        {:ok, account} = Accounting.create_account(attrs)
-        {account.code, account}
+        # Try to get existing account first, or create if doesn't exist
+        case Accounting.get_account_by_code(attrs.code) do
+          nil ->
+            {:ok, account} = Accounting.create_account(attrs)
+            {account.code, account}
+          existing ->
+            {existing.code, existing}
+        end
       end)
       |> Map.new()
 

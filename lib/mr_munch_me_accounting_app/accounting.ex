@@ -23,6 +23,8 @@ defmodule MrMunchMeAccountingApp.Accounting do
   @customer_deposits_code "2200"   # Customer Deposits Liability
   @sales_code "4000"
   @owners_equity_code "3000"
+  @retained_earnings_code "3050"   # Retained Earnings
+  @owners_drawings_code "3100"     # Owner's Drawings (contra-equity)
   @ingredients_cogs_code "5000"
   @packaging_cogs_code "5010"
   @inventory_waste_code "6060"
@@ -742,7 +744,9 @@ defmodule MrMunchMeAccountingApp.Accounting do
     partner_name    = Keyword.get(opts, :partner_name, "Partner")
 
     cash_account   = Repo.get!(Account, cash_account_id)
-    equity_account = get_account_by_code!(@owners_equity_code)
+    # Withdrawals debit Owner's Drawings (contra-equity account)
+    # At year-end, Owner's Drawings is closed to Retained Earnings
+    owners_drawings = get_account_by_code!(@owners_drawings_code)
 
     entry_attrs = %{
       date: date,
@@ -753,10 +757,10 @@ defmodule MrMunchMeAccountingApp.Accounting do
 
     lines = [
       %{
-        account_id: equity_account.id,
+        account_id: owners_drawings.id,
         debit_cents: amount_cents,
         credit_cents: 0,
-        description: "Reduce owner's equity (#{partner_name})"
+        description: "Owner's drawing (#{partner_name})"
       },
       %{
         account_id: cash_account.id,
@@ -799,6 +803,7 @@ defmodule MrMunchMeAccountingApp.Accounting do
   end
 
   def get_account!(id), do: Repo.get!(Account, id)
+  def get_account_by_code(code), do: Repo.get_by(Account, code: code)
   def get_account_by_code!(code), do: Repo.get_by!(Account, code: code)
 
   def create_account(attrs \\ %{}) do
@@ -1853,36 +1858,77 @@ defmodule MrMunchMeAccountingApp.Accounting do
       pnl = profit_and_loss(start_date, close_date)
       net_income_cents = pnl.net_income_cents
 
-      if net_income_cents == 0 do
-        {:ok, :no_income_to_close}
+      # Get Owner's Drawings balance for the period
+      owners_drawings_balance = get_owners_drawings_balance(start_date, close_date)
+
+      # Net amount to close = Net Income - Owner's Drawings
+      # (Owner's Drawings is a debit balance that reduces equity)
+      amount_to_close = net_income_cents - owners_drawings_balance
+
+      if amount_to_close == 0 and owners_drawings_balance == 0 do
+        {:ok, :nothing_to_close}
       else
-        retained_earnings = get_account_by_code!("3050")
+        retained_earnings = get_account_by_code!(@retained_earnings_code)
+        owners_drawings = get_account_by_code!(@owners_drawings_code)
 
         entry_attrs = %{
           date: close_date,
           entry_type: "year_end_close",
           reference: "Year-End Close #{close_date.year}",
-          description: "Close #{close_date.year} net income to retained earnings"
+          description: "Close #{close_date.year} net income and owner's drawings to retained earnings"
         }
 
-        # Credit retained earnings for profit, debit for loss
-        {debit, credit} = if net_income_cents >= 0 do
-          {0, net_income_cents}
+        lines = []
+
+        # Close Owner's Drawings (credit to zero it out)
+        lines = if owners_drawings_balance > 0 do
+          lines ++ [%{
+            account_id: owners_drawings.id,
+            debit_cents: 0,
+            credit_cents: owners_drawings_balance,
+            description: "Close owner's drawings to retained earnings"
+          }]
         else
-          {abs(net_income_cents), 0}
+          lines
         end
 
-        lines = [
-          %{
+        # Credit/Debit Retained Earnings for the net amount
+        lines = if amount_to_close >= 0 do
+          lines ++ [%{
             account_id: retained_earnings.id,
-            debit_cents: debit,
-            credit_cents: credit,
+            debit_cents: 0,
+            credit_cents: amount_to_close,
             description: "Net income closed to retained earnings"
-          }
-        ]
+          }]
+        else
+          lines ++ [%{
+            account_id: retained_earnings.id,
+            debit_cents: abs(amount_to_close),
+            credit_cents: 0,
+            description: "Net loss closed to retained earnings"
+          }]
+        end
 
         create_journal_entry_with_lines(entry_attrs, lines)
       end
+    end
+  end
+
+  # Get the debit balance of Owner's Drawings for a period
+  defp get_owners_drawings_balance(start_date, end_date) do
+    owners_drawings = get_account_by_code(@owners_drawings_code)
+
+    if owners_drawings do
+      result = from(je in JournalEntry,
+        join: jl in assoc(je, :journal_lines),
+        where: jl.account_id == ^owners_drawings.id and
+               je.date >= ^start_date and je.date <= ^end_date,
+        select: coalesce(sum(jl.debit_cents), 0) - coalesce(sum(jl.credit_cents), 0)
+      ) |> Repo.one()
+
+      result || 0
+    else
+      0
     end
   end
 

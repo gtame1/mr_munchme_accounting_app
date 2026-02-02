@@ -125,10 +125,36 @@
           *Net income shown is for the current period (since <%= @balance_sheet.last_close_date %>).
           Prior periods have been closed to Retained Earnings.
         <% else %>
-          *Net income is shown separately here. In a formal close process, this amount would be
-          transferred into a retained earnings equity account.
+          *Net income is shown separately here. Use the year-end close to transfer this amount
+          to retained earnings.
         <% end %>
       </p>
+
+      <!-- Year-End Close Section -->
+      <div class="card" style="margin-top: 1.5rem; padding: 1rem; background-color: #fef3c7; border: 1px solid #f59e0b;">
+        <h4 style="margin-top: 0; color: #92400e;">Year-End Close</h4>
+        <p style="color: #78350f; font-size: 0.9rem;">
+          Close the fiscal year to transfer Net Income and Owner's Drawings to Retained Earnings.
+          This should be done <strong>once per year</strong> at fiscal year-end.
+        </p>
+
+        <.form for={%{}} method="post" action={~p"/reports/year_end_close"} style="display: flex; gap: 1rem; align-items: flex-end; flex-wrap: wrap;">
+          <div class="field" style="margin-bottom: 0;">
+            <label style="color: #78350f;">Close Date (Year-End)</label>
+            <input type="date" name="close_date" value={Date.new!(Date.utc_today().year - 1, 12, 31)} style="width: auto;" />
+          </div>
+          <button type="submit" class="btn" style="background-color: #f59e0b; border-color: #f59e0b; color: white;"
+            onclick="return confirm('Are you sure you want to close the fiscal year? This will transfer Net Income and Owner\'s Drawings to Retained Earnings. This action cannot be easily undone.');">
+            Close Year
+          </button>
+        </.form>
+
+        <%= if @balance_sheet[:last_close_date] do %>
+          <p style="margin-top: 0.75rem; margin-bottom: 0; color: #78350f; font-size: 0.85rem;">
+            <strong>Last closed:</strong> <%= @balance_sheet.last_close_date %>
+          </p>
+        <% end %>
+      </div>
     </div>
   </div>
 </section>

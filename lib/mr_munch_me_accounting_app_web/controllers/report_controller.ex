@@ -51,10 +51,38 @@ defmodule MrMunchMeAccountingAppWeb.ReportController do
 
     bs = Accounting.balance_sheet(as_of)
 
+    # Check for flash message from year_end_close action
     render(conn, :balance_sheet,
       balance_sheet: bs,
       as_of: as_of
     )
+  end
+
+  # Year-end close action
+  def year_end_close(conn, params) do
+    close_date =
+      case Map.get(params, "close_date") do
+        nil -> Date.new!(Date.utc_today().year - 1, 12, 31)
+        "" -> Date.new!(Date.utc_today().year - 1, 12, 31)
+        date_str -> Date.from_iso8601!(date_str)
+      end
+
+    case Accounting.close_year_end(close_date) do
+      {:ok, :nothing_to_close} ->
+        conn
+        |> put_flash(:info, "No income or drawings to close for #{close_date}.")
+        |> redirect(to: ~p"/reports/balance_sheet")
+
+      {:ok, _entry} ->
+        conn
+        |> put_flash(:info, "Year-end close completed successfully for #{close_date}.")
+        |> redirect(to: ~p"/reports/balance_sheet")
+
+      {:error, reason} ->
+        conn
+        |> put_flash(:error, "Year-end close failed: #{reason}")
+        |> redirect(to: ~p"/reports/balance_sheet")
+    end
   end
 
   def unit_economics(conn, params) do
