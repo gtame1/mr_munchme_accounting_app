@@ -155,6 +155,7 @@ liabilities = [
 
 equity = [
   %{code: "3000", name: "Owner's Equity", type: "equity", normal_balance: "credit"},
+  %{code: "3050", name: "Retained Earnings", type: "equity", normal_balance: "credit"},
   %{code: "3100", name: "Owner's Drawings", type: "equity", normal_balance: "debit"}
 ]
 

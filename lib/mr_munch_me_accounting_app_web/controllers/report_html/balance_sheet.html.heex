@@ -106,9 +106,14 @@
                 </tr>
             <% end %>
 
-            <!-- Synthetic row for current net income -->
+            <!-- Synthetic row for current period net income -->
             <tr>
-                <td><strong>Current Net Income (P&amp;L)*</strong></td>
+                <td>
+                  <strong>Current Net Income (P&amp;L)*</strong>
+                  <%= if @balance_sheet[:last_close_date] do %>
+                    <br/><small class="text-muted">Since <%= @balance_sheet.last_close_date %></small>
+                  <% end %>
+                </td>
                 <td class="numeric">
                 <b><%= format_currency(@balance_sheet.net_income_cents) %></b>
                 </td>
@@ -116,8 +121,13 @@
         </tbody>
       </table>
       <p class="section-help" style="margin-top: 0.5rem;">
-        *Net income is shown separately here. In a formal close process, this amount would be
-        transferred into a retained earnings equity account.
+        <%= if @balance_sheet[:last_close_date] do %>
+          *Net income shown is for the current period (since <%= @balance_sheet.last_close_date %>).
+          Prior periods have been closed to Retained Earnings.
+        <% else %>
+          *Net income is shown separately here. In a formal close process, this amount would be
+          transferred into a retained earnings equity account.
+        <% end %>
       </p>
     </div>
   </div>

@@ -1791,8 +1791,12 @@ defmodule MrMunchMeAccountingApp.Accounting do
         end
       )
 
-    # 2) Compute Net Income up to as_of_date (all-time P&L until that date)
-    pnl = profit_and_loss(~D[2000-01-01], as_of_date)
+    # 2) Compute Net Income - only for the current (unclosed) period
+    # If there's a year-end close entry, start P&L from the day after the close date
+    last_close_date = get_last_year_end_close_date()
+    pnl_start_date = if last_close_date, do: Date.add(last_close_date, 1), else: ~D[2000-01-01]
+
+    pnl = profit_and_loss(pnl_start_date, as_of_date)
     net_income_cents = pnl.net_income_cents
 
     # 3) Compute RHS: Liabilities + Equity + Net Income
@@ -1807,8 +1811,80 @@ defmodule MrMunchMeAccountingApp.Accounting do
     |> Map.put(:net_income_cents, net_income_cents)
     |> Map.put(:liabilities_plus_equity_plus_income_cents, rhs_total_cents)
     |> Map.put(:balance_diff_cents, balance_diff_cents)
+    |> Map.put(:last_close_date, last_close_date)
   end
 
+  @doc """
+  Returns the date of the most recent year-end close entry, or nil if none exists.
+  """
+  def get_last_year_end_close_date do
+    from(je in JournalEntry,
+      where: je.entry_type == "year_end_close",
+      order_by: [desc: je.date],
+      limit: 1,
+      select: je.date
+    )
+    |> Repo.one()
+  end
+
+  @doc """
+  Performs a year-end close by transferring net income to Retained Earnings.
+
+  Creates a journal entry that:
+  - Credits Retained Earnings for the net income amount (or debits if loss)
+  - Uses the specified close_date as the entry date
+
+  Returns {:ok, journal_entry} or {:error, reason}
+  """
+  def close_year_end(close_date) do
+    # Check if already closed for this date
+    existing = from(je in JournalEntry,
+      where: je.entry_type == "year_end_close" and je.date == ^close_date,
+      select: je.id
+    ) |> Repo.one()
+
+    if existing do
+      {:error, "Year-end close already exists for #{close_date}"}
+    else
+      # Calculate net income from last close (or all time) through close_date
+      last_close = get_last_year_end_close_date()
+      start_date = if last_close, do: Date.add(last_close, 1), else: ~D[2000-01-01]
+
+      pnl = profit_and_loss(start_date, close_date)
+      net_income_cents = pnl.net_income_cents
+
+      if net_income_cents == 0 do
+        {:ok, :no_income_to_close}
+      else
+        retained_earnings = get_account_by_code!("3050")
+
+        entry_attrs = %{
+          date: close_date,
+          entry_type: "year_end_close",
+          reference: "Year-End Close #{close_date.year}",
+          description: "Close #{close_date.year} net income to retained earnings"
+        }
+
+        # Credit retained earnings for profit, debit for loss
+        {debit, credit} = if net_income_cents >= 0 do
+          {0, net_income_cents}
+        else
+          {abs(net_income_cents), 0}
+        end
+
+        lines = [
+          %{
+            account_id: retained_earnings.id,
+            debit_cents: debit,
+            credit_cents: credit,
+            description: "Net income closed to retained earnings"
+          }
+        ]
+
+        create_journal_entry_with_lines(entry_attrs, lines)
+      end
+    end
+  end
 
   # ---------- Capital Contributions ----------
 
