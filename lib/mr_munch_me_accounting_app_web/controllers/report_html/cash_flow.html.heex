@@ -75,9 +75,77 @@
       </div>
     </section>
 
+    <!-- Cash Flow Charts -->
+    <section class="card">
+      <h2 class="card-title">Cash Flow Visualization</h2>
+      <p class="card-subtitle">
+        Visual breakdown of where money came from and where it went.
+      </p>
+
+      <%
+        # Prepare inflows chart data
+        inflows_labels = ["Sales", "Investments", "Other"]
+        inflows_data = [
+          @cash_flow.breakdown.sales_inflows_cents,
+          @cash_flow.breakdown.investment_inflows_cents,
+          @cash_flow.breakdown.other_inflows_cents
+        ]
+
+        inflows_chart_data = %{
+          labels: inflows_labels,
+          datasets: [
+            %{
+              data: inflows_data,
+              backgroundColor: ["#059669", "#10b981", "#6ee7b7"],
+              borderWidth: 0
+            }
+          ]
+        }
+
+        # Prepare outflows chart data
+        outflows_labels = ["Expenses & Inventory", "Withdrawals", "Other"]
+        outflows_data = [
+          @cash_flow.breakdown.expense_outflows_cents,
+          @cash_flow.breakdown.withdrawal_outflows_cents,
+          @cash_flow.breakdown.other_outflows_cents
+        ]
+
+        outflows_chart_data = %{
+          labels: outflows_labels,
+          datasets: [
+            %{
+              data: outflows_data,
+              backgroundColor: ["#dc2626", "#f97316", "#fbbf24"],
+              borderWidth: 0
+            }
+          ]
+        }
+      %>
+
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem; margin-top: 1rem;">
+        <div>
+          <h3 style="font-size: 0.95rem; font-weight: 600; color: #059669; margin-bottom: 0.75rem; text-align: center;">
+            Cash Inflows
+          </h3>
+          <div id="inflows-chart-wrapper" phx-hook="DoughnutChart" style="height: 220px;">
+            <canvas id="inflows-chart" data-chart-data={Jason.encode!(inflows_chart_data)}></canvas>
+          </div>
+        </div>
+
+        <div>
+          <h3 style="font-size: 0.95rem; font-weight: 600; color: #dc2626; margin-bottom: 0.75rem; text-align: center;">
+            Cash Outflows
+          </h3>
+          <div id="outflows-chart-wrapper" phx-hook="DoughnutChart" style="height: 220px;">
+            <canvas id="outflows-chart" data-chart-data={Jason.encode!(outflows_chart_data)}></canvas>
+          </div>
+        </div>
+      </div>
+    </section>
+
     <!-- Cash Flow Breakdown -->
     <section class="card">
-      <h2 class="card-title">Cash Flow Breakdown</h2>
+      <h2 class="card-title">Cash Flow Details</h2>
       <p class="card-subtitle">
         Detailed breakdown of cash inflows and outflows by category.
       </p>

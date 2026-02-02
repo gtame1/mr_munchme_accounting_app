@@ -209,9 +209,60 @@
       </div>
     </section>
 
-    <!-- Monthly trend card -->
+    <!-- Monthly Trend Chart -->
     <section class="card" :if={@monthly && @monthly != []}>
-      <h2 class="card-title">Monthly Trend (last 6 months)</h2>
+      <h2 class="card-title">Monthly Trend Chart</h2>
+      <p class="card-subtitle">
+        Visual breakdown of Revenue, COGS, and Net Income over the last months.
+      </p>
+
+      <%
+        # Prepare chart data from @monthly (sorted ascending for chart)
+        sorted_monthly = Enum.sort_by(@monthly, & &1.label, :asc)
+        chart_labels = Enum.map(sorted_monthly, & &1.label)
+        revenue_data = Enum.map(sorted_monthly, & &1.total_revenue_cents)
+        cogs_data = Enum.map(sorted_monthly, & &1.total_cogs_cents)
+        net_income_data = Enum.map(sorted_monthly, & &1.net_income_cents)
+
+        chart_data = %{
+          labels: chart_labels,
+          datasets: [
+            %{
+              label: "Revenue",
+              data: revenue_data,
+              backgroundColor: "#059669",
+              borderColor: "#059669",
+              borderWidth: 1,
+              borderRadius: 4
+            },
+            %{
+              label: "COGS",
+              data: cogs_data,
+              backgroundColor: "#f97316",
+              borderColor: "#f97316",
+              borderWidth: 1,
+              borderRadius: 4
+            },
+            %{
+              label: "Net Income",
+              data: net_income_data,
+              backgroundColor: "#3b82f6",
+              borderColor: "#3b82f6",
+              borderWidth: 1,
+              borderRadius: 4
+            }
+          ]
+        }
+      %>
+
+      <div id="pnl-chart-wrapper" phx-hook="BarChart" style="height: 320px; margin-top: 1rem;">
+        <canvas id="pnl-monthly-chart" data-chart-data={Jason.encode!(chart_data)}></canvas>
+      </div>
+    </section>
+
+    <!-- Monthly trend table -->
+    <section class="card" :if={@monthly && @monthly != []}>
+      <h2 class="card-title">Monthly Trend (detailed)</h2>
       <p class="card-subtitle">
         Each row is one calendar month. Amounts are totals for that month.
       </p>

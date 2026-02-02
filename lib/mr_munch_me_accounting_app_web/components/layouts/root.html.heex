@@ -32,7 +32,14 @@
   </head>
   <body>
     <div class="app-layout">
-      <aside class="sidebar">
+      <!-- Mobile hamburger button -->
+      <button class="hamburger-btn" id="hamburger-btn" aria-label="Open menu" aria-expanded="false">
+        <span class="hamburger-icon"></span>
+      </button>
+      <!-- Mobile overlay -->
+      <div class="sidebar-overlay" id="sidebar-overlay"></div>
+
+      <aside class="sidebar" id="sidebar">
         <.link navigate={~p"/"}>
           <div class="sidebar-header" >
             <span class="app-logo">🍪</span>

@@ -150,7 +150,7 @@ defmodule MrMunchMeAccountingAppWeb.CoreComponents do
   attr :type, :string,
     default: "text",
     values: ~w(checkbox color date datetime-local email file month number password
-               search select tel text textarea time url week)
+               search select searchable_select tel text textarea time url week)
 
   attr :field, Phoenix.HTML.FormField,
     doc: "a form field struct retrieved from the form, for example: @form[:email]"
@@ -220,6 +220,30 @@ defmodule MrMunchMeAccountingAppWeb.CoreComponents do
           <option :if={@prompt} value="">{@prompt}</option>
           {Phoenix.HTML.Form.options_for_select(@options, @value)}
         </select>
+      </label>
+      <.error :for={msg <- @errors}>{msg}</.error>
+    </div>
+    """
+  end
+
+  def input(%{type: "searchable_select"} = assigns) do
+    ~H"""
+    <div class="fieldset mb-2">
+      <label>
+        <span :if={@label} class="label mb-1">{@label}</span>
+        <div phx-hook="SearchableSelect" id={"#{@id}-wrapper"}>
+          <select
+            id={@id}
+            name={@name}
+            class={[@class || "w-full select searchable-select", @errors != [] && (@error_class || "select-error")]}
+            multiple={@multiple}
+            data-prompt={@prompt}
+            {@rest}
+          >
+            <option :if={@prompt} value="">{@prompt}</option>
+            {Phoenix.HTML.Form.options_for_select(@options, @value)}
+          </select>
+        </div>
       </label>
       <.error :for={msg <- @errors}>{msg}</.error>
     </div>

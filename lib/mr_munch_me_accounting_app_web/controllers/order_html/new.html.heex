@@ -56,9 +56,9 @@
             <div class="field">
               <.input
                 field={f[:customer_id]}
-                type="select"
+                type="searchable_select"
                 label="Select Customer"
-                prompt="Choose a customer"
+                prompt="Search for a customer..."
                 options={@customer_options |> Enum.sort_by(fn {name, _id} -> String.downcase(name) end)}
                 id="customer_id_select"
               />
@@ -136,10 +136,11 @@
             <div class="field">
               <.input
                 field={f[:product_id]}
-                type="select"
+                type="searchable_select"
                 label="Product"
-                prompt="Select a product"
+                prompt="Search for a product..."
                 options={@product_options}
+                id="product_id_select"
               />
             </div>
 

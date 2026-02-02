@@ -1,6 +1,9 @@
 /* Tailwind CSS v4 */
 @import "tailwindcss";
 
+/* Tom Select CSS */
+@import "../vendor/tom-select.min.css";
+
 @layer components {
   /* ==============================
    Base
@@ -1402,10 +1405,234 @@
   /* Landscape mobile optimization */
   @media (max-width: 768px) and (orientation: landscape) {
     .sidebar {
-      max-height: 40vh;
+      max-height: 100vh;
     }
 
     .content {
       padding: 0.75rem 1rem;
     }
+  }
+
+  /* ==============================
+     Mobile Hamburger Menu
+     ============================== */
+
+  /* Hide hamburger button on desktop */
+  .hamburger-btn {
+    display: none;
+  }
+
+  .sidebar-overlay {
+    display: none;
+  }
+
+  /* Mobile hamburger menu (max-width: 768px) */
+  @media (max-width: 768px) {
+    .app-layout {
+      grid-template-columns: 1fr;
+      grid-template-rows: 1fr;
+    }
+
+    .hamburger-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: fixed;
+      top: 1rem;
+      left: 1rem;
+      z-index: 1001;
+      width: 48px;
+      height: 48px;
+      background: var(--sidebar-bg);
+      border: none;
+      border-radius: 12px;
+      cursor: pointer;
+      box-shadow: 0 4px 12px rgba(61, 35, 24, 0.25);
+      transition: background 0.15s ease, transform 0.15s ease;
+    }
+
+    .hamburger-btn:hover {
+      background: #4a2b1d;
+      transform: scale(1.05);
+    }
+
+    .hamburger-btn:focus {
+      outline: 2px solid var(--primary-soft);
+      outline-offset: 2px;
+    }
+
+    .hamburger-icon {
+      display: block;
+      width: 22px;
+      height: 2px;
+      background: var(--sidebar-text);
+      position: relative;
+      transition: background 0.2s ease;
+    }
+
+    .hamburger-icon::before,
+    .hamburger-icon::after {
+      content: '';
+      position: absolute;
+      left: 0;
+      width: 22px;
+      height: 2px;
+      background: var(--sidebar-text);
+      transition: transform 0.3s ease;
+    }
+
+    .hamburger-icon::before {
+      top: -7px;
+    }
+
+    .hamburger-icon::after {
+      bottom: -7px;
+    }
+
+    /* Animated X when menu is open */
+    .hamburger-btn[aria-expanded="true"] .hamburger-icon {
+      background: transparent;
+    }
+
+    .hamburger-btn[aria-expanded="true"] .hamburger-icon::before {
+      transform: rotate(45deg) translate(5px, 5px);
+    }
+
+    .hamburger-btn[aria-expanded="true"] .hamburger-icon::after {
+      transform: rotate(-45deg) translate(5px, -5px);
+    }
+
+    /* Sidebar as slide-out drawer */
+    .sidebar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 280px;
+      height: 100vh;
+      max-height: 100vh;
+      transform: translateX(-100%);
+      transition: transform 0.3s ease;
+      z-index: 1000;
+      overflow-y: auto;
+      border-bottom: none;
+    }
+
+    .sidebar.is-open {
+      transform: translateX(0);
+    }
+
+    /* Overlay behind sidebar */
+    .sidebar-overlay {
+      display: block;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0);
+      z-index: 999;
+      pointer-events: none;
+      transition: background 0.3s ease;
+    }
+
+    .sidebar-overlay.is-open {
+      background: rgba(0, 0, 0, 0.5);
+      pointer-events: auto;
+    }
+
+    /* Content area adjustments */
+    .content {
+      padding-top: 5rem;
+    }
+  }
+
+  /* Adjust hamburger for small mobile */
+  @media (max-width: 480px) {
+    .hamburger-btn {
+      top: 0.75rem;
+      left: 0.75rem;
+      width: 44px;
+      height: 44px;
+    }
+
+    .content {
+      padding-top: 4.5rem;
+    }
+  }
+
+  /* ==============================
+     Tom Select Theme Overrides (Bakery Theme)
+     ============================== */
+
+  .ts-wrapper {
+    font-family: inherit;
+  }
+
+  .ts-control {
+    border: 1px solid var(--border-subtle);
+    border-radius: 0.55rem;
+    padding: 0.5rem 0.6rem;
+    background: #ffffff;
+    font-size: 0.9rem;
+    min-height: 40px;
+    transition: border-color 0.12s ease, box-shadow 0.12s ease;
+  }
+
+  .ts-control input {
+    font-size: 0.9rem;
+  }
+
+  .ts-wrapper.focus .ts-control {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 1.5px var(--primary-soft);
+  }
+
+  .ts-dropdown {
+    border: 1px solid var(--border-subtle);
+    border-radius: 0.55rem;
+    box-shadow: 0 4px 12px rgba(61, 35, 24, 0.12);
+    margin-top: 4px;
+    background: #ffffff;
+  }
+
+  .ts-dropdown .option {
+    padding: 0.6rem 0.75rem;
+    font-size: 0.9rem;
+    color: var(--text-main);
+    cursor: pointer;
+    transition: background 0.1s ease;
+  }
+
+  .ts-dropdown .option:hover,
+  .ts-dropdown .active {
+    background-color: var(--primary-soft);
+    color: var(--text-main);
+  }
+
+  .ts-dropdown .option.selected {
+    background-color: var(--primary);
+    color: #ffffff;
+  }
+
+  .ts-dropdown .no-results {
+    padding: 0.75rem;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    text-align: center;
+  }
+
+  .ts-dropdown-content {
+    max-height: 250px;
+    overflow-y: auto;
+  }
+
+  /* Hide native select when Tom Select is active */
+  .searchable-select.ts-hidden-accessible {
+    display: none !important;
+  }
+
+  /* Error state for Tom Select */
+  .ts-wrapper.has-error .ts-control {
+    border-color: #dc2626;
+  }
+
+  .ts-wrapper.has-error.focus .ts-control {
+    box-shadow: 0 0 0 1.5px #fee2e2;
   }

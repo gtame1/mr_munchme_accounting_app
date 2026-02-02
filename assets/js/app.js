@@ -24,8 +24,267 @@ import "phoenix_html"
 import {Socket} from "phoenix"
 import {LiveSocket} from "phoenix_live_view"
 // import {hooks as colocatedHooks} from "phoenix-colocated/mr_munch_me_accounting_app"
-const colocatedHooks = {}
 import topbar from "../vendor/topbar"
+import TomSelect from "../vendor/tom-select.min.js"
+import Chart from "../vendor/chart.umd.min.js"
+
+// ==============================
+// LiveView Hooks
+// ==============================
+
+const SearchableSelect = {
+  mounted() {
+    this.initTomSelect()
+  },
+
+  updated() {
+    // Destroy and reinitialize if options have changed
+    if (this.tomSelect) {
+      this.tomSelect.destroy()
+    }
+    this.initTomSelect()
+  },
+
+  destroyed() {
+    if (this.tomSelect) {
+      this.tomSelect.destroy()
+    }
+  },
+
+  initTomSelect() {
+    const select = this.el.querySelector('select')
+    if (!select) return
+
+    const prompt = select.dataset.prompt || 'Search...'
+
+    this.tomSelect = new TomSelect(select, {
+      create: false,
+      sortField: {
+        field: "text",
+        direction: "asc"
+      },
+      placeholder: prompt,
+      allowEmptyOption: true,
+      controlInput: '<input>',
+      render: {
+        option: function(data, escape) {
+          return '<div class="option">' + escape(data.text) + '</div>'
+        },
+        item: function(data, escape) {
+          return '<div class="item">' + escape(data.text) + '</div>'
+        },
+        no_results: function(data, escape) {
+          return '<div class="no-results">No results found</div>'
+        }
+      }
+    })
+  }
+}
+
+// Chart colors matching bakery theme
+const chartColors = {
+  primary: '#8a3b2f',
+  primarySoft: '#fbe4db',
+  revenue: '#059669',
+  expense: '#dc2626',
+  neutral: '#8b6f5b',
+  background: '#fff7f2',
+  netPositive: '#059669',
+  netNegative: '#dc2626'
+}
+
+const BarChart = {
+  mounted() {
+    this.initChart()
+  },
+
+  updated() {
+    if (this.chart) {
+      this.chart.destroy()
+    }
+    this.initChart()
+  },
+
+  destroyed() {
+    if (this.chart) {
+      this.chart.destroy()
+    }
+  },
+
+  initChart() {
+    const canvas = this.el.querySelector('canvas')
+    if (!canvas) return
+
+    const dataAttr = canvas.dataset.chartData
+    if (!dataAttr) return
+
+    let data
+    try {
+      data = JSON.parse(dataAttr)
+    } catch (e) {
+      console.error('Invalid chart data:', e)
+      return
+    }
+
+    const ctx = canvas.getContext('2d')
+
+    this.chart = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: data.labels || [],
+        datasets: data.datasets || []
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            position: 'top',
+            labels: {
+              usePointStyle: true,
+              padding: 20,
+              font: {
+                family: 'system-ui, -apple-system, sans-serif',
+                size: 12
+              }
+            }
+          },
+          tooltip: {
+            backgroundColor: '#3d2318',
+            titleFont: { family: 'system-ui', size: 13 },
+            bodyFont: { family: 'system-ui', size: 12 },
+            padding: 12,
+            cornerRadius: 8,
+            callbacks: {
+              label: function(context) {
+                let value = context.raw
+                // Format as currency (divide by 100 to convert cents to pesos)
+                const formatted = (value / 100).toLocaleString('es-MX', {
+                  style: 'currency',
+                  currency: 'MXN'
+                })
+                return context.dataset.label + ': ' + formatted
+              }
+            }
+          }
+        },
+        scales: {
+          x: {
+            grid: {
+              display: false
+            },
+            ticks: {
+              font: {
+                family: 'system-ui',
+                size: 11
+              }
+            }
+          },
+          y: {
+            beginAtZero: true,
+            grid: {
+              color: 'rgba(139, 111, 91, 0.1)'
+            },
+            ticks: {
+              font: {
+                family: 'system-ui',
+                size: 11
+              },
+              callback: function(value) {
+                return '$' + (value / 100).toLocaleString('es-MX')
+              }
+            }
+          }
+        }
+      }
+    })
+  }
+}
+
+const DoughnutChart = {
+  mounted() {
+    this.initChart()
+  },
+
+  updated() {
+    if (this.chart) {
+      this.chart.destroy()
+    }
+    this.initChart()
+  },
+
+  destroyed() {
+    if (this.chart) {
+      this.chart.destroy()
+    }
+  },
+
+  initChart() {
+    const canvas = this.el.querySelector('canvas')
+    if (!canvas) return
+
+    const dataAttr = canvas.dataset.chartData
+    if (!dataAttr) return
+
+    let data
+    try {
+      data = JSON.parse(dataAttr)
+    } catch (e) {
+      console.error('Invalid chart data:', e)
+      return
+    }
+
+    const ctx = canvas.getContext('2d')
+
+    this.chart = new Chart(ctx, {
+      type: 'doughnut',
+      data: {
+        labels: data.labels || [],
+        datasets: data.datasets || []
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            position: 'right',
+            labels: {
+              usePointStyle: true,
+              padding: 15,
+              font: {
+                family: 'system-ui, -apple-system, sans-serif',
+                size: 12
+              }
+            }
+          },
+          tooltip: {
+            backgroundColor: '#3d2318',
+            titleFont: { family: 'system-ui', size: 13 },
+            bodyFont: { family: 'system-ui', size: 12 },
+            padding: 12,
+            cornerRadius: 8,
+            callbacks: {
+              label: function(context) {
+                let value = context.raw
+                const formatted = (value / 100).toLocaleString('es-MX', {
+                  style: 'currency',
+                  currency: 'MXN'
+                })
+                return context.label + ': ' + formatted
+              }
+            }
+          }
+        }
+      }
+    })
+  }
+}
+
+const colocatedHooks = {
+  SearchableSelect,
+  BarChart,
+  DoughnutChart
+}
 
 // Heroicons
 // import "../vendor/heroicons"
@@ -132,6 +391,55 @@ window.addEventListener('load', initializeDropdowns)
 
 // Re-initialize dropdowns after LiveView navigation (without animation)
 window.addEventListener('phx:page-loading-stop', initializeDropdowns)
+
+// ==============================
+// Mobile Hamburger Menu
+// ==============================
+
+const initHamburgerMenu = () => {
+  const hamburgerBtn = document.getElementById('hamburger-btn')
+  const sidebar = document.getElementById('sidebar')
+  const overlay = document.getElementById('sidebar-overlay')
+
+  if (!hamburgerBtn || !sidebar || !overlay) return
+
+  const toggleMenu = (open) => {
+    const isOpen = open !== undefined ? open : !sidebar.classList.contains('is-open')
+    sidebar.classList.toggle('is-open', isOpen)
+    overlay.classList.toggle('is-open', isOpen)
+    hamburgerBtn.setAttribute('aria-expanded', isOpen)
+
+    // Prevent body scroll when menu is open
+    document.body.style.overflow = isOpen ? 'hidden' : ''
+  }
+
+  // Toggle on hamburger click
+  hamburgerBtn.addEventListener('click', (e) => {
+    e.stopPropagation()
+    toggleMenu()
+  })
+
+  // Close on overlay click
+  overlay.addEventListener('click', () => toggleMenu(false))
+
+  // Close menu when a nav link is clicked
+  sidebar.querySelectorAll('.nav-link').forEach(link => {
+    link.addEventListener('click', () => toggleMenu(false))
+  })
+
+  // Close on escape key
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && sidebar.classList.contains('is-open')) {
+      toggleMenu(false)
+    }
+  })
+}
+
+// Initialize hamburger menu on page load
+window.addEventListener('load', initHamburgerMenu)
+
+// Re-initialize after LiveView navigation
+window.addEventListener('phx:page-loading-stop', initHamburgerMenu)
 
 // The lines below enable quality of life phoenix_live_reload
 // development features:
