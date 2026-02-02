@@ -136,7 +136,7 @@ defmodule Mix.Tasks.FixWithdrawalAccounts do
 
     entry_attrs = %{
       date: Date.utc_today(),
-      entry_type: "correction",
+      entry_type: "other",
       reference: "Withdrawal Account Correction",
       description: "Correct historical withdrawals: move from Owner's Equity (3000) to Owner's Drawings (3100)"
     }
