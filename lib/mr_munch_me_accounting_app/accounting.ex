@@ -1671,23 +1671,15 @@ defmodule MrMunchMeAccountingApp.Accounting do
                 je.date <= ^end_date
           )
 
-        # Add the first reference pattern with where, then use or_where for the rest
+        # Use exact matching with IN clause instead of ilike patterns
+        # ilike("Order #1") would wrongly match "Order #10", "Order #11", etc.
         query =
           case reference_patterns do
             [] ->
               base_query
-            [first_pattern] ->
+            patterns ->
               base_query
-              |> where([je], ilike(je.reference, ^first_pattern))
-            [first_pattern | rest_patterns] when rest_patterns != [] ->
-              # Start with first pattern, then reduce over the rest
-              initial_query = base_query |> where([je], ilike(je.reference, ^first_pattern))
-              Enum.reduce(rest_patterns, initial_query, fn pattern, acc_q ->
-                or_where(acc_q, [je], ilike(je.reference, ^pattern))
-              end)
-            _ ->
-              # Fallback - should not happen but just in case
-              base_query
+              |> where([je], je.reference in ^patterns)
           end
 
         from([je, jl, acc] in query,
