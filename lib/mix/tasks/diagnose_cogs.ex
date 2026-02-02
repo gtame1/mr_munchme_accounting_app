@@ -283,7 +283,8 @@ defmodule Mix.Tasks.DiagnoseCogs do
           or_where(q, [je], je.reference == ^pattern)
         end)
 
-      from([je, jl, acc] in query, select: count(je.id))
+      # Use count(DISTINCT je.id) to count unique journal entries, not rows from the JOIN
+      from([je, jl, acc] in query, select: fragment("count(DISTINCT ?)", je.id))
       |> Repo.one()
       |> case do
         nil -> 0
