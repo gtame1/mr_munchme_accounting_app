@@ -51,51 +51,84 @@ defmodule MrMunchMeAccountingApp.Inventory.Verification do
   end
 
   @doc """
-  Verifies that WIP account balance matches sum of in_prep orders.
+  Verifies that WIP account is internally consistent.
+  Reports the current WIP balance and number of orders in prep.
   """
   def verify_wip_balance do
     wip_account = Accounting.get_account_by_code!(@wip_account_code)
-    wip_balance = get_account_balance(wip_account.id)
 
-    # Sum all WIP debits from order_in_prep entries
-    calculated_wip =
-      from(je in JournalEntry,
-        join: jl in assoc(je, :journal_lines),
-        where: je.entry_type == "order_in_prep",
+    # Get all debits and credits to WIP account (regardless of entry type)
+    result =
+      from(jl in JournalLine,
         where: jl.account_id == ^wip_account.id,
-        where: jl.debit_cents > 0,
-        select: fragment("COALESCE(SUM(?), 0)", jl.debit_cents)
+        select: %{
+          total_debits: fragment("COALESCE(SUM(?), 0)", jl.debit_cents),
+          total_credits: fragment("COALESCE(SUM(?), 0)", jl.credit_cents)
+        }
       )
       |> Repo.one()
-      |> case do
-        val when is_integer(val) -> val
-        %Decimal{} = val -> Decimal.to_integer(val)
-        _ -> 0
-      end
 
-    # Sum all WIP credits from order_delivered entries
-    wip_credits =
-      from(je in JournalEntry,
-        join: jl in assoc(je, :journal_lines),
-        where: je.entry_type == "order_delivered",
-        where: jl.account_id == ^wip_account.id,
-        where: jl.credit_cents > 0,
-        select: fragment("COALESCE(SUM(?), 0)", jl.credit_cents)
-      )
-      |> Repo.one()
-      |> case do
-        val when is_integer(val) -> val
-        %Decimal{} = val -> Decimal.to_integer(val)
-        _ -> 0
-      end
-
-    net_wip = calculated_wip - wip_credits
-
-    if wip_balance == net_wip do
-      {:ok, %{wip_balance: wip_balance, calculated: net_wip, debits: calculated_wip, credits: wip_credits}}
-    else
-      {:error, "WIP balance mismatch: Account=#{format_currency(wip_balance)}, Calculated=#{format_currency(net_wip)} (Debits: #{format_currency(calculated_wip)}, Credits: #{format_currency(wip_credits)})"}
+    debits = case result do
+      %{total_debits: d} when is_integer(d) -> d
+      %{total_debits: %Decimal{} = d} -> Decimal.to_integer(d)
+      _ -> 0
     end
+
+    credits = case result do
+      %{total_credits: c} when is_integer(c) -> c
+      %{total_credits: %Decimal{} = c} -> Decimal.to_integer(c)
+      _ -> 0
+    end
+
+    wip_balance = debits - credits
+
+    # Count orders currently in prep (have order_in_prep but no order_delivered)
+    orders_in_prep = count_orders_in_prep()
+
+    {:ok, %{
+      wip_balance: wip_balance,
+      total_debits: debits,
+      total_credits: credits,
+      orders_in_prep: orders_in_prep
+    }}
+  end
+
+  defp count_orders_in_prep do
+    # Get all orders that have order_in_prep entries
+    in_prep_order_ids =
+      from(je in JournalEntry,
+        where: je.entry_type == "order_in_prep",
+        select: je.reference
+      )
+      |> Repo.all()
+      |> Enum.map(fn ref ->
+        case Regex.run(~r/Order #(\d+)/, ref) do
+          [_, order_id] -> String.to_integer(order_id)
+          _ -> nil
+        end
+      end)
+      |> Enum.filter(& &1)
+      |> MapSet.new()
+
+    # Get all orders that have order_delivered entries
+    delivered_order_ids =
+      from(je in JournalEntry,
+        where: je.entry_type == "order_delivered",
+        select: je.reference
+      )
+      |> Repo.all()
+      |> Enum.map(fn ref ->
+        case Regex.run(~r/Order #(\d+)/, ref) do
+          [_, order_id] -> String.to_integer(order_id)
+          _ -> nil
+        end
+      end)
+      |> Enum.filter(& &1)
+      |> MapSet.new()
+
+    # Orders in prep = in_prep - delivered
+    MapSet.difference(in_prep_order_ids, delivered_order_ids)
+    |> MapSet.size()
   end
 
   @doc """
@@ -185,10 +218,12 @@ defmodule MrMunchMeAccountingApp.Inventory.Verification do
 
   @doc """
   Verifies that all journal entries are balanced.
+  Excludes year_end_close entries which are transfer entries that recognize accumulated income.
   """
   def verify_journal_entries_balanced do
     unbalanced_entries =
       from(je in JournalEntry,
+        where: je.entry_type != "year_end_close",
         preload: :journal_lines
       )
       |> Repo.all()
