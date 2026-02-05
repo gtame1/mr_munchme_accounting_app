@@ -10,6 +10,7 @@ defmodule MrMunchMeAccountingApp.Inventory.PurchaseForm do
     field :total_cost_pesos, :decimal
     field :paid_from_account_id, :string
     field :purchase_date, :date
+    field :notes, :string
   end
 
   def changeset(form, attrs) do
@@ -20,7 +21,8 @@ defmodule MrMunchMeAccountingApp.Inventory.PurchaseForm do
       :quantity,
       :total_cost_pesos,
       :paid_from_account_id,
-      :purchase_date
+      :purchase_date,
+      :notes
     ])
     |> validate_required([
       :ingredient_code,

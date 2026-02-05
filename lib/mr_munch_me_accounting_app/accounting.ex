@@ -29,6 +29,7 @@ defmodule MrMunchMeAccountingApp.Accounting do
   @packaging_cogs_code "5010"
   @inventory_waste_code "6060"
   @other_expenses_code "6099"
+  @samples_gifts_code "6070"
 
   @shipping_product_sku "ENVIO"
 
@@ -122,6 +123,50 @@ defmodule MrMunchMeAccountingApp.Accounting do
   defp do_record_order_delivered(order, reference) do
     order = Repo.preload(order, :product)
 
+    if order.is_gift do
+      do_record_gift_order_delivered(order, reference)
+    else
+      do_record_sale_order_delivered(order, reference)
+    end
+  end
+
+  defp do_record_gift_order_delivered(order, reference) do
+    wip = get_account_by_code!(@wip_inventory_code)
+    samples_gifts = get_account_by_code!(@samples_gifts_code)
+    cost_cents = get_order_production_cost(order.id, wip.id) || 0
+    date = order.delivery_date || Date.utc_today()
+
+    entry_attrs = %{
+      date: date,
+      entry_type: "order_delivered",
+      reference: reference,
+      description: "Gift/sample order ##{order.id} delivered"
+    }
+
+    lines =
+      if cost_cents > 0 do
+        [
+          %{
+            account_id: samples_gifts.id,
+            debit_cents: cost_cents,
+            credit_cents: 0,
+            description: "Samples & Gifts expense for order ##{order.id}"
+          },
+          %{
+            account_id: wip.id,
+            debit_cents: 0,
+            credit_cents: cost_cents,
+            description: "Relieve WIP for gift order ##{order.id}"
+          }
+        ]
+      else
+        []
+      end
+
+    create_journal_entry_with_lines(entry_attrs, lines)
+  end
+
+  defp do_record_sale_order_delivered(order, reference) do
     base_revenue  = order.product.price_cents || 0
 
     # If customer_paid_shipping == true, add shipping revenue

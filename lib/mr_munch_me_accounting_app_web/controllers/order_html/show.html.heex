@@ -1,169 +1,359 @@
-<section class="card">
-  <div style="display:flex; justify-content:space-between; align-items:center; gap:1rem;">
-    <div>
-      <h2 class="card-title">Order Details</h2>
-      <p class="card-subtitle">
-        Full information for this order (<%= @order.id %>)
-      </p>
-    </div>
-    <.link navigate={~p"/orders"} class="btn">
-      ←  Back to Orders
-    </.link>
+<%!-- ── Header ── --%>
+<div style="display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap; margin-bottom: 1rem;">
+  <div style="display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;">
+    <.link navigate={~p"/orders"} style="color: var(--text-muted); text-decoration: none; font-size: 1.1rem;">←</.link>
+    <h2 style="margin: 0; font-size: 1.15rem; font-weight: 600;">Order #<%= @order.id %></h2>
+    <.status_badge status={@order.status} />
+    <%= if @order.is_gift do %>
+      <span style="display: inline-block; padding: 0.15rem 0.5rem; font-size: 0.78rem; font-weight: 600; border-radius: 999px; background: #fef3c7; color: #92400e;">🎁 Gift</span>
+    <% end %>
+    <span style="font-size: 0.85rem; color: var(--text-muted);"><%= @order.product.name %></span>
+    <.location_badge location={@order.prep_location} />
   </div>
+  <.link navigate={~p"/orders/#{@order.id}/edit"} class="btn">Edit</.link>
+</div>
 
+<%= if @order.is_gift do %>
+  <%!-- ── Gift Summary ── --%>
+  <section class="card">
+    <h3 style="font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted); margin: 0 0 0.6rem 0;">Gift Order</h3>
+    <div style="display: flex; flex-direction: column; gap: 0.3rem; font-size: 0.9rem;">
+      <div style="display: flex; justify-content: space-between; color: var(--text-muted);">
+        <span>Product Value</span>
+        <span><%= format_currency(@payment_summary.product_total_cents) %></span>
+      </div>
+      <div style="display: flex; justify-content: space-between; align-items: center; font-weight: 600; padding-top: 0.3rem; border-top: 1px solid var(--border-subtle);">
+        <span>Cost</span>
+        <span style="color: #92400e;">Gift / Sample</span>
+      </div>
+    </div>
+  </section>
+<% else %>
+  <%!-- ── Financial Summary ── --%>
+  <section class="card">
+    <h3 style="font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted); margin: 0 0 0.6rem 0;">Payment Summary</h3>
+    <div style="display: flex; flex-direction: column; gap: 0.3rem; font-size: 0.9rem;">
+    <%= if @payment_summary.discount_cents > 0 do %>
+      <div style="display: flex; justify-content: space-between; color: var(--text-muted);">
+        <span>Product Price</span>
+        <span><%= format_currency(@payment_summary.original_price_cents) %></span>
+      </div>
+      <div style="display: flex; justify-content: space-between; color: #059669;">
+        <span>Discount (<%= if @order.discount_type == "flat", do: "flat", else: "#{@order.discount_value}%" %>)</span>
+        <span>-<%= format_currency(@payment_summary.discount_cents) %></span>
+      </div>
+    <% end %>
+    <div style="display: flex; justify-content: space-between;">
+      <span style="color: var(--text-muted);">Shipping</span>
+      <span><%= format_currency(@payment_summary.shipping_cents) %></span>
+    </div>
+    <div style="display: flex; justify-content: space-between; font-weight: 600; padding-top: 0.3rem; border-top: 1px solid var(--border-subtle);">
+      <span>Order Total</span>
+      <span><%= format_currency(@payment_summary.order_total_cents) %></span>
+    </div>
+    <div style="display: flex; justify-content: space-between; color: var(--text-muted);">
+      <span>Paid</span>
+      <span><%= format_currency(@payment_summary.total_paid_cents) %></span>
+    </div>
+    <div style="display: flex; justify-content: space-between; align-items: center; font-weight: 600;">
+      <span>Outstanding</span>
+      <span style="display: flex; align-items: center; gap: 0.5rem;">
+        <span style={if @payment_summary.outstanding_cents > 0, do: "color: #b91c1c;", else: ""}>
+          <%= format_currency(@payment_summary.outstanding_cents) %>
+        </span>
+        <%= cond do %>
+          <% @payment_summary.fully_paid? -> %>
+            <span class="status-badge status-paid">Paid</span>
+          <% @payment_summary.partially_paid? -> %>
+            <span class="status-badge status-partial">Partial</span>
+          <% true -> %>
+            <span class="status-badge status-unpaid">Unpaid</span>
+        <% end %>
+      </span>
+    </div>
+    </div>
+  </section>
+<% end %>
 
-  <ul class="nice-list" style="margin-top: 1rem;">
-
-    <strong>Payment Summary</strong>
-    <li>
-      <strong>Product Total:</strong>
-      <%= format_currency(@payment_summary.product_total_cents) %>
-    </li>
-    <li>
-      <strong>Shipping Cost:</strong>
-      <%= format_currency(@payment_summary.shipping_cents) %>
-    </li>
-
-    <li>
-      <strong>Order Total:</strong>
-      <%= format_currency(@payment_summary.order_total_cents) %>
-    </li>
-
-    <li>
-      <strong>Total Paid:</strong>
-      <%= format_currency(@payment_summary.total_paid_cents) %>
-    </li>
-    <li>
-      <strong>Outstanding Balance:</strong>
-      <%= format_currency(@payment_summary.outstanding_cents) %>
-      <%= cond do %>
-        <% @payment_summary.fully_paid? -> %>
-          <span class="status-badge status-paid">Paid</span>
-        <% @payment_summary.partially_paid? -> %>
-          <span class="status-badge status-partial">Partially paid</span>
-        <% true -> %>
-          <span class="status-badge status-unpaid">Unpaid</span>
+<%!-- ── Customer & Delivery Details (two-column) ── --%>
+<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1rem;">
+  <%!-- Customer info --%>
+  <section class="card" style="margin: 0;">
+    <h3 style="font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted); margin: 0 0 0.75rem 0;">Customer</h3>
+    <div style="display: flex; flex-direction: column; gap: 0.6rem;">
+      <div>
+        <div style="font-weight: 600; font-size: 1rem;"><%= @order.customer_name %></div>
+        <div style="font-size: 0.85rem; color: var(--text-muted);"><%= @order.customer_phone %></div>
+        <%= if @order.customer_email do %>
+          <div style="font-size: 0.85rem; color: var(--text-muted);"><%= @order.customer_email %></div>
+        <% end %>
+      </div>
+      <%= if @order.delivery_address do %>
+        <div>
+          <span style="font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-muted);">Address</span>
+          <div style="font-size: 0.9rem;"><%= @order.delivery_address %></div>
+        </div>
       <% end %>
-    </li>
+    </div>
+  </section>
 
-    <strong style="margin-top: 1rem;">Order Details</strong>
+  <%!-- Delivery info --%>
+  <section class="card" style="margin: 0;">
+    <h3 style="font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted); margin: 0 0 0.75rem 0;">Delivery</h3>
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.6rem;">
+      <div>
+        <span style="font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-muted);">Type</span>
+        <div style="font-size: 0.9rem;"><%= String.capitalize(@order.delivery_type) %></div>
+      </div>
+      <div>
+        <span style="font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-muted);">Date</span>
+        <div style="font-size: 0.9rem;"><%= @order.delivery_date %></div>
+      </div>
+      <%= if @order.delivery_time do %>
+        <div>
+          <span style="font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-muted);">Time</span>
+          <div style="font-size: 0.9rem;"><%= @order.delivery_time %></div>
+        </div>
+      <% end %>
+      <div>
+        <span style="font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-muted);">Product Price</span>
+        <div style="font-size: 0.9rem;"><%= format_currency(@order.product.price_cents) %></div>
+      </div>
+      <div>
+        <span style="font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-muted);">Customer Paid Shipping</span>
+        <div style="font-size: 0.9rem;"><%= if @order.customer_paid_shipping, do: "Yes", else: "No" %></div>
+      </div>
+      <div>
+        <span style="font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-muted);">Created</span>
+        <div style="font-size: 0.9rem;"><%= Calendar.strftime(@order.inserted_at, "%b %d, %Y") %></div>
+      </div>
+    </div>
+  </section>
+</div>
 
-    <li><strong>Customer Name:</strong> <%= @order.customer_name %></li>
+<%= unless @order.is_gift do %>
+  <%!-- ── Payments ── --%>
+  <section class="card" style="margin-top: 1rem;">
+    <h3 style="font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted); margin: 0 0 0.5rem 0;">Payments</h3>
 
-    <%= if @order.customer_email do %>
-      <li><strong>Customer Email:</strong> <%= @order.customer_email %></li>
+    <%= if @payments == [] do %>
+      <p style="font-size: 0.9rem; color: var(--text-muted);">
+        No payments recorded yet.
+      </p>
+    <% else %>
+      <div class="table-wrapper">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Amount</th>
+              <th>Paid to</th>
+              <th>Method</th>
+              <th>Note</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            <%= for p <- @payments do %>
+              <tr>
+                <td><%= p.payment_date %></td>
+                <td><%= format_currency(p.amount_cents) %></td>
+                <td><%= p.paid_to_account && "#{p.paid_to_account.code} – #{p.paid_to_account.name}" %></td>
+                <td><%= p.method %></td>
+                <td><%= p.note %></td>
+                <td>
+                  <.link navigate={~p"/order_payments/#{p.id}"} class="btn btn-sm">View</.link>
+                </td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
     <% end %>
+  </section>
+<% end %>
 
-    <li><strong>Customer Phone:</strong> <%= @order.customer_phone %></li>
+<%!-- ── Actions ── --%>
+<div style="margin-top: 1rem; display: flex; gap: 0.5rem; flex-wrap: wrap;">
+  <%= if @order.status == "new_order" do %>
+    <.form for={%{}} as={:status} action={~p"/orders/#{@order.id}/status"} method="post" style="margin: 0;">
+      <input type="hidden" name="status[status]" value="in_prep" />
+      <button class="btn primary" type="submit">Move to In Prep</button>
+    </.form>
+  <% end %>
+  <%= if @order.status == "in_prep" do %>
+    <.form for={%{}} as={:status} action={~p"/orders/#{@order.id}/status"} method="post" style="margin: 0;">
+      <input type="hidden" name="status[status]" value="ready" />
+      <button class="btn primary" type="submit">Mark as Ready</button>
+    </.form>
+  <% end %>
+  <%= if @order.status == "ready" do %>
+    <.form for={%{}} as={:status} action={~p"/orders/#{@order.id}/status"} method="post" style="margin: 0;">
+      <input type="hidden" name="status[status]" value="delivered" />
+      <button class="btn primary" type="submit">Mark as Delivered</button>
+    </.form>
+  <% end %>
 
-    <li><strong>Delivery Type:</strong>
-      <%= String.capitalize(@order.delivery_type) %>
-    </li>
-
-    <%= if @order.delivery_address do %>
-      <li><strong>Address:</strong> <%= @order.delivery_address %></li>
-    <% end %>
-
-    <li><strong>Delivery Date:</strong> <%= @order.delivery_date %></li>
-
-    <%= if @order.delivery_time do %>
-      <li><strong>Delivery Time:</strong> <%= @order.delivery_time %></li>
-    <% end %>
-
-    <li><strong>Product:</strong> <%= @order.product.name %></li>
-    <li><strong>Sale Amount:</strong> <%= format_currency(@order.product.price_cents) %></li>
-    <li><strong>Customer paid shipping?</strong> <%= if @order.customer_paid_shipping, do: "Yes", else: "No" %></li>
-    <li><strong>Status:</strong> <.status_badge status={@order.status} /></li>
-    <li><strong>Created At:</strong> <%= @order.inserted_at %></li>
-    <li><strong>Prep Location:</strong> <.location_badge location={@order.prep_location} /></li>
-  </ul>
-
-  <div class="actions" style="margin-top: 1.5rem; gap: 0.75rem; display: flex; flex-wrap: wrap;">
-    
-
-    <!-- Status transition buttons -->
-    <%= if @order.status == "new_order" do %>
-      <.form for={%{}} as={:status} action={~p"/orders/#{@order.id}/status"} method="post">
-        <input type="hidden" name="status[status]" value="in_prep" />
-        <button class="btn primary" type="submit">Move to In Prep</button>
-      </.form>
-    <% end %>
-
-    <%= if @order.status == "in_prep" do %>
-      <.form for={%{}} as={:status} action={~p"/orders/#{@order.id}/status"} method="post">
-        <input type="hidden" name="status[status]" value="ready" />
-        <button class="btn primary" type="submit">Mark as Ready</button>
-      </.form>
-    <% end %>
-
-    <%= if @order.status == "ready" do %>
-      <.form for={%{}} as={:status} action={~p"/orders/#{@order.id}/status"} method="post">
-        <input type="hidden" name="status[status]" value="delivered" />
-        <button class="btn primary" type="submit">Mark as Delivered</button>
-      </.form>
-    <% end %>
-
+  <%= unless @order.is_gift do %>
     <.link navigate={~p"/orders/#{@order.id}/payments/new"} class="btn payment">
       Record Payment
     </.link>
-    <.link navigate={~p"/orders/#{@order.id}/edit"} class="btn">
-      Edit Order
-    </.link>
-    
+  <% end %>
 
-    <%= if @order.status not in ["delivered", "canceled", "ready", "in_prep"] do %>
-      <.form for={%{}} as={:status} action={~p"/orders/#{@order.id}/status"} method="post">
-        <input type="hidden" name="status[status]" value="canceled" />
-        <button class="btn danger" type="submit">Cancel Order</button>
-      </.form>
+  <%= if @order.status not in ["delivered", "canceled", "ready", "in_prep"] do %>
+    <.form for={%{}} as={:status} action={~p"/orders/#{@order.id}/status"} method="post" style="margin: 0;">
+      <input type="hidden" name="status[status]" value="canceled" />
+      <button class="btn danger" type="submit">Cancel Order</button>
+    </.form>
+  <% end %>
+</div>
+
+<%!-- ── Order Ingredients ── --%>
+<section class="card" style="margin-top: 1rem;">
+  <div style="display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
+    <h3 style="font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted); margin: 0;">Ingredients</h3>
+    <%= if @order.status == "new_order" do %>
+      <span style="font-size: 0.78rem; color: var(--text-muted);">Editable until moved to prep</span>
     <% end %>
-
-    
-      
   </div>
-</section>
 
+  <%= if @order.status == "new_order" do %>
+    <.form for={%{}} as={:ingredients} action={~p"/orders/#{@order.id}/ingredients"} method="post" id="ingredients-form">
+      <div id="ingredients-container" style="margin-top: 0.75rem;">
+        <%= for {ingredient, idx} <- Enum.with_index(@current_ingredients) do %>
+          <div class="ingredient-row" style="display: flex; gap: 0.75rem; align-items: center; margin-bottom: 0.5rem;">
+            <div class="field" style="flex: 2; margin-bottom: 0;">
+              <select name={"ingredients[#{idx}][ingredient_code]"} class="w-full select">
+                <option value="">Select ingredient...</option>
+                <%= for {name, code} <- @ingredient_options do %>
+                  <option value={code} selected={code == ingredient.ingredient_code}><%= name %></option>
+                <% end %>
+              </select>
+            </div>
+            <div class="field" style="flex: 1; margin-bottom: 0;">
+              <input
+                type="number"
+                name={"ingredients[#{idx}][quantity]"}
+                value={ingredient.quantity}
+                step="0.01"
+                min="0"
+                placeholder="Qty"
+                class="w-full input"
+              />
+            </div>
+            <button type="button" class="btn danger btn-sm remove-ingredient-btn" style="flex-shrink: 0; padding: 0.4rem 0.6rem;">
+              &times;
+            </button>
+          </div>
+        <% end %>
+      </div>
 
-<section class="card" style="margin-top: 1.5rem;">
-  <h3 class="card-title">Payments</h3>
-  <p class="card-subtitle">
-    Payments recorded for this order.
-  </p>
-
-  <%= if @payments == [] do %>
-    <p style="margin-top: 0.75rem; font-size: 0.9rem; color: #6b7280;">
-      No payments recorded yet.
-    </p>
+      <div style="margin-top: 0.75rem; display: flex; gap: 0.5rem; flex-wrap: wrap;">
+        <button type="button" id="add-ingredient-btn" class="btn" style="font-size: 0.85rem;">+ Add</button>
+        <button type="button" id="reset-recipe-btn" class="btn" style="font-size: 0.85rem;">Reset to Defaults</button>
+        <button type="submit" class="btn primary" style="font-size: 0.85rem;">Save Ingredients</button>
+      </div>
+    </.form>
   <% else %>
-    <div class="table-wrapper" style="margin-top: 0.75rem;">
-      <table class="table">
-        <thead>
-          <tr>
-            <th>Date</th>
-            <th>Amount</th>
-            <th>Paid to</th>
-            <th>Method</th>
-            <th>Note</th>
-            <th>Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          <%= for p <- @payments do %>
+    <%= if @current_ingredients != [] do %>
+      <div class="table-wrapper" style="margin-top: 0.5rem;">
+        <table class="table">
+          <thead>
             <tr>
-              <td><%= p.payment_date %></td>
-              <td><%= format_currency(p.amount_cents) %></td>
-              <td><%= p.paid_to_account && "#{p.paid_to_account.code} – #{p.paid_to_account.name}" %></td>
-              <td><%= p.method %></td>
-              <td><%= p.note %></td>
-              <td>
-                <.link navigate={~p"/order_payments/#{p.id}"} class="btn btn-sm">
-                  View
-                </.link>
-              </td>
+              <th>Ingredient</th>
+              <th class="numeric">Quantity</th>
             </tr>
-          <% end %>
-        </tbody>
-      </table>
-    </div>
+          </thead>
+          <tbody>
+            <%= for ingredient <- @current_ingredients do %>
+              <tr>
+                <td><%= ingredient.ingredient_code %></td>
+                <td class="numeric"><%= ingredient.quantity %></td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    <% else %>
+      <p style="margin-top: 0.5rem; font-size: 0.9rem; color: var(--text-muted);">
+        Default recipe ingredients will be used when this order moves to prep.
+      </p>
+    <% end %>
   <% end %>
 </section>
+
+
+
+<%!-- ── Ingredient JS (only rendered for new_order status) ── --%>
+<script>
+  document.addEventListener("DOMContentLoaded", function() {
+    const container = document.getElementById("ingredients-container");
+    const addBtn = document.getElementById("add-ingredient-btn");
+    const resetBtn = document.getElementById("reset-recipe-btn");
+
+    if (!container) return;
+
+    const ingredientOptions = <%= Phoenix.HTML.raw(Jason.encode!(Enum.map(@ingredient_options, fn {label, value} -> [label, value] end))) %>;
+    const recipeDefaults = <%= Phoenix.HTML.raw(Jason.encode!(Enum.map(@recipe_ingredients, fn i -> %{ingredient_code: i.ingredient_code, quantity: i.quantity} end))) %>;
+
+    function getNextIndex() {
+      const rows = container.querySelectorAll(".ingredient-row");
+      let maxIdx = -1;
+      rows.forEach(function(row) {
+        const select = row.querySelector("select");
+        if (select && select.name) {
+          const match = select.name.match(/\[(\d+)\]/);
+          if (match) maxIdx = Math.max(maxIdx, parseInt(match[1]));
+        }
+      });
+      return maxIdx + 1;
+    }
+
+    function addRow(ingredientCode, quantity) {
+      const idx = getNextIndex();
+      const row = document.createElement("div");
+      row.className = "ingredient-row";
+      row.style.cssText = "display: flex; gap: 0.75rem; align-items: center; margin-bottom: 0.5rem;";
+
+      let optionsHtml = '<option value="">Select ingredient...</option>';
+      ingredientOptions.forEach(function(opt) {
+        const selected = opt[1] === ingredientCode ? " selected" : "";
+        optionsHtml += '<option value="' + opt[1] + '"' + selected + '>' + opt[0] + '</option>';
+      });
+
+      row.innerHTML =
+        '<div class="field" style="flex: 2; margin-bottom: 0;">' +
+          '<select name="ingredients[' + idx + '][ingredient_code]" class="w-full select">' + optionsHtml + '</select>' +
+        '</div>' +
+        '<div class="field" style="flex: 1; margin-bottom: 0;">' +
+          '<input type="number" name="ingredients[' + idx + '][quantity]" value="' + (quantity || '') + '" step="0.01" min="0" placeholder="Qty" class="w-full input" />' +
+        '</div>' +
+        '<button type="button" class="btn danger btn-sm remove-ingredient-btn" style="flex-shrink: 0; padding: 0.4rem 0.6rem;">&times;</button>';
+
+      container.appendChild(row);
+      bindRemoveBtn(row);
+    }
+
+    function bindRemoveBtn(row) {
+      const btn = row.querySelector(".remove-ingredient-btn");
+      if (btn) {
+        btn.addEventListener("click", function() { row.remove(); });
+      }
+    }
+
+    container.querySelectorAll(".ingredient-row").forEach(bindRemoveBtn);
+
+    if (addBtn) {
+      addBtn.addEventListener("click", function() { addRow("", ""); });
+    }
+
+    if (resetBtn) {
+      resetBtn.addEventListener("click", function() {
+        container.innerHTML = "";
+        recipeDefaults.forEach(function(item) {
+          addRow(item.ingredient_code, item.quantity);
+        });
+      });
+    }
+  });
+</script>

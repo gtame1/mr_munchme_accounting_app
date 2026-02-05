@@ -132,6 +132,22 @@ defmodule MrMunchMeAccountingAppWeb.OrderController do
           location_options: Inventory.list_locations() |> Enum.map(&{&1.name, &1.id}),
           customer_options: Customers.customer_select_options()
         )
+
+      {:error, _reason} ->
+        changeset =
+          %Order{}
+          |> Order.changeset(params)
+          |> Map.put(:action, :insert)
+
+        conn
+        |> put_flash(:error, "There was a problem creating this order. Please check the form and try again.")
+        |> render(:new,
+          changeset: changeset,
+          action: ~p"/orders",
+          product_options: Orders.product_select_options(),
+          location_options: Inventory.list_locations() |> Enum.map(&{&1.name, &1.id}),
+          customer_options: Customers.customer_select_options()
+        )
     end
   end
 
@@ -140,10 +156,37 @@ defmodule MrMunchMeAccountingAppWeb.OrderController do
     payments = Orders.list_payments_for_order(order.id)
     payment_summary = Orders.payment_summary(order)
 
+    # Get recipe ingredients for editing (only relevant for new_order status)
+    recipe_ingredients =
+      if order.status == "new_order" do
+        recipe_date = order.delivery_date || Date.utc_today()
+        Inventory.Recepies.recipe_for_product(order.product, recipe_date)
+      else
+        []
+      end
+
+    # Get current order ingredients (custom overrides), or fall back to recipe
+    current_ingredients =
+      case order.order_ingredients do
+        ingredients when is_list(ingredients) and ingredients != [] ->
+          Enum.map(ingredients, fn oi ->
+            %{ingredient_code: oi.ingredient_code, quantity: Decimal.to_float(oi.quantity)}
+          end)
+
+        _ ->
+          recipe_ingredients
+      end
+
+    # Get ingredient options for the select dropdown
+    ingredient_options = Inventory.list_ingredients() |> Enum.map(&{&1.name <> " (#{&1.code})", &1.code})
+
     render(conn, :show,
       order: order,
       payments: payments,
-      payment_summary: payment_summary
+      payment_summary: payment_summary,
+      recipe_ingredients: recipe_ingredients,
+      current_ingredients: current_ingredients,
+      ingredient_options: ingredient_options
     )
   end
 
@@ -242,6 +285,7 @@ defmodule MrMunchMeAccountingAppWeb.OrderController do
 
   def new_payment(conn, %{"id" => id}) do
     order = Orders.get_order!(id)
+    payment_summary = Orders.payment_summary(order)
 
     changeset =
       Orders.change_order_payment(%OrderPayment{
@@ -251,6 +295,7 @@ defmodule MrMunchMeAccountingAppWeb.OrderController do
 
     render(conn, :new_payment,
       order: order,
+      payment_summary: payment_summary,
       changeset: changeset,
       action: ~p"/orders/#{order.id}/payments",
       paid_to_account_options: Accounting.cash_or_payable_account_options(),
@@ -283,6 +328,7 @@ defmodule MrMunchMeAccountingAppWeb.OrderController do
 
       render(conn, :new_payment,
         order: order,
+        payment_summary: Orders.payment_summary(order),
         changeset: changeset,
         action: ~p"/orders/#{order.id}/payments",
         paid_to_account_options: Accounting.cash_or_payable_account_options(),
@@ -347,6 +393,7 @@ defmodule MrMunchMeAccountingAppWeb.OrderController do
 
           render(conn, :new_payment,
             order: order,
+            payment_summary: Orders.payment_summary(order),
             changeset: changeset,
             action: ~p"/orders/#{order.id}/payments",
             paid_to_account_options: Accounting.cash_or_payable_account_options(),

@@ -17,6 +17,12 @@
         class="form-grid"
         :let={f}
       >
+        <%= if @changeset.action do %>
+          <div class="alert alert-error">
+            <p>There were problems with your withdrawal. Please review the fields below.</p>
+          </div>
+        <% end %>
+
         <div class="form-block">
           <div class="field">
             <.input
@@ -69,7 +75,7 @@
 
         <div class="actions">
           <button type="submit" class="btn primary">
-            Excecute Withdrawal
+            Execute Withdrawal
           </button>
           <.link navigate={~p"/investments"} class="btn">
             Cancel

@@ -909,6 +909,16 @@ defmodule MrMunchMeAccountingApp.Inventory do
           packing? = inventory_type == :packing
           kitchen? = inventory_type == :kitchen
 
+          base_description =
+            "Purchase of #{form.quantity} #{form.ingredient_code} into #{form.location_code}"
+
+          description =
+            if form.notes && form.notes != "" do
+              "#{base_description} — #{form.notes}"
+            else
+              base_description
+            end
+
           Accounting.record_inventory_purchase(
             total_cost_cents,
             purchase_date: form.purchase_date,
@@ -916,8 +926,7 @@ defmodule MrMunchMeAccountingApp.Inventory do
             reference: "Purchase #{form.ingredient_code} @ #{form.location_code}",
             packing: packing?,
             kitchen: kitchen?,
-            description:
-              "Purchase of #{form.quantity} #{form.ingredient_code} into #{form.location_code}"
+            description: description
           )
 
         {:error, reason} ->
@@ -950,7 +959,8 @@ defmodule MrMunchMeAccountingApp.Inventory do
               "quantity" => item.quantity,
               "total_cost_pesos" => item.total_cost_pesos,
               "paid_from_account_id" => form.paid_from_account_id,
-              "purchase_date" => form.purchase_date
+              "purchase_date" => form.purchase_date,
+              "notes" => form.notes
             }
 
             Logger.debug("➡️ Calling create_purchase/1 for item: #{inspect(item_attrs)}")

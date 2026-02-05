@@ -140,22 +140,31 @@
               <td><%= String.capitalize(order.delivery_type || "") %></td>
 
               <td>
-                <.status_badge status={order.status} />
+                <div style="display: flex; gap: 0.35rem; align-items: center; flex-wrap: wrap;">
+                  <.status_badge status={order.status} />
+                  <%= if order.is_gift do %>
+                    <span style="display: inline-block; padding: 0.1rem 0.4rem; font-size: 0.73rem; font-weight: 600; border-radius: 999px; background: #fef3c7; color: #92400e;">🎁 Gift</span>
+                  <% end %>
+                </div>
               </td>
 
               <td><.location_badge location={order.prep_location} /></td>
               <td>
-                <%= if order.payment_summary do %>
-                  <%= cond do %>
-                    <% order.payment_summary.fully_paid? -> %>
-                      <span class="status-badge status-paid">Paid</span>
-                    <% order.payment_summary.partially_paid? -> %>
-                      <span class="status-badge status-partial">Partially paid</span>
-                    <% true -> %>
-                      <span class="status-badge status-unpaid">Unpaid</span>
-                  <% end %>
+                <%= if order.is_gift do %>
+                  <span style="font-size: 0.8rem; color: #92400e; font-style: italic;">N/A</span>
                 <% else %>
-                  <span class="status-badge status-unpaid">Unpaid</span>
+                  <%= if order.payment_summary do %>
+                    <%= cond do %>
+                      <% order.payment_summary.fully_paid? -> %>
+                        <span class="status-badge status-paid">Paid</span>
+                      <% order.payment_summary.partially_paid? -> %>
+                        <span class="status-badge status-partial">Partially paid</span>
+                      <% true -> %>
+                        <span class="status-badge status-unpaid">Unpaid</span>
+                    <% end %>
+                  <% else %>
+                    <span class="status-badge status-unpaid">Unpaid</span>
+                  <% end %>
                 <% end %>
               </td>
               <td>
@@ -189,8 +198,8 @@
                     </.form>
                   <% end %>
 
-                  <%!-- Quick Payment --%>
-                  <%= if !order.payment_summary || !order.payment_summary.fully_paid? do %>
+                  <%!-- Quick Payment (hide for gifts) --%>
+                  <%= if !order.is_gift and (!order.payment_summary || !order.payment_summary.fully_paid?) do %>
                     <.link
                       navigate={~p"/orders/#{order.id}/payments/new"}
                       class="btn btn-sm"
@@ -290,7 +299,7 @@
 <%= if @filters.status != "canceled" do %>
 <section class="card" style="margin-top: 2rem;">
   <div class="card-header">
-    <h2 class="card-title">Finished Orders (Canceled)</h2>
+    <h2 class="card-title">Canceled Orders</h2>
     <p class="card-subtitle">
       Orders that have been canceled.
     </p>

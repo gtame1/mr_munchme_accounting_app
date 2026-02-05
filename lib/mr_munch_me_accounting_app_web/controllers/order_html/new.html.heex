@@ -17,8 +17,17 @@
           </div>
         <% end %>
 
+        <%!-- Gift toggle --%>
+        <div style="background: #fef3c7; border: 1px solid #fde68a; border-radius: 0.5rem; padding: 0.6rem 0.85rem; margin-bottom: 0.25rem;">
+          <label style="display: inline-flex; align-items: center; gap: 0.5rem; cursor: pointer; font-size: 0.95rem;">
+            <.input field={f[:is_gift]} type="checkbox" label="" id="is_gift_checkbox" />
+            <span style="font-weight: 600; color: #92400e;">🎁 This is a gift / sample</span>
+          </label>
+          <p style="margin: 0.3rem 0 0 1.75rem; font-size: 0.8rem; color: #92400e; opacity: 0.8;">No payment required — cost tracked as Samples & Gifts expense.</p>
+        </div>
+
         <%!-- Customer Information Section --%>
-        <div class="form-section">
+        <div class="form-section" id="customer-section">
           <h3 class="section-title">Customer Information</h3>
           <p class="section-help">Choose an existing customer or create a new one.</p>
           
@@ -155,12 +164,41 @@
             </div>
           </div>
 
-          <div class="form-block">
+          <div class="form-block" id="shipping-block">
             <div class="field">
               <.input
                 field={f[:customer_paid_shipping]}
                 type="checkbox"
                 label="Customer paid shipping"
+              />
+            </div>
+          </div>
+        </div>
+
+        <%!-- Discount Section --%>
+        <div class="form-section" id="discount-section">
+          <h3 class="section-title">Discount (Optional)</h3>
+          <p class="section-help">Apply a flat amount or percentage discount to this order.</p>
+
+          <div class="form-block">
+            <div class="field">
+              <.input
+                field={f[:discount_type]}
+                type="select"
+                label="Discount Type"
+                prompt="No discount"
+                options={[{"Flat Amount (MXN)", "flat"}, {"Percentage (%)", "percentage"}]}
+              />
+            </div>
+
+            <div class="field">
+              <.input
+                field={f[:discount_value]}
+                type="number"
+                label="Discount Value"
+                step="0.01"
+                min="0"
+                placeholder="e.g. 50 for $50 off or 10 for 10%"
               />
             </div>
           </div>
@@ -197,16 +235,30 @@
       return document.querySelector('textarea[name="order[delivery_address]"]');
     }
 
+    // Get TomSelect instance for customer select
+    function getCustomerTomSelect() {
+      if (customerIdSelect && customerIdSelect.tomselect) {
+        return customerIdSelect.tomselect;
+      }
+      return null;
+    }
+
     function toggleCustomerFields() {
+      const tomSelect = getCustomerTomSelect();
+
       if (customerTypeExisting.checked) {
         // Show existing customer, hide new customer
         existingCustomerBlock.style.display = "block";
         newCustomerBlock.style.display = "none";
-        
-        // Make existing customer required, new customer optional and clear values
-        if (customerIdSelect) {
-          customerIdSelect.required = true;
+
+        // Re-enable the TomSelect/customer select
+        if (tomSelect) {
+          tomSelect.enable();
+        } else if (customerIdSelect) {
+          customerIdSelect.disabled = false;
         }
+
+        // Clear and disable new customer fields
         if (customerNameInput) {
           customerNameInput.required = false;
           customerNameInput.value = "";
@@ -225,13 +277,17 @@
         // Show new customer, hide existing customer
         existingCustomerBlock.style.display = "none";
         newCustomerBlock.style.display = "block";
-        
-        // Make new customer required, existing customer optional and clear value
-        if (customerIdSelect) {
-          customerIdSelect.required = false;
+
+        // Clear and disable the TomSelect/customer select
+        if (tomSelect) {
+          tomSelect.clear();
+          tomSelect.disable();
+        } else if (customerIdSelect) {
           customerIdSelect.value = "";
           customerIdSelect.disabled = true;
         }
+
+        // Enable new customer fields
         if (customerNameInput) {
           customerNameInput.required = true;
           customerNameInput.disabled = false;
@@ -326,6 +382,22 @@
           loadCustomerAddress(customerIdSelect.value);
         }
       });
+    }
+
+    // Gift toggle — hide shipping & discount when gift is checked
+    const isGiftCheckbox = document.getElementById("is_gift_checkbox");
+    const shippingBlock = document.getElementById("shipping-block");
+    const discountSection = document.getElementById("discount-section");
+
+    function toggleGiftMode() {
+      const isGift = isGiftCheckbox && isGiftCheckbox.checked;
+      if (shippingBlock) shippingBlock.style.display = isGift ? "none" : "";
+      if (discountSection) discountSection.style.display = isGift ? "none" : "";
+    }
+
+    if (isGiftCheckbox) {
+      isGiftCheckbox.addEventListener("change", toggleGiftMode);
+      toggleGiftMode();
     }
   });
 </script>

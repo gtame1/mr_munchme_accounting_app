@@ -305,15 +305,15 @@ defmodule MrMunchMeAccountingApp.Orders do
     Repo.transaction(fn ->
       # If customer_id is provided, populate customer fields from customer record
       # If customer_id is not provided, find or create customer by phone
+      customer_id = attrs["customer_id"] || attrs[:customer_id]
+      customer_id = if customer_id in [nil, ""], do: nil, else: customer_id
+
       attrs =
         cond do
-          attrs["customer_id"] || attrs[:customer_id] ->
+          customer_id ->
             # Populate customer fields from the customer record
-            customer_id = attrs["customer_id"] || attrs[:customer_id]
-
             customer = Customers.get_customer!(customer_id)
 
-            # Populate customer fields from customer record
             attrs
             |> Map.put("customer_name", customer.name)
             |> Map.put("customer_phone", customer.phone)
@@ -504,6 +504,7 @@ defmodule MrMunchMeAccountingApp.Orders do
   # ---------------------------
 
   def payment_summary(%Order{} = order) do
+    order = Repo.preload(order, :product)
     payments = list_payments_for_order(order.id)
 
     total_paid_cents =
@@ -511,20 +512,45 @@ defmodule MrMunchMeAccountingApp.Orders do
         (p.amount_cents || 0) + acc
       end)
 
+    # Get the original price before discount for display
+    original_price_cents =
+      case order.product do
+        %{} -> order.product.price_cents || 0
+        _ -> 0
+      end
+
+    discount_cents = calculate_discount_cents(order, original_price_cents)
+
     {product_total_cents, shipping_cents} = order_total_cents(order)
     order_total_cents = product_total_cents + shipping_cents
 
     outstanding_cents = max(order_total_cents - total_paid_cents, 0)
 
-    %{
-      product_total_cents: product_total_cents,
-      shipping_cents: shipping_cents,
-      order_total_cents: order_total_cents,
-      total_paid_cents: total_paid_cents,
-      outstanding_cents: outstanding_cents,
-      fully_paid?: outstanding_cents == 0 and order_total_cents > 0,
-      partially_paid?: total_paid_cents > 0 and outstanding_cents > 0
-    }
+    if order.is_gift do
+      %{
+        product_total_cents: product_total_cents,
+        original_price_cents: original_price_cents,
+        discount_cents: discount_cents,
+        shipping_cents: shipping_cents,
+        order_total_cents: 0,
+        total_paid_cents: 0,
+        outstanding_cents: 0,
+        fully_paid?: true,
+        partially_paid?: false
+      }
+    else
+      %{
+        product_total_cents: product_total_cents,
+        original_price_cents: original_price_cents,
+        discount_cents: discount_cents,
+        shipping_cents: shipping_cents,
+        order_total_cents: order_total_cents,
+        total_paid_cents: total_paid_cents,
+        outstanding_cents: outstanding_cents,
+        fully_paid?: outstanding_cents == 0 and order_total_cents > 0,
+        partially_paid?: total_paid_cents > 0 and outstanding_cents > 0
+      }
+    end
   end
 
   def order_total_cents(%Order{} = order) do
@@ -536,6 +562,10 @@ defmodule MrMunchMeAccountingApp.Orders do
         _ -> 0
       end
 
+    # Apply discount to the base product price
+    discount_cents = calculate_discount_cents(order, base)
+    discounted_base = max(base - discount_cents, 0)
+
     shipping_cents =
       if order.customer_paid_shipping do
         MrMunchMeAccountingApp.Accounting.shipping_fee_cents()
@@ -543,8 +573,30 @@ defmodule MrMunchMeAccountingApp.Orders do
         0
       end
 
-    {base, shipping_cents}
+    {discounted_base, shipping_cents}
   end
+
+  defp calculate_discount_cents(%Order{discount_type: "flat", discount_value: value}, _base)
+       when not is_nil(value) do
+    # discount_value is in pesos, convert to cents
+    value
+    |> Decimal.mult(Decimal.new(100))
+    |> Decimal.round(0)
+    |> Decimal.to_integer()
+  end
+
+  defp calculate_discount_cents(%Order{discount_type: "percentage", discount_value: value}, base)
+       when not is_nil(value) do
+    # Calculate percentage of base price
+    base
+    |> Decimal.new()
+    |> Decimal.mult(value)
+    |> Decimal.div(Decimal.new(100))
+    |> Decimal.round(0)
+    |> Decimal.to_integer()
+  end
+
+  defp calculate_discount_cents(_order, _base), do: 0
 
   # ORDER INGREDIENTS
 

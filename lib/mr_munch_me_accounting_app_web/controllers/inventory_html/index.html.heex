@@ -46,183 +46,91 @@
         </.link>
       </div>
 
-      <%!-- Ingredients Inventory --%>
-      <% ingredients_stock = Map.get(@stock_by_type, :ingredients, []) %>
-      <%= if ingredients_stock != [] do %>
-        <h3 style="margin-top: 1.5rem; margin-bottom: 1rem; font-size: 1.25rem; font-weight: 600;">Ingredients</h3>
-        <div class="table-wrapper">
-          <table class="table">
-            <thead>
-              <tr>
-                <th>Ingredient</th>
-                <th>Location</th>
-                <th>Quantity</th>
-                <th>Avg Cost / Unit</th>
-                <th>Total Value</th>
-              </tr>
-            </thead>
-            <tbody>
-              <%= for stock <- Enum.sort_by(ingredients_stock, &[&1.ingredient.name, &1.location.name]) do %>
-                <% ingredient = stock.ingredient %>
-                <% location = stock.location %>
-                <% total_value_cents = stock.total_value_cents %>
+      <%
+        # Pre-compute all stock categories
+        categories = [
+          {"Ingredients", :ingredients, Map.get(@stock_by_type, :ingredients, [])},
+          {"Packing Materials", :packing, Map.get(@stock_by_type, :packing, [])},
+          {"Kitchen Equipment", :kitchen, Map.get(@stock_by_type, :kitchen, [])},
+          {"Other", :other, Map.get(@stock_by_type, :other, [])}
+        ]
+        has_any_stock = Enum.any?(categories, fn {_, _, stock} -> stock != [] end)
+      %>
 
-                <tr>
-                  <td>
-                    <strong><%= ingredient.name %></strong>
-                    <div class="text-muted small"><%= ingredient.code %></div>
-                  </td>
-                  <td><.location_badge location={location} /></td>
-                  
-                  <td>
-                    <%= format_inventory(stock.quantity_on_hand, ingredient.unit) %>
-                  </td>
-                  <td>
-                    <%= format_currency(stock.avg_cost_per_unit_cents) %>
-                  </td>
-                  <td>
-                    <%= format_currency(total_value_cents) %>
-                  </td>
-                </tr>
-              <% end %>
-            </tbody>
-          </table>
+      <%= for {label, type_key, stock_list} <- categories, stock_list != [] do %>
+        <%
+          sorted = Enum.sort_by(stock_list, &[&1.ingredient.name, &1.location.name])
+          grouped = Enum.group_by(sorted, & &1.ingredient)
+          section_id = "stock-section-#{type_key}"
+          count = length(stock_list)
+        %>
+        <div style="margin-top: 1.25rem;">
+          <button
+            type="button"
+            class="stock-section-toggle"
+            onclick={"
+              var section = document.getElementById('#{section_id}');
+              var arrow = this.querySelector('.toggle-arrow');
+              if (section.style.display === 'none') {
+                section.style.display = 'block';
+                arrow.textContent = '▼';
+              } else {
+                section.style.display = 'none';
+                arrow.textContent = '▶';
+              }
+            "}
+            style="display: flex; align-items: center; gap: 0.5rem; background: none; border: none; cursor: pointer; padding: 0.25rem 0; font-size: 1.1rem; font-weight: 600; color: var(--text-main);"
+          >
+            <span class="toggle-arrow">▼</span>
+            <%= label %>
+            <span style="font-weight: 400; font-size: 0.85rem; color: var(--text-muted);">(<%= count %> items)</span>
+          </button>
+
+          <div id={section_id} style="display: block;">
+            <div class="table-wrapper">
+              <table class="table" style="font-size: 0.9rem;">
+                <thead>
+                  <tr>
+                    <th style="padding: 0.4rem 0.75rem;">Ingredient</th>
+                    <th style="padding: 0.4rem 0.75rem;">Location</th>
+                    <th style="padding: 0.4rem 0.75rem;">Qty</th>
+                    <th style="padding: 0.4rem 0.75rem;" class="numeric">Avg Cost</th>
+                    <th style="padding: 0.4rem 0.75rem;" class="numeric">Value</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <%= for {ingredient, items} <- Enum.sort_by(grouped, fn {ing, _} -> ing.name end) do %>
+                    <%= for {stock, idx} <- Enum.with_index(items) do %>
+                      <% location = stock.location %>
+                      <% total_value_cents = if type_key == :ingredients, do: stock.total_value_cents, else: stock.quantity_on_hand * stock.avg_cost_per_unit_cents %>
+                      <tr style="border-bottom: 1px solid var(--border-subtle);">
+                        <%= if idx == 0 do %>
+                          <td style="padding: 0.35rem 0.75rem; vertical-align: top;" rowspan={length(items)}>
+                            <strong><%= ingredient.name %></strong>
+                            <span style="color: var(--text-muted); font-size: 0.8rem; margin-left: 0.25rem;"><%= ingredient.code %></span>
+                          </td>
+                        <% end %>
+                        <td style="padding: 0.35rem 0.75rem;"><.location_badge location={location} /></td>
+                        <td style="padding: 0.35rem 0.75rem;">
+                          <%= format_inventory(stock.quantity_on_hand, ingredient.unit) %>
+                        </td>
+                        <td style="padding: 0.35rem 0.75rem;" class="numeric">
+                          <%= format_currency(stock.avg_cost_per_unit_cents) %>
+                        </td>
+                        <td style="padding: 0.35rem 0.75rem;" class="numeric">
+                          <%= format_currency(total_value_cents) %>
+                        </td>
+                      </tr>
+                    <% end %>
+                  <% end %>
+                </tbody>
+              </table>
+            </div>
+          </div>
         </div>
       <% end %>
 
-      <%!-- Packing Materials Inventory --%>
-      <% packing_stock = Map.get(@stock_by_type, :packing, []) %>
-      <%= if packing_stock != [] do %>
-        <h3 style="margin-top: 1.5rem; margin-bottom: 1rem; font-size: 1.25rem; font-weight: 600;">Packing Materials</h3>
-        <div class="table-wrapper">
-          <table class="table">
-            <thead>
-              <tr>
-                <th>Ingredient</th>
-                <th>Location</th>
-                <th>Quantity</th>
-                <th>Avg Cost / Unit</th>
-                <th>Total Value</th>
-              </tr>
-            </thead>
-            <tbody>
-              <%= for stock <- Enum.sort_by(packing_stock, &[&1.ingredient.name, &1.location.name]) do %>
-                <% ingredient = stock.ingredient %>
-                <% location = stock.location %>
-                <% total_value_cents = stock.quantity_on_hand * stock.avg_cost_per_unit_cents %>
-
-                <tr>
-                  <td>
-                    <strong><%= ingredient.name %></strong>
-                    <div class="text-muted small"><%= ingredient.code %></div>
-                  </td>
-                  <td><.location_badge location={location} /></td>
-                  
-                  <td>
-                    <%= format_inventory(stock.quantity_on_hand, ingredient.unit) %>
-                  </td>
-                  <td>
-                    <%= format_currency(stock.avg_cost_per_unit_cents) %>
-                  </td>
-                  <td>
-                    <%= format_currency(total_value_cents) %>
-                  </td>
-                </tr>
-              <% end %>
-            </tbody>
-          </table>
-        </div>
-      <% end %>
-
-      <%!-- Kitchen Equipment Inventory --%>
-      <% kitchen_stock = Map.get(@stock_by_type, :kitchen, []) %>
-      <%= if kitchen_stock != [] do %>
-        <h3 style="margin-top: 1.5rem; margin-bottom: 1rem; font-size: 1.25rem; font-weight: 600;">Kitchen Equipment</h3>
-        <div class="table-wrapper">
-          <table class="table">
-            <thead>
-              <tr>
-                <th>Ingredient</th>
-                <th>Location</th>
-                <th>Quantity</th>
-                <th>Avg Cost / Unit</th>
-                <th>Total Value</th>
-              </tr>
-            </thead>
-            <tbody>
-              <%= for stock <- Enum.sort_by(kitchen_stock, &[&1.ingredient.name, &1.location.name]) do %>
-                <% ingredient = stock.ingredient %>
-                <% location = stock.location %>
-                <% total_value_cents = stock.quantity_on_hand * stock.avg_cost_per_unit_cents %>
-
-                <tr>
-                  <td>
-                    <strong><%= ingredient.name %></strong>
-                    <div class="text-muted small"><%= ingredient.code %></div>
-                  </td>
-                  <td><.location_badge location={location} /></td>
-                  
-                  <td>
-                    <%= format_inventory(stock.quantity_on_hand, ingredient.unit) %>
-                  </td>
-                  <td>
-                    <%= format_currency(stock.avg_cost_per_unit_cents) %>
-                  </td>
-                  <td>
-                    <%= format_currency(total_value_cents) %>
-                  </td>
-                </tr>
-              <% end %>
-            </tbody>
-          </table>
-        </div>
-      <% end %>
-
-      <%!-- Other Inventory --%>
-      <% other_stock = Map.get(@stock_by_type, :other, []) %>
-      <%= if other_stock != [] do %>
-        <h3 style="margin-top: 1.5rem; margin-bottom: 1rem; font-size: 1.25rem; font-weight: 600;">Other</h3>
-        <div class="table-wrapper">
-          <table class="table">
-            <thead>
-              <tr>
-                <th>Ingredient</th>
-                <th>Location</th>
-                <th>Quantity</th>
-                <th>Avg Cost / Unit</th>
-                <th>Total Value</th>
-              </tr>
-            </thead>
-            <tbody>
-              <%= for stock <- Enum.sort_by(other_stock, &[&1.ingredient.name, &1.location.name]) do %>
-                <% ingredient = stock.ingredient %>
-                <% location = stock.location %>
-                <% total_value_cents = stock.quantity_on_hand * stock.avg_cost_per_unit_cents %>
-
-                <tr>
-                  <td>
-                    <strong><%= ingredient.name %></strong>
-                    <div class="text-muted small"><%= ingredient.code %></div>
-                  </td>
-                  <td><.location_badge location={location} /></td>
-                  
-                  <td>
-                    <%= format_inventory(stock.quantity_on_hand, ingredient.unit) %>
-                  </td>
-                  <td>
-                    <%= format_currency(stock.avg_cost_per_unit_cents) %>
-                  </td>
-                  <td>
-                    <%= format_currency(total_value_cents) %>
-                  </td>
-                </tr>
-              <% end %>
-            </tbody>
-          </table>
-        </div>
-      <% end %>
-
-      <%= if ingredients_stock == [] && packing_stock == [] && kitchen_stock == [] && other_stock == [] do %>
+      <%= unless has_any_stock do %>
         <div class="table-wrapper">
           <table class="table">
             <tbody>

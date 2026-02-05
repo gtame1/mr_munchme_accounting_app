@@ -141,6 +141,14 @@
                     </.link>
                   </td>
                 </tr>
+                <%!-- Reconciliation cutoff divider --%>
+                <%= if transaction.line.journal_entry.entry_type == "reconciliation" do %>
+                  <tr style="background: linear-gradient(to right, var(--primary-soft), transparent); border-top: 2px solid var(--primary); border-bottom: 2px solid var(--primary);">
+                    <td colspan="7" style="padding: 0.5rem 1rem; font-weight: 600; font-size: 0.85rem; color: var(--primary);">
+                      Reconciled on <%= transaction.line.journal_entry.date %>
+                    </td>
+                  </tr>
+                <% end %>
               <% end %>
             <% end %>
           </tbody>
