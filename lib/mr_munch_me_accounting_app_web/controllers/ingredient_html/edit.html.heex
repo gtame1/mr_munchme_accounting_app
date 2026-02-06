@@ -32,8 +32,8 @@
       </div>
 
       <div class="field">
-        <.input field={f[:cost_per_unit_cents]} type="number" label="Cost per Unit (cents)" />
-        <p class="field-help">Enter cost in cents (e.g., 100 for $1.00)</p>
+        <.input field={f[:cost_per_unit_pesos]} type="number" label="Cost per Unit (MXN)" step="0.01" min="0" />
+        <p class="field-help">Default cost per unit in pesos (e.g., 1.50). Used as fallback when no purchase history exists.</p>
       </div>
 
       <div class="field">

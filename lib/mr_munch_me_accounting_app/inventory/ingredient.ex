@@ -7,6 +7,7 @@ defmodule MrMunchMeAccountingApp.Inventory.Ingredient do
     field :name, :string
     field :unit, :string, default: "g"
     field :cost_per_unit_cents, :integer, default: 0
+    field :cost_per_unit_pesos, :string, virtual: true
     field :inventory_type, :string, default: "ingredients"
 
     has_many :inventories, MrMunchMeAccountingApp.Inventory.InventoryItem

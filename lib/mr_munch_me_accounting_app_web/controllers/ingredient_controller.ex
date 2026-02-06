@@ -24,7 +24,23 @@ defmodule MrMunchMeAccountingAppWeb.IngredientController do
     )
   end
 
+  defp convert_cost_pesos_to_cents(params) do
+    case params["cost_per_unit_pesos"] do
+      nil -> params
+      "" -> Map.put(params, "cost_per_unit_cents", 0)
+      pesos_str ->
+        cents = pesos_str |> Decimal.new() |> Decimal.mult(100) |> Decimal.round(0) |> Decimal.to_integer()
+        Map.put(params, "cost_per_unit_cents", cents)
+    end
+  end
+
+  defp cost_cents_to_pesos(ingredient) do
+    cents = ingredient.cost_per_unit_cents || 0
+    Decimal.div(Decimal.new(cents), 100) |> Decimal.to_string(:normal)
+  end
+
   def create(conn, %{"ingredient" => ingredient_params}) do
+    ingredient_params = convert_cost_pesos_to_cents(ingredient_params)
     case Inventory.create_ingredient(ingredient_params) do
       {:ok, _ingredient} ->
         conn
@@ -32,7 +48,9 @@ defmodule MrMunchMeAccountingAppWeb.IngredientController do
         |> redirect(to: ~p"/ingredients")
 
       {:error, %Ecto.Changeset{} = changeset} ->
-        changeset = Map.put(changeset, :action, :insert)
+        # Preserve the pesos value the user entered
+        pesos_val = ingredient_params["cost_per_unit_pesos"] || ""
+        changeset = changeset |> Map.put(:action, :insert) |> Ecto.Changeset.put_change(:cost_per_unit_pesos, pesos_val)
         inventory_type_options = [
           {"Ingredients", "ingredients"},
           {"Packing", "packing"},
@@ -48,7 +66,12 @@ defmodule MrMunchMeAccountingAppWeb.IngredientController do
 
   def edit(conn, %{"id" => id}) do
     ingredient = Inventory.get_ingredient!(id)
-    changeset = Inventory.change_ingredient(ingredient)
+    # Convert cents to pesos for the form display
+    pesos_value = cost_cents_to_pesos(ingredient)
+    changeset =
+      ingredient
+      |> Inventory.change_ingredient()
+      |> Ecto.Changeset.put_change(:cost_per_unit_pesos, pesos_value)
     inventory_type_options = [
       {"Ingredients", "ingredients"},
       {"Packing", "packing"},
@@ -65,6 +88,7 @@ defmodule MrMunchMeAccountingAppWeb.IngredientController do
 
   def update(conn, %{"id" => id, "ingredient" => ingredient_params}) do
     ingredient = Inventory.get_ingredient!(id)
+    ingredient_params = convert_cost_pesos_to_cents(ingredient_params)
 
     case Inventory.update_ingredient(ingredient, ingredient_params) do
       {:ok, _ingredient} ->
@@ -73,7 +97,9 @@ defmodule MrMunchMeAccountingAppWeb.IngredientController do
         |> redirect(to: ~p"/ingredients")
 
       {:error, %Ecto.Changeset{} = changeset} ->
-        changeset = Map.put(changeset, :action, :update)
+        # Preserve the pesos value the user entered
+        pesos_val = ingredient_params["cost_per_unit_pesos"] || cost_cents_to_pesos(ingredient)
+        changeset = changeset |> Map.put(:action, :update) |> Ecto.Changeset.put_change(:cost_per_unit_pesos, pesos_val)
         inventory_type_options = [
           {"Ingredients", "ingredients"},
           {"Packing", "packing"},

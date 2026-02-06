@@ -405,9 +405,38 @@ defmodule MrMunchMeAccountingApp.Orders do
   end
 
   def update_order(%Order{} = order, attrs) do
-    order
-    |> Order.changeset(attrs)
-    |> Repo.update()
+    customer_id = attrs["customer_id"] || attrs[:customer_id]
+    customer_id = if customer_id in [nil, ""], do: nil, else: customer_id
+
+    customer_name = attrs["customer_name"] || attrs[:customer_name]
+    customer_phone = attrs["customer_phone"] || attrs[:customer_phone]
+
+    cond do
+      customer_id ->
+        # Existing customer selected — sync denormalized fields from customer record
+        customer = Customers.get_customer!(customer_id)
+        attrs = populate_customer_fields(attrs, customer)
+        order |> Order.changeset(attrs) |> Repo.update()
+
+      customer_name && customer_phone ->
+        # New customer from edit form — check for duplicate phone, create if new
+        case handle_customer_creation(attrs) do
+          {:ok, customer} ->
+            attrs =
+              attrs
+              |> Map.put("customer_id", customer.id)
+              |> populate_customer_fields(customer)
+
+            order |> Order.changeset(attrs) |> Repo.update()
+
+          {:error, changeset} ->
+            {:error, changeset}
+        end
+
+      true ->
+        # No customer change — just update other fields
+        order |> Order.changeset(attrs) |> Repo.update()
+    end
   end
 
 
