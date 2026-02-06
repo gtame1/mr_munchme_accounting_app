@@ -6,7 +6,7 @@ defmodule MrMunchMeAccountingApp.Inventory.Verification do
   import Ecto.Query
   alias MrMunchMeAccountingApp.{Repo, Accounting, Inventory}
   alias MrMunchMeAccountingApp.Accounting.{Account, JournalEntry, JournalLine}
-  alias MrMunchMeAccountingApp.Inventory.{InventoryItem, InventoryMovement}
+  alias MrMunchMeAccountingApp.Inventory.{Ingredient, InventoryItem, InventoryMovement}
   alias MrMunchMeAccountingApp.Orders.Order
 
   @ingredients_account_code "1200"
@@ -145,21 +145,7 @@ defmodule MrMunchMeAccountingApp.Inventory.Verification do
   def verify_inventory_cost_accounting do
     ingredients_account = Accounting.get_account_by_code!(@ingredients_account_code)
 
-    # Calculate inventory value from InventoryItem records
-    inventory_value =
-      from(ii in InventoryItem,
-        select: fragment("COALESCE(SUM(? * ?), 0)",
-          ii.quantity_on_hand,
-          ii.avg_cost_per_unit_cents)
-      )
-      |> Repo.one()
-      |> case do
-        val when is_integer(val) -> val
-        %Decimal{} = val -> Decimal.to_integer(val)
-        _ -> 0
-      end
-
-    # Calculate inventory value from journal entries
+    inventory_value = calculate_inventory_value()
     account_balance = get_account_balance(ingredients_account.id)
 
     # Allow 1 peso difference for rounding (100 cents)
@@ -348,6 +334,43 @@ defmodule MrMunchMeAccountingApp.Inventory.Verification do
   end
 
   @doc """
+  Verifies that there are no duplicate inventory movements (same ingredient, location,
+  type, quantity, date, and source). Duplicates inflate inventory counts and costs.
+  """
+  def verify_duplicate_movements do
+    dupes =
+      from(m in InventoryMovement,
+        group_by: [m.ingredient_id, m.from_location_id, m.to_location_id, m.movement_type,
+                    m.quantity, m.movement_date, m.source_type, m.source_id],
+        having: count(m.id) > 1,
+        select: %{
+          ingredient_id: m.ingredient_id,
+          from_location_id: m.from_location_id,
+          movement_type: m.movement_type,
+          quantity: m.quantity,
+          movement_date: m.movement_date,
+          source_type: m.source_type,
+          source_id: m.source_id,
+          count: count(m.id)
+        }
+      )
+      |> Repo.all()
+
+    if dupes == [] do
+      {:ok, %{checked: "all movements", duplicate_groups: 0}}
+    else
+      issues =
+        Enum.map(dupes, fn d ->
+          ingredient = Repo.get(Ingredient, d.ingredient_id)
+          name = if ingredient, do: ingredient.name, else: "ID:#{d.ingredient_id}"
+          "Duplicate #{d.movement_type}: #{name} qty=#{d.quantity} on #{d.movement_date} (#{d.count} copies, source: #{d.source_type}/#{d.source_id})"
+        end)
+
+      {:error, issues}
+    end
+  end
+
+  @doc """
   Verifies that delivered gift orders have correct gift accounting (not sale-style).
   Checks both the original order_delivered entry AND any correction entries for the order.
   """
@@ -447,6 +470,7 @@ defmodule MrMunchMeAccountingApp.Inventory.Verification do
       inventory_quantities: verify_inventory_quantities(),
       inventory_cost_accounting: verify_inventory_cost_accounting(),
       movement_costs: verify_movement_costs(),
+      duplicate_movements: verify_duplicate_movements(),
       wip_balance: verify_wip_balance(),
       order_wip_consistency: verify_order_wip_consistency(),
       journal_entries_balanced: verify_journal_entries_balanced(),
@@ -505,72 +529,50 @@ defmodule MrMunchMeAccountingApp.Inventory.Verification do
   end
 
   @doc """
-  Repairs inventory cost accounting by creating an adjusting journal entry
-  to sync account 1200 balance with actual inventory value (qty × avg_cost).
-  Uses Inventory Waste & Shrinkage (6060) as the offset account to avoid
-  misrepresenting COGS.
+  Repairs inventory cost accounting using a layered approach to minimize P&L impact:
+  1. First runs duplicate entry cleanup (P&L-neutral — just removes bad journal entries)
+  2. Then, only if a mismatch remains, creates a Waste & Shrinkage (6060) adjustment
+
+  This way, mismatches caused by duplicate order_in_prep entries are fixed without
+  any expense hitting the P&L.
   """
   def repair_inventory_cost_accounting do
     ingredients_account = Accounting.get_account_by_code!(@ingredients_account_code)
     waste_account = Accounting.get_account_by_code!(@waste_shrinkage_code)
 
-    # Calculate inventory value from InventoryItem records
-    inventory_value =
-      from(ii in InventoryItem,
-        select: fragment("COALESCE(SUM(? * ?), 0)",
-          ii.quantity_on_hand,
-          ii.avg_cost_per_unit_cents)
-      )
-      |> Repo.one()
-      |> case do
-        val when is_integer(val) -> val
-        %Decimal{} = val -> Decimal.to_integer(val)
-        _ -> 0
-      end
+    # Step 0: Check if there's even a mismatch
+    inventory_value = calculate_inventory_value()
+    initial_balance = get_account_balance(ingredients_account.id)
+    initial_diff = inventory_value - initial_balance
 
-    account_balance = get_account_balance(ingredients_account.id)
-    diff = inventory_value - account_balance
-
-    if abs(diff) < 100 do
+    if abs(initial_diff) < 100 do
       {:ok, []}
     else
-      lines =
-        if diff > 0 do
-          # Inventory worth more than accounting shows: Dr Inventory, Cr Waste & Shrinkage
-          [
-            %{account_id: ingredients_account.id, debit_cents: diff, credit_cents: 0,
-              description: "Adjust Ingredients Inventory to match actual value"},
-            %{account_id: waste_account.id, debit_cents: 0, credit_cents: diff,
-              description: "Offset inventory adjustment (waste & shrinkage reversal)"}
-          ]
-        else
-          # Inventory worth less: Dr Waste & Shrinkage, Cr Inventory
-          abs_diff = abs(diff)
-          [
-            %{account_id: waste_account.id, debit_cents: abs_diff, credit_cents: 0,
-              description: "Inventory shrinkage/waste adjustment"},
-            %{account_id: ingredients_account.id, debit_cents: 0, credit_cents: abs_diff,
-              description: "Adjust Ingredients Inventory to match actual value"}
-          ]
-        end
+      # Step 1: Run duplicate cleanup first (P&L-neutral fix)
+      {:ok, dedup_results} = repair_duplicate_cogs_entries()
+      dedup_count = length(dedup_results)
 
-      entry_attrs = %{
-        date: Date.utc_today(),
-        entry_type: "other",
-        reference: "Inventory Cost Adjustment",
-        description: "Adjust account 1200 balance to match inventory value (diff: #{format_currency(diff)})"
+      # Step 2: Re-check difference after dedup
+      post_dedup_balance = get_account_balance(ingredients_account.id)
+      remaining_diff = inventory_value - post_dedup_balance
+
+      step1_report = %{
+        step: "1. Duplicate cleanup",
+        duplicates_removed: dedup_count,
+        initial_difference: format_currency(initial_diff),
+        difference_after_cleanup: format_currency(remaining_diff)
       }
 
-      case Accounting.create_journal_entry_with_lines(entry_attrs, lines) do
-        {:ok, entry} ->
-          {:ok, [%{
-            action: "Created adjusting entry ##{entry.id}",
-            inventory_value: format_currency(inventory_value),
-            account_balance: format_currency(account_balance),
-            adjustment: format_currency(diff)
-          }]}
-        {:error, changeset} ->
-          {:error, "Failed to create adjusting entry: #{inspect(changeset.errors)}"}
+      # Step 3: If still mismatched, create shrinkage adjustment
+      if abs(remaining_diff) < 100 do
+        {:ok, [step1_report | dedup_results]}
+      else
+        case create_shrinkage_adjustment(ingredients_account, waste_account, inventory_value, post_dedup_balance, remaining_diff) do
+          {:ok, adjustment_report} ->
+            {:ok, [step1_report | dedup_results] ++ [adjustment_report]}
+          {:error, reason} ->
+            {:error, reason}
+        end
       end
     end
   end
@@ -721,6 +723,83 @@ defmodule MrMunchMeAccountingApp.Inventory.Verification do
   end
 
   @doc """
+  Repairs duplicate inventory movements by keeping the first (lowest ID) and deleting duplicates.
+  Also recalculates inventory quantities after cleanup.
+  """
+  def repair_duplicate_movements do
+    dupes =
+      from(m in InventoryMovement,
+        group_by: [m.ingredient_id, m.from_location_id, m.to_location_id, m.movement_type,
+                    m.quantity, m.movement_date, m.source_type, m.source_id],
+        having: count(m.id) > 1,
+        select: %{
+          ingredient_id: m.ingredient_id,
+          from_location_id: m.from_location_id,
+          to_location_id: m.to_location_id,
+          movement_type: m.movement_type,
+          quantity: m.quantity,
+          movement_date: m.movement_date,
+          source_type: m.source_type,
+          source_id: m.source_id
+        }
+      )
+      |> Repo.all()
+
+    if dupes == [] do
+      {:ok, []}
+    else
+      results =
+        Enum.flat_map(dupes, fn group ->
+          movements =
+            from(m in InventoryMovement,
+              where: m.ingredient_id == ^group.ingredient_id,
+              where: m.movement_type == ^group.movement_type,
+              where: m.quantity == ^group.quantity,
+              where: m.movement_date == ^group.movement_date,
+              where: m.source_type == ^group.source_type,
+              where: m.source_id == ^group.source_id,
+              order_by: [asc: m.id]
+            )
+            |> filter_location(group)
+            |> Repo.all()
+
+          case movements do
+            [_keep | to_delete] when to_delete != [] ->
+              Enum.map(to_delete, fn movement ->
+                Repo.delete!(movement)
+                ingredient = Repo.get(Ingredient, movement.ingredient_id)
+                name = if ingredient, do: ingredient.name, else: "ID:#{movement.ingredient_id}"
+                %{action: "Deleted duplicate #{movement.movement_type} movement ##{movement.id} for #{name} (qty=#{movement.quantity})"}
+              end)
+            _ ->
+              []
+          end
+        end)
+
+      # Recalculate inventory quantities after deleting duplicates
+      if results != [] do
+        repair_inventory_quantities()
+      end
+
+      {:ok, results}
+    end
+  end
+
+  # Helper to filter movements by location (handles nil locations)
+  defp filter_location(query, %{from_location_id: nil, to_location_id: nil}) do
+    from(m in query, where: is_nil(m.from_location_id) and is_nil(m.to_location_id))
+  end
+  defp filter_location(query, %{from_location_id: from_id, to_location_id: nil}) do
+    from(m in query, where: m.from_location_id == ^from_id and is_nil(m.to_location_id))
+  end
+  defp filter_location(query, %{from_location_id: nil, to_location_id: to_id}) do
+    from(m in query, where: is_nil(m.from_location_id) and m.to_location_id == ^to_id)
+  end
+  defp filter_location(query, %{from_location_id: from_id, to_location_id: to_id}) do
+    from(m in query, where: m.from_location_id == ^from_id and m.to_location_id == ^to_id)
+  end
+
+  @doc """
   Dispatcher function for running repairs by type string.
   """
   def run_repair(repair_type) do
@@ -728,6 +807,7 @@ defmodule MrMunchMeAccountingApp.Inventory.Verification do
       "inventory_quantities" -> repair_inventory_quantities()
       "inventory_cost_accounting" -> repair_inventory_cost_accounting()
       "duplicate_cogs_entries" -> repair_duplicate_cogs_entries()
+      "duplicate_movements" -> repair_duplicate_movements()
       "withdrawal_accounts" -> repair_withdrawal_accounts()
       "gift_order_accounting" -> repair_gift_order_accounting()
       "movement_costs" -> repair_movement_costs()
@@ -740,6 +820,7 @@ defmodule MrMunchMeAccountingApp.Inventory.Verification do
     :inventory_quantities,
     :inventory_cost_accounting,
     :duplicate_cogs_entries,
+    :duplicate_movements,
     :withdrawal_accounts,
     :gift_order_accounting,
     :movement_costs
@@ -1040,6 +1121,64 @@ defmodule MrMunchMeAccountingApp.Inventory.Verification do
       limit: 1
     )
     |> Repo.one() || 0
+  end
+
+  # Calculates the total inventory value from InventoryItem records (qty × avg_cost)
+  defp calculate_inventory_value do
+    from(ii in InventoryItem,
+      select: fragment("COALESCE(SUM(? * ?), 0)",
+        ii.quantity_on_hand,
+        ii.avg_cost_per_unit_cents)
+    )
+    |> Repo.one()
+    |> case do
+      val when is_integer(val) -> val
+      %Decimal{} = val -> Decimal.to_integer(val)
+      _ -> 0
+    end
+  end
+
+  # Creates a shrinkage adjustment journal entry to reconcile the remaining mismatch
+  defp create_shrinkage_adjustment(ingredients_account, waste_account, inventory_value, account_balance, diff) do
+    lines =
+      if diff > 0 do
+        # Inventory worth more than accounting shows: Dr Inventory, Cr Waste & Shrinkage
+        [
+          %{account_id: ingredients_account.id, debit_cents: diff, credit_cents: 0,
+            description: "Adjust Ingredients Inventory to match actual value"},
+          %{account_id: waste_account.id, debit_cents: 0, credit_cents: diff,
+            description: "Offset inventory adjustment (waste & shrinkage reversal)"}
+        ]
+      else
+        # Inventory worth less: Dr Waste & Shrinkage, Cr Inventory
+        abs_diff = abs(diff)
+        [
+          %{account_id: waste_account.id, debit_cents: abs_diff, credit_cents: 0,
+            description: "Inventory shrinkage/waste adjustment"},
+          %{account_id: ingredients_account.id, debit_cents: 0, credit_cents: abs_diff,
+            description: "Adjust Ingredients Inventory to match actual value"}
+        ]
+      end
+
+    entry_attrs = %{
+      date: Date.utc_today(),
+      entry_type: "other",
+      reference: "Inventory Cost Adjustment",
+      description: "Adjust account 1200 balance to match inventory value (diff: #{format_currency(diff)})"
+    }
+
+    case Accounting.create_journal_entry_with_lines(entry_attrs, lines) do
+      {:ok, entry} ->
+        {:ok, %{
+          step: "2. Shrinkage adjustment",
+          action: "Created adjusting entry ##{entry.id}",
+          inventory_value: format_currency(inventory_value),
+          account_balance: format_currency(account_balance),
+          adjustment: format_currency(diff)
+        }}
+      {:error, changeset} ->
+        {:error, "Failed to create adjusting entry: #{inspect(changeset.errors)}"}
+    end
   end
 
   # Helper function to format cents as currency

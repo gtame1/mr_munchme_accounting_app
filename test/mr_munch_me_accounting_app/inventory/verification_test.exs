@@ -552,9 +552,16 @@ defmodule MrMunchMeAccountingApp.Inventory.VerificationTest do
       # Verify it's broken
       assert {:error, _} = Verification.verify_inventory_cost_accounting()
 
-      # Repair
-      assert {:ok, [result]} = Verification.repair_inventory_cost_accounting()
-      assert result.action =~ "Created adjusting entry"
+      # Repair — should include step 1 (dedup, nothing to fix) and step 2 (shrinkage adjustment)
+      assert {:ok, results} = Verification.repair_inventory_cost_accounting()
+
+      step1 = Enum.find(results, fn r -> r[:step] == "1. Duplicate cleanup" end)
+      assert step1 != nil
+      assert step1.duplicates_removed == 0
+
+      shrinkage = Enum.find(results, fn r -> r[:step] == "2. Shrinkage adjustment" end)
+      assert shrinkage != nil
+      assert shrinkage.action =~ "Created adjusting entry"
 
       # Verify it's now fixed
       assert {:ok, _} = Verification.verify_inventory_cost_accounting()
@@ -577,6 +584,147 @@ defmodule MrMunchMeAccountingApp.Inventory.VerificationTest do
 
       # No mismatch, should return empty repairs
       assert {:ok, []} = Verification.repair_inventory_cost_accounting()
+    end
+
+    test "dedup fixes mismatch without needing shrinkage entry", %{
+      cash_account: cash_account,
+      wip_account: wip_account,
+      ingredients_account: ingredients_account,
+      ingredient: ingredient,
+      location: location
+    } do
+      # Purchase: 1000g flour at $50 (5000 cents) → inventory_value=5000, acct_balance=5000
+      {:ok, _} =
+        Inventory.create_purchase(%{
+          "ingredient_code" => ingredient.code,
+          "location_code" => location.code,
+          "quantity" => 1000,
+          "total_cost_pesos" => "50.00",
+          "paid_from_account_id" => to_string(cash_account.id),
+          "purchase_date" => Date.utc_today()
+        })
+
+      # Simulate order consuming 400g: reduce inventory qty to match what
+      # one order_in_prep entry would credit from account 1200
+      # avg_cost = 5 cents/g, 400g = 2000 cents
+      stock = Inventory.get_or_create_stock!(ingredient.id, location.id)
+      stock |> InventoryItem.changeset(%{quantity_on_hand: 600}) |> Repo.update!()
+      # Now inventory_value = 600 × 5 = 3000
+
+      # Create one legitimate order_in_prep + one duplicate
+      # Each credits 1200 by 2000 cents
+      {:ok, _} =
+        Accounting.create_journal_entry(%{
+          "date" => Date.utc_today(),
+          "description" => "Order in prep",
+          "entry_type" => "order_in_prep",
+          "reference" => "Order #500",
+          "journal_lines" => [
+            %{"account_id" => wip_account.id, "debit_cents" => 2000},
+            %{"account_id" => ingredients_account.id, "credit_cents" => 2000}
+          ]
+        })
+
+      {:ok, _} =
+        Accounting.create_journal_entry(%{
+          "date" => Date.utc_today(),
+          "description" => "Order in prep (duplicate)",
+          "entry_type" => "order_in_prep",
+          "reference" => "Order #500",
+          "journal_lines" => [
+            %{"account_id" => wip_account.id, "debit_cents" => 2000},
+            %{"account_id" => ingredients_account.id, "credit_cents" => 2000}
+          ]
+        })
+
+      # inventory_value=3000, acct_balance=5000-2000-2000=1000 → diff=2000, broken
+      assert {:error, _} = Verification.verify_inventory_cost_accounting()
+
+      # Repair: dedup removes the duplicate → acct_balance=5000-2000=3000=inventory_value
+      assert {:ok, results} = Verification.repair_inventory_cost_accounting()
+
+      # Should have dedup step report
+      step1 = Enum.find(results, fn r -> r[:step] == "1. Duplicate cleanup" end)
+      assert step1 != nil
+      assert step1.duplicates_removed >= 1
+
+      # Should NOT have a shrinkage adjustment (dedup was enough)
+      step2 = Enum.find(results, fn r -> r[:step] == "2. Shrinkage adjustment" end)
+      assert step2 == nil
+
+      # Should now be clean
+      assert {:ok, _} = Verification.verify_inventory_cost_accounting()
+    end
+
+    test "dedup partially fixes mismatch, shrinkage covers remainder", %{
+      cash_account: cash_account,
+      wip_account: wip_account,
+      ingredients_account: ingredients_account,
+      ingredient: ingredient,
+      location: location
+    } do
+      {:ok, _} =
+        Inventory.create_purchase(%{
+          "ingredient_code" => ingredient.code,
+          "location_code" => location.code,
+          "quantity" => 1000,
+          "total_cost_pesos" => "50.00",
+          "paid_from_account_id" => to_string(cash_account.id),
+          "purchase_date" => Date.utc_today()
+        })
+
+      # Create duplicate order_in_prep (adds extra 2000 credit to 1200)
+      {:ok, _} =
+        Accounting.create_journal_entry(%{
+          "date" => Date.utc_today(),
+          "description" => "Order in prep",
+          "entry_type" => "order_in_prep",
+          "reference" => "Order #600",
+          "journal_lines" => [
+            %{"account_id" => wip_account.id, "debit_cents" => 2000},
+            %{"account_id" => ingredients_account.id, "credit_cents" => 2000}
+          ]
+        })
+
+      {:ok, _} =
+        Accounting.create_journal_entry(%{
+          "date" => Date.utc_today(),
+          "description" => "Order in prep (duplicate)",
+          "entry_type" => "order_in_prep",
+          "reference" => "Order #600",
+          "journal_lines" => [
+            %{"account_id" => wip_account.id, "debit_cents" => 2000},
+            %{"account_id" => ingredients_account.id, "credit_cents" => 2000}
+          ]
+        })
+
+      # ALSO add a phantom debit (mismatch beyond what dedup fixes)
+      {:ok, _} =
+        Accounting.create_journal_entry(%{
+          "date" => Date.utc_today(),
+          "description" => "Phantom entry",
+          "entry_type" => "other",
+          "journal_lines" => [
+            %{"account_id" => ingredients_account.id, "debit_cents" => 50000},
+            %{"account_id" => cash_account.id, "credit_cents" => 50000}
+          ]
+        })
+
+      assert {:error, _} = Verification.verify_inventory_cost_accounting()
+
+      assert {:ok, results} = Verification.repair_inventory_cost_accounting()
+
+      # Should have both steps
+      step1 = Enum.find(results, fn r -> r[:step] == "1. Duplicate cleanup" end)
+      assert step1 != nil
+      assert step1.duplicates_removed >= 1
+
+      step2 = Enum.find(results, fn r -> r[:step] == "2. Shrinkage adjustment" end)
+      assert step2 != nil
+      assert step2.action =~ "Created adjusting entry"
+
+      # Should now be clean
+      assert {:ok, _} = Verification.verify_inventory_cost_accounting()
     end
   end
 
@@ -737,6 +885,96 @@ defmodule MrMunchMeAccountingApp.Inventory.VerificationTest do
     end
   end
 
+  # ── verify_duplicate_movements ────────────────────────────────────────
+
+  describe "verify_duplicate_movements/0" do
+    test "returns ok when no duplicate movements exist", %{
+      cash_account: cash_account,
+      ingredient: ingredient,
+      location: location
+    } do
+      {:ok, _} =
+        Inventory.create_purchase(%{
+          "ingredient_code" => ingredient.code,
+          "location_code" => location.code,
+          "quantity" => 500,
+          "total_cost_pesos" => "25.00",
+          "paid_from_account_id" => to_string(cash_account.id),
+          "purchase_date" => Date.utc_today()
+        })
+
+      assert {:ok, %{duplicate_groups: 0}} = Verification.verify_duplicate_movements()
+    end
+
+    test "returns error when duplicate movements exist", %{
+      ingredient: ingredient,
+      location: location
+    } do
+      # Insert two identical movements directly
+      attrs = %{
+        movement_type: "usage",
+        ingredient_id: ingredient.id,
+        from_location_id: location.id,
+        quantity: 100,
+        unit_cost_cents: 50,
+        total_cost_cents: 5000,
+        source_type: "order",
+        source_id: 999,
+        movement_date: Date.utc_today()
+      }
+
+      {:ok, _} = %InventoryMovement{} |> InventoryMovement.changeset(attrs) |> Repo.insert()
+      {:ok, _} = %InventoryMovement{} |> InventoryMovement.changeset(attrs) |> Repo.insert()
+
+      assert {:error, issues} = Verification.verify_duplicate_movements()
+      assert length(issues) > 0
+      assert Enum.any?(issues, fn issue -> String.contains?(issue, "Duplicate usage") end)
+    end
+  end
+
+  # ── repair_duplicate_movements ──────────────────────────────────────
+
+  describe "repair_duplicate_movements/0" do
+    test "deletes duplicate movements keeping the first", %{
+      ingredient: ingredient,
+      location: location
+    } do
+      attrs = %{
+        movement_type: "usage",
+        ingredient_id: ingredient.id,
+        from_location_id: location.id,
+        quantity: 100,
+        unit_cost_cents: 50,
+        total_cost_cents: 5000,
+        source_type: "order",
+        source_id: 888,
+        movement_date: Date.utc_today()
+      }
+
+      {:ok, first} = %InventoryMovement{} |> InventoryMovement.changeset(attrs) |> Repo.insert()
+      {:ok, dupe} = %InventoryMovement{} |> InventoryMovement.changeset(attrs) |> Repo.insert()
+
+      # Verify duplicates detected
+      assert {:error, _} = Verification.verify_duplicate_movements()
+
+      # Repair
+      assert {:ok, results} = Verification.repair_duplicate_movements()
+      assert length(results) > 0
+      assert Enum.any?(results, fn r -> r.action =~ "Deleted duplicate" end)
+
+      # First kept, dupe gone
+      assert Repo.get(InventoryMovement, first.id) != nil
+      assert Repo.get(InventoryMovement, dupe.id) == nil
+
+      # Verify check now passes
+      assert {:ok, %{duplicate_groups: 0}} = Verification.verify_duplicate_movements()
+    end
+
+    test "returns empty list when no duplicates" do
+      assert {:ok, []} = Verification.repair_duplicate_movements()
+    end
+  end
+
   # ── run_repair dispatcher ──────────────────────────────────────────────
 
   describe "run_repair/1" do
@@ -744,6 +982,7 @@ defmodule MrMunchMeAccountingApp.Inventory.VerificationTest do
       # All repair types should work (no errors at least)
       assert {:ok, _} = Verification.run_repair("inventory_quantities")
       assert {:ok, _} = Verification.run_repair("duplicate_cogs_entries")
+      assert {:ok, _} = Verification.run_repair("duplicate_movements")
       assert {:ok, _} = Verification.run_repair("movement_costs")
     end
 
@@ -760,6 +999,7 @@ defmodule MrMunchMeAccountingApp.Inventory.VerificationTest do
       assert Verification.repairable?(:inventory_quantities)
       assert Verification.repairable?(:inventory_cost_accounting)
       assert Verification.repairable?(:duplicate_cogs_entries)
+      assert Verification.repairable?(:duplicate_movements)
       assert Verification.repairable?(:withdrawal_accounts)
       assert Verification.repairable?(:gift_order_accounting)
       assert Verification.repairable?(:movement_costs)
@@ -775,7 +1015,7 @@ defmodule MrMunchMeAccountingApp.Inventory.VerificationTest do
   # ── run_all_checks ─────────────────────────────────────────────────────
 
   describe "run_all_checks/0" do
-    test "runs all 9 verification checks and returns results", %{
+    test "runs all 10 verification checks and returns results", %{
       cash_account: cash_account,
       ingredient: ingredient,
       location: location
@@ -792,10 +1032,11 @@ defmodule MrMunchMeAccountingApp.Inventory.VerificationTest do
 
       results = Verification.run_all_checks()
 
-      # Verify all 9 check keys are present
+      # Verify all 10 check keys are present
       assert Map.has_key?(results, :inventory_quantities)
       assert Map.has_key?(results, :inventory_cost_accounting)
       assert Map.has_key?(results, :movement_costs)
+      assert Map.has_key?(results, :duplicate_movements)
       assert Map.has_key?(results, :wip_balance)
       assert Map.has_key?(results, :order_wip_consistency)
       assert Map.has_key?(results, :journal_entries_balanced)
@@ -803,7 +1044,7 @@ defmodule MrMunchMeAccountingApp.Inventory.VerificationTest do
       assert Map.has_key?(results, :withdrawal_accounts)
       assert Map.has_key?(results, :gift_order_accounting)
 
-      assert map_size(results) == 9
+      assert map_size(results) == 10
 
       # All should pass in a clean test environment
       Enum.each(results, fn {check_name, result} ->

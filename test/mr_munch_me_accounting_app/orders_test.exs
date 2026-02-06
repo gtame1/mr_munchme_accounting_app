@@ -86,13 +86,14 @@ defmodule MrMunchMeAccountingApp.OrdersTest do
       assert order.delivery_type == "delivery"
     end
 
-    test "creates order and finds existing customer by phone", %{product: product, location: location} do
+    test "creates order and finds existing customer by phone, syncing customer fields", %{product: product, location: location} do
       # Create a customer first
-      customer = customer_fixture(%{phone: "5559876543", name: "Existing Customer"})
+      customer = customer_fixture(%{phone: "5559876543", name: "Existing Customer", email: "existing@test.com"})
 
       attrs = %{
         "customer_name" => "Different Name",
         "customer_phone" => "5559876543",
+        "customer_email" => "different@test.com",
         "product_id" => to_string(product.id),
         "prep_location_id" => to_string(location.id),
         "delivery_date" => Date.to_iso8601(Date.utc_today()),
@@ -102,15 +103,19 @@ defmodule MrMunchMeAccountingApp.OrdersTest do
       assert {:ok, %Order{} = order} = Orders.create_order(attrs)
       # Should link to existing customer
       assert order.customer_id == customer.id
+      # Denormalized fields should reflect the customer record, not the form input
+      assert order.customer_name == "Existing Customer"
+      assert order.customer_phone == "5559876543"
+      assert order.customer_email == "existing@test.com"
     end
 
-    test "creates order with customer_id directly", %{product: product, location: location} do
-      customer = customer_fixture(%{phone: "5551111111"})
+    test "creates order with customer_id directly, syncing customer fields", %{product: product, location: location} do
+      customer = customer_fixture(%{phone: "5551111111", name: "Real Name", email: "real@test.com"})
 
       attrs = %{
         "customer_id" => to_string(customer.id),
-        "customer_name" => "From Customer",
-        "customer_phone" => "5551111111",
+        "customer_name" => "Wrong Name",
+        "customer_phone" => "0000000000",
         "product_id" => to_string(product.id),
         "prep_location_id" => to_string(location.id),
         "delivery_date" => Date.to_iso8601(Date.utc_today()),
@@ -119,6 +124,10 @@ defmodule MrMunchMeAccountingApp.OrdersTest do
 
       assert {:ok, %Order{} = order} = Orders.create_order(attrs)
       assert order.customer_id == customer.id
+      # Denormalized fields should come from the customer record
+      assert order.customer_name == "Real Name"
+      assert order.customer_phone == "5551111111"
+      assert order.customer_email == "real@test.com"
     end
 
     test "creates order with shipping", %{product: product, location: location} do

@@ -356,6 +356,11 @@ defmodule MrMunchMeAccountingAppWeb.ReportHTML do
     "These may have been recorded before purchases were added and need cost backfilling."
   end
 
+  defp get_check_explanation(:duplicate_movements) do
+    "Checks for duplicate inventory movements (same ingredient, location, type, quantity, date, and source). " <>
+    "Duplicates inflate inventory counts and costs. Repair deletes duplicates and recalculates quantities."
+  end
+
   defp get_check_explanation(_) do
     "Verification check"
   end

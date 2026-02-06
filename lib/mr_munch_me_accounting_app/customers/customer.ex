@@ -20,6 +20,7 @@ defmodule MrMunchMeAccountingApp.Customers.Customer do
     customer
     |> cast(attrs, [:name, :email, :phone, :delivery_address])
     |> validate_required([:name, :phone])
+    |> unique_constraint(:phone, message: "a customer with this phone number already exists")
     |> validate_email_format()
   end
 

@@ -15,7 +15,7 @@
       failed_checks = total_checks - passed_checks
 
       # Group checks by category
-      inventory_checks = [:inventory_quantities, :inventory_cost_accounting, :movement_costs]
+      inventory_checks = [:inventory_quantities, :inventory_cost_accounting, :movement_costs, :duplicate_movements]
       accounting_checks = [:journal_entries_balanced, :wip_balance, :duplicate_cogs_entries, :withdrawal_accounts]
       order_checks = [:order_wip_consistency, :gift_order_accounting]
 

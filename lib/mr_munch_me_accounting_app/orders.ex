@@ -313,17 +313,14 @@ defmodule MrMunchMeAccountingApp.Orders do
           customer_id ->
             # Populate customer fields from the customer record
             customer = Customers.get_customer!(customer_id)
-
-            attrs
-            |> Map.put("customer_name", customer.name)
-            |> Map.put("customer_phone", customer.phone)
-            |> Map.put("customer_email", customer.email || nil)
-            |> populate_delivery_address_if_missing(customer)
+            populate_customer_fields(attrs, customer)
 
           true ->
             case handle_customer_creation(attrs) do
-              {:ok, customer_id} ->
-                Map.put(attrs, "customer_id", customer_id)
+              {:ok, customer} ->
+                attrs
+                |> Map.put("customer_id", customer.id)
+                |> populate_customer_fields(customer)
 
               {:error, changeset} ->
                 Repo.rollback(changeset)
@@ -344,6 +341,16 @@ defmodule MrMunchMeAccountingApp.Orders do
     end)
   end
 
+  # Populates denormalized customer fields on order attrs from the customer record.
+  # This ensures the order always reflects the canonical customer data.
+  defp populate_customer_fields(attrs, customer) do
+    attrs
+    |> Map.put("customer_name", customer.name)
+    |> Map.put("customer_phone", customer.phone)
+    |> Map.put("customer_email", customer.email || nil)
+    |> populate_delivery_address_if_missing(customer)
+  end
+
   # Helper to populate delivery_address from customer if not already provided in order
   defp populate_delivery_address_if_missing(attrs, customer) do
     delivery_address = attrs["delivery_address"] || attrs[:delivery_address]
@@ -357,7 +364,8 @@ defmodule MrMunchMeAccountingApp.Orders do
     end
   end
 
-  # Helper function to find or create customer when customer_id is not provided
+  # Helper function to find or create customer when customer_id is not provided.
+  # Returns {:ok, %Customer{}} so the caller can populate denormalized fields.
   defp handle_customer_creation(attrs) do
     customer_name = attrs["customer_name"] || attrs[:customer_name]
     customer_phone = attrs["customer_phone"] || attrs[:customer_phone]
@@ -372,13 +380,7 @@ defmodule MrMunchMeAccountingApp.Orders do
         delivery_address: delivery_address
       }
 
-      case Customers.find_or_create_by_phone(customer_phone, customer_attrs) do
-        {:ok, customer} ->
-          {:ok, customer.id}
-
-        {:error, changeset} ->
-          {:error, changeset}
-      end
+      Customers.find_or_create_by_phone(customer_phone, customer_attrs)
     else
       {:error, :missing_customer_info}
     end
