@@ -31,6 +31,12 @@
           <h3 class="section-title">Customer Information</h3>
           <p class="section-help">Choose an existing customer or create a new one.</p>
           
+          <%
+            # Remember "New Customer" radio if form was submitted with new customer fields
+            has_customer_name = (@changeset.changes[:customer_name] || "") != ""
+            no_customer_id = is_nil(@changeset.changes[:customer_id])
+            show_new = @changeset.action && has_customer_name && no_customer_id
+          %>
           <div class="form-block">
             <div class="field">
               <label class="label">Customer Type</label>
@@ -41,7 +47,7 @@
                     name="customer_type"
                     value="existing"
                     id="customer_type_existing"
-                    checked
+                    {if !show_new, do: [checked: true], else: []}
                     style="cursor: pointer;"
                   />
                   <span>Existing Customer</span>
@@ -52,6 +58,7 @@
                     name="customer_type"
                     value="new"
                     id="customer_type_new"
+                    {if show_new, do: [checked: true], else: []}
                     style="cursor: pointer;"
                   />
                   <span>New Customer</span>
@@ -61,7 +68,7 @@
           </div>
 
           <%!-- Existing Customer Selection --%>
-          <div class="form-block" id="existing-customer-block">
+          <div class="form-block" id="existing-customer-block" style={if show_new, do: "display: none;", else: ""}>
             <div class="field">
               <.input
                 field={f[:customer_id]}
@@ -81,13 +88,14 @@
           </div>
 
           <%!-- New Customer Fields --%>
-          <div class="form-block" id="new-customer-block" style="display: none;">
+          <div class="form-block" id="new-customer-block" style={if !show_new, do: "display: none;", else: ""}>
             <div class="field">
               <.input field={f[:customer_name]} type="text" label="Customer Name" id="customer_name_input" />
             </div>
 
             <div class="field">
               <.input field={f[:customer_phone]} type="tel" label="Customer Phone" id="customer_phone_input" />
+              <div id="phone-check-message" style="display: none; margin-top: 0.35rem; padding: 0.5rem 0.75rem; border-radius: 0.375rem; font-size: 0.85rem;"></div>
             </div>
 
             <div class="field">
@@ -382,6 +390,65 @@
           loadCustomerAddress(customerIdSelect.value);
         }
       });
+    }
+
+    // Real-time phone number check for new customers
+    const phoneCheckMessage = document.getElementById("phone-check-message");
+    const submitButton = document.querySelector('button[type="submit"]');
+    let phoneIsBlocked = false;
+
+    function checkPhoneExists(phone) {
+      if (!phone || phone.trim() === "") {
+        phoneCheckMessage.style.display = "none";
+        phoneIsBlocked = false;
+        if (submitButton) submitButton.disabled = false;
+        return;
+      }
+
+      fetch(`/api/customers/check_phone/${encodeURIComponent(phone.trim())}`)
+        .then(response => response.json())
+        .then(data => {
+          if (data.exists) {
+            phoneCheckMessage.style.display = "block";
+            phoneCheckMessage.style.background = "#fef2f2";
+            phoneCheckMessage.style.border = "1px solid #fca5a5";
+            phoneCheckMessage.style.color = "#991b1b";
+            phoneCheckMessage.innerHTML =
+              `<strong>⚠ This phone belongs to ${data.customer_name}.</strong><br>` +
+              `Switch to <em>Existing Customer</em> and select them from the list.`;
+            phoneIsBlocked = true;
+            if (submitButton) submitButton.disabled = true;
+          } else {
+            phoneCheckMessage.style.display = "block";
+            phoneCheckMessage.style.background = "#f0fdf4";
+            phoneCheckMessage.style.border = "1px solid #86efac";
+            phoneCheckMessage.style.color = "#166534";
+            phoneCheckMessage.innerHTML = "✓ Phone available — new customer will be created.";
+            phoneIsBlocked = false;
+            if (submitButton) submitButton.disabled = false;
+          }
+        })
+        .catch(() => {
+          phoneCheckMessage.style.display = "none";
+          phoneIsBlocked = false;
+          if (submitButton) submitButton.disabled = false;
+        });
+    }
+
+    if (customerPhoneInput) {
+      customerPhoneInput.addEventListener("blur", function() {
+        if (customerTypeNew && customerTypeNew.checked) {
+          checkPhoneExists(customerPhoneInput.value);
+        }
+      });
+      // Also clear the message when switching to existing customer
+      if (customerTypeExisting) {
+        customerTypeExisting.addEventListener("change", function() {
+          phoneCheckMessage.style.display = "none";
+          phoneIsBlocked = false;
+          if (submitButton) submitButton.disabled = false;
+        });
+      }
     }
 
     // Gift toggle — hide shipping & discount when gift is checked

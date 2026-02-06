@@ -79,6 +79,16 @@ defmodule MrMunchMeAccountingAppWeb.ApiController do
       |> json(%{error: "Customer not found"})
   end
 
+  def check_customer_phone(conn, %{"phone" => phone}) do
+    case Customers.get_customer_by_phone(phone) do
+      nil ->
+        json(conn, %{exists: false})
+
+      customer ->
+        json(conn, %{exists: true, customer_name: customer.name, customer_id: customer.id})
+    end
+  end
+
   # ---------- Inventory ----------
 
   def list_ingredients(conn, _params) do

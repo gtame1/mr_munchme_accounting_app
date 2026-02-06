@@ -91,6 +91,7 @@ defmodule MrMunchMeAccountingAppWeb.Router do
 
     # Customers
     get "/customers", ApiController, :list_customers
+    get "/customers/check_phone/:phone", ApiController, :check_customer_phone
     get "/customers/:id", ApiController, :show_customer
 
     # Inventory
