@@ -226,7 +226,7 @@ defmodule MrMunchMeAccountingAppWeb.ReportController do
       case Verification.run_repair(repair_type) do
         {:ok, repairs_list} when is_list(repairs_list) ->
           conn
-          |> put_session(:repair_results, %{type: repair_type, results: repairs_list})
+          |> put_session(:repair_results, %{type: repair_type, count: length(repairs_list)})
           |> redirect(to: ~p"/reports/diagnostics#repair-results")
 
         {:error, reason} ->
@@ -322,8 +322,9 @@ defmodule MrMunchMeAccountingAppWeb.ReportHTML do
   end
 
   defp get_check_explanation(:inventory_cost_accounting) do
-    "Verifies that the total value of inventory items (quantity × average cost) matches the Ingredients Inventory account balance. " <>
-    "Repair adjusts via Inventory Waste & Shrinkage (6060) to avoid affecting COGS."
+    "Verifies that inventory item values (quantity × average cost) match the GL balance for each inventory account: " <>
+    "Ingredients (1200), Packing (1210), and Kitchen Equipment (1300). " <>
+    "Repair adjusts each account via Waste & Shrinkage (6060) to avoid affecting COGS."
   end
 
   defp get_check_explanation(:order_wip_consistency) do

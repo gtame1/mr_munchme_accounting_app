@@ -10,6 +10,8 @@ defmodule MrMunchMeAccountingApp.Inventory.Verification do
   alias MrMunchMeAccountingApp.Orders.{Order, OrderPayment}
 
   @ingredients_account_code "1200"
+  @packing_account_code "1210"
+  @kitchen_account_code "1300"
   @wip_account_code "1220"
   @ar_code "1100"
   @customer_deposits_code "2200"
@@ -141,19 +143,38 @@ defmodule MrMunchMeAccountingApp.Inventory.Verification do
   end
 
   @doc """
-  Verifies that inventory cost values match journal entries.
+  Verifies that inventory cost values match journal entries for all inventory accounts:
+  Ingredients (1200), Packing (1210), and Kitchen Equipment (1300).
   """
   def verify_inventory_cost_accounting do
-    ingredients_account = Accounting.get_account_by_code!(@ingredients_account_code)
+    account_type_map = [
+      {@ingredients_account_code, "ingredients", "Ingredients (1200)"},
+      {@packing_account_code, "packing", "Packing (1210)"},
+      {@kitchen_account_code, "kitchen", "Kitchen Equipment (1300)"}
+    ]
 
-    inventory_value = calculate_inventory_value()
-    account_balance = get_account_balance(ingredients_account.id)
+    issues =
+      Enum.reduce(account_type_map, [], fn {account_code, inv_type, label}, acc ->
+        case Repo.get_by(Account, code: account_code) do
+          nil -> acc  # Account doesn't exist, skip
+          account ->
+            inventory_value = calculate_inventory_value_by_type(inv_type)
+            account_balance = get_account_balance(account.id)
 
-    # Allow 1 peso difference for rounding (100 cents)
-    if abs(inventory_value - account_balance) < 100 do
-      {:ok, %{inventory_value: inventory_value, account_balance: account_balance, difference: abs(inventory_value - account_balance)}}
+            if abs(inventory_value - account_balance) >= 100 do
+              ["#{label} mismatch: Items=#{format_currency(inventory_value)}, Account=#{format_currency(account_balance)}, Difference=#{format_currency(abs(inventory_value - account_balance))}" | acc]
+            else
+              acc
+            end
+        end
+      end)
+
+    if issues == [] do
+      # Return totals for all accounts combined
+      total_value = calculate_inventory_value()
+      {:ok, %{inventory_value: total_value, issues: 0}}
     else
-      {:error, "Inventory value mismatch: Items=#{format_currency(inventory_value)}, Account=#{format_currency(account_balance)}, Difference=#{format_currency(abs(inventory_value - account_balance))}"}
+      {:error, Enum.reverse(issues)}
     end
   end
 
@@ -536,48 +557,50 @@ defmodule MrMunchMeAccountingApp.Inventory.Verification do
   1. First runs duplicate entry cleanup (P&L-neutral — just removes bad journal entries)
   2. Then, only if a mismatch remains, creates a Waste & Shrinkage (6060) adjustment
 
-  This way, mismatches caused by duplicate order_in_prep entries are fixed without
-  any expense hitting the P&L.
+  Checks all three inventory accounts: Ingredients (1200), Packing (1210), Kitchen (1300).
   """
   def repair_inventory_cost_accounting do
-    ingredients_account = Accounting.get_account_by_code!(@ingredients_account_code)
     waste_account = Accounting.get_account_by_code!(@waste_shrinkage_code)
 
-    # Step 0: Check if there's even a mismatch
-    inventory_value = calculate_inventory_value()
-    initial_balance = get_account_balance(ingredients_account.id)
-    initial_diff = inventory_value - initial_balance
+    # Step 1: Run duplicate cleanup first (P&L-neutral fix)
+    {:ok, dedup_results} = repair_duplicate_cogs_entries()
+    dedup_count = length(dedup_results)
 
-    if abs(initial_diff) < 100 do
-      {:ok, []}
-    else
-      # Step 1: Run duplicate cleanup first (P&L-neutral fix)
-      {:ok, dedup_results} = repair_duplicate_cogs_entries()
-      dedup_count = length(dedup_results)
+    account_type_map = [
+      {@ingredients_account_code, "ingredients", "Ingredients (1200)"},
+      {@packing_account_code, "packing", "Packing (1210)"},
+      {@kitchen_account_code, "kitchen", "Kitchen Equipment (1300)"}
+    ]
 
-      # Step 2: Re-check difference after dedup
-      post_dedup_balance = get_account_balance(ingredients_account.id)
-      remaining_diff = inventory_value - post_dedup_balance
+    # Step 2: For each inventory account, check and repair if needed
+    repair_results =
+      Enum.flat_map(account_type_map, fn {account_code, inv_type, label} ->
+        case Repo.get_by(Account, code: account_code) do
+          nil -> []
+          inv_account ->
+            inventory_value = calculate_inventory_value_by_type(inv_type)
+            account_balance = get_account_balance(inv_account.id)
+            diff = inventory_value - account_balance
 
-      step1_report = %{
-        step: "1. Duplicate cleanup",
-        duplicates_removed: dedup_count,
-        initial_difference: format_currency(initial_diff),
-        difference_after_cleanup: format_currency(remaining_diff)
-      }
-
-      # Step 3: If still mismatched, create shrinkage adjustment
-      if abs(remaining_diff) < 100 do
-        {:ok, [step1_report | dedup_results]}
-      else
-        case create_shrinkage_adjustment(ingredients_account, waste_account, inventory_value, post_dedup_balance, remaining_diff) do
-          {:ok, adjustment_report} ->
-            {:ok, [step1_report | dedup_results] ++ [adjustment_report]}
-          {:error, reason} ->
-            {:error, reason}
+            if abs(diff) < 100 do
+              []
+            else
+              case create_shrinkage_adjustment(inv_account, waste_account, inventory_value, account_balance, diff, label) do
+                {:ok, report} -> [report]
+                {:error, _} -> []
+              end
+            end
         end
+      end)
+
+    all_results =
+      if dedup_count > 0 do
+        [%{step: "Duplicate cleanup", duplicates_removed: dedup_count} | dedup_results] ++ repair_results
+      else
+        repair_results
       end
-    end
+
+    {:ok, all_results}
   end
 
   @doc """
@@ -1490,25 +1513,43 @@ defmodule MrMunchMeAccountingApp.Inventory.Verification do
     end
   end
 
+  # Calculates inventory value filtered by ingredient inventory_type
+  defp calculate_inventory_value_by_type(inventory_type) do
+    from(ii in InventoryItem,
+      join: i in Ingredient, on: ii.ingredient_id == i.id,
+      where: i.inventory_type == ^inventory_type,
+      select: fragment("COALESCE(SUM(? * ?), 0)",
+        ii.quantity_on_hand,
+        ii.avg_cost_per_unit_cents)
+    )
+    |> Repo.one()
+    |> case do
+      val when is_integer(val) -> val
+      %Decimal{} = val -> Decimal.to_integer(val)
+      _ -> 0
+    end
+  end
+
   # Creates a shrinkage adjustment journal entry to reconcile the remaining mismatch
-  defp create_shrinkage_adjustment(ingredients_account, waste_account, inventory_value, account_balance, diff) do
+  defp create_shrinkage_adjustment(inv_account, waste_account, inventory_value, account_balance, diff, label) do
+    abs_diff = abs(diff)
+
     lines =
       if diff > 0 do
         # Inventory worth more than accounting shows: Dr Inventory, Cr Waste & Shrinkage
         [
-          %{account_id: ingredients_account.id, debit_cents: diff, credit_cents: 0,
-            description: "Adjust Ingredients Inventory to match actual value"},
+          %{account_id: inv_account.id, debit_cents: diff, credit_cents: 0,
+            description: "Adjust #{label} to match actual value"},
           %{account_id: waste_account.id, debit_cents: 0, credit_cents: diff,
-            description: "Offset inventory adjustment (waste & shrinkage reversal)"}
+            description: "Offset #{label} adjustment (waste & shrinkage reversal)"}
         ]
       else
         # Inventory worth less: Dr Waste & Shrinkage, Cr Inventory
-        abs_diff = abs(diff)
         [
           %{account_id: waste_account.id, debit_cents: abs_diff, credit_cents: 0,
-            description: "Inventory shrinkage/waste adjustment"},
-          %{account_id: ingredients_account.id, debit_cents: 0, credit_cents: abs_diff,
-            description: "Adjust Ingredients Inventory to match actual value"}
+            description: "Inventory shrinkage/waste adjustment for #{label}"},
+          %{account_id: inv_account.id, debit_cents: 0, credit_cents: abs_diff,
+            description: "Adjust #{label} to match actual value"}
         ]
       end
 
@@ -1516,20 +1557,20 @@ defmodule MrMunchMeAccountingApp.Inventory.Verification do
       date: Date.utc_today(),
       entry_type: "other",
       reference: "Inventory Cost Adjustment",
-      description: "Adjust account 1200 balance to match inventory value (diff: #{format_currency(diff)})"
+      description: "Adjust #{label} balance to match inventory value (diff: #{format_currency(diff)})"
     }
 
     case Accounting.create_journal_entry_with_lines(entry_attrs, lines) do
       {:ok, entry} ->
         {:ok, %{
-          step: "2. Shrinkage adjustment",
+          step: "Shrinkage adjustment — #{label}",
           action: "Created adjusting entry ##{entry.id}",
           inventory_value: format_currency(inventory_value),
           account_balance: format_currency(account_balance),
           adjustment: format_currency(diff)
         }}
       {:error, changeset} ->
-        {:error, "Failed to create adjusting entry: #{inspect(changeset.errors)}"}
+        {:error, "Failed to create adjusting entry for #{label}: #{inspect(changeset.errors)}"}
     end
   end
 

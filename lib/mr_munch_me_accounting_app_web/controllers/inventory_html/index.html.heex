@@ -7,30 +7,63 @@
     <!-- Summary card -->
     <section class="card">
       <h2 class="card-title">Overview</h2>
-      <p class="card-subtitle">Snapshot of your ingredients and stock value.</p>
+      <p class="card-subtitle">Inventory value breakdown by category and location.</p>
 
-      <div class="dashboard-metrics">
-        <div class="metric-card">
-          <div class="metric-label">Total Inventory Value</div>
-          <div class="metric-value">
-            <%= format_currency(@total_value_cents) %>
-          </div>
-        </div>
+      <%
+        # Compute value by inventory type
+        type_labels = %{ingredients: "Ingredients", packing: "Packing", kitchen: "Kitchen Equipment", other: "Other"}
+        type_order = [:ingredients, :packing, :kitchen, :other]
+        value_by_type =
+          Enum.map(type_order, fn type_key ->
+            items = Map.get(@stock_by_type, type_key, [])
+            value = Enum.reduce(items, 0, fn s, acc -> acc + (s.total_value_cents || 0) end)
+            {type_key, Map.get(type_labels, type_key, "Other"), items, value}
+          end)
+          |> Enum.filter(fn {_, _, items, _} -> items != [] end)
 
-        <div class="metric-card">
-          <div class="metric-label">Tracked Stock Items</div>
-          <div class="metric-value">
-            <%= Enum.count(@stock_items) %>
-          </div>
-        </div>
+        # Compute value by location
+        value_by_location =
+          @stock_items
+          |> Enum.group_by(fn s -> s.location.name end)
+          |> Enum.map(fn {location_name, items} ->
+            value = Enum.reduce(items, 0, fn s, acc -> acc + (s.total_value_cents || 0) end)
+            count = length(items)
+            {location_name, count, value}
+          end)
+          |> Enum.sort_by(fn {_, _, value} -> -value end)
+      %>
 
-        <div class="metric-card">
-          <div class="metric-label">Recent Movements</div>
-          <div class="metric-value">
-            <%= Enum.count(@recent_movements) %>
-          </div>
+      <!-- Total + by category -->
+      <div style="display: flex; flex-wrap: wrap; gap: 0.75rem; margin-bottom: 1rem;">
+        <div class="metric-card" style="flex: 1; min-width: 140px;">
+          <div class="metric-label">Total Value</div>
+          <div class="metric-value"><%= format_currency(@total_value_cents) %></div>
+          <div style="font-size: 0.8rem; color: #888; margin-top: 0.2rem;"><%= Enum.count(@stock_items) %> items tracked</div>
         </div>
+        <%= for {_key, label, items, value} <- value_by_type do %>
+          <div class="metric-card" style="flex: 1; min-width: 140px;">
+            <div class="metric-label"><%= label %></div>
+            <div class="metric-value"><%= format_currency(value) %></div>
+            <div style="font-size: 0.8rem; color: #888; margin-top: 0.2rem;"><%= length(items) %> items</div>
+          </div>
+        <% end %>
       </div>
+
+      <!-- By location -->
+      <%= if length(value_by_location) > 1 do %>
+        <div style="border-top: 1px solid #eee; padding-top: 0.75rem;">
+          <div style="font-weight: 600; font-size: 0.85rem; color: #666; margin-bottom: 0.5rem;">By Location</div>
+          <div style="display: flex; flex-wrap: wrap; gap: 0.75rem;">
+            <%= for {location_name, count, value} <- value_by_location do %>
+              <div class="metric-card" style="flex: 1; min-width: 140px;">
+                <div class="metric-label"><%= location_name %></div>
+                <div class="metric-value"><%= format_currency(value) %></div>
+                <div style="font-size: 0.8rem; color: #888; margin-top: 0.2rem;"><%= count %> items</div>
+              </div>
+            <% end %>
+          </div>
+        </div>
+      <% end %>
     </section>
 
     <!-- Stock by ingredient & location -->

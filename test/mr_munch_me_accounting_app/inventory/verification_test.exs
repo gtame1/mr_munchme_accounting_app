@@ -552,14 +552,10 @@ defmodule MrMunchMeAccountingApp.Inventory.VerificationTest do
       # Verify it's broken
       assert {:error, _} = Verification.verify_inventory_cost_accounting()
 
-      # Repair — should include step 1 (dedup, nothing to fix) and step 2 (shrinkage adjustment)
+      # Repair — should create a shrinkage adjustment for Ingredients
       assert {:ok, results} = Verification.repair_inventory_cost_accounting()
 
-      step1 = Enum.find(results, fn r -> r[:step] == "1. Duplicate cleanup" end)
-      assert step1 != nil
-      assert step1.duplicates_removed == 0
-
-      shrinkage = Enum.find(results, fn r -> r[:step] == "2. Shrinkage adjustment" end)
+      shrinkage = Enum.find(results, fn r -> r[:step] && r.step =~ "Shrinkage adjustment" end)
       assert shrinkage != nil
       assert shrinkage.action =~ "Created adjusting entry"
 
@@ -644,13 +640,13 @@ defmodule MrMunchMeAccountingApp.Inventory.VerificationTest do
       assert {:ok, results} = Verification.repair_inventory_cost_accounting()
 
       # Should have dedup step report
-      step1 = Enum.find(results, fn r -> r[:step] == "1. Duplicate cleanup" end)
-      assert step1 != nil
-      assert step1.duplicates_removed >= 1
+      dedup = Enum.find(results, fn r -> r[:step] == "Duplicate cleanup" end)
+      assert dedup != nil
+      assert dedup.duplicates_removed >= 1
 
       # Should NOT have a shrinkage adjustment (dedup was enough)
-      step2 = Enum.find(results, fn r -> r[:step] == "2. Shrinkage adjustment" end)
-      assert step2 == nil
+      shrinkage = Enum.find(results, fn r -> r[:step] && r.step =~ "Shrinkage adjustment" end)
+      assert shrinkage == nil
 
       # Should now be clean
       assert {:ok, _} = Verification.verify_inventory_cost_accounting()
@@ -715,13 +711,13 @@ defmodule MrMunchMeAccountingApp.Inventory.VerificationTest do
       assert {:ok, results} = Verification.repair_inventory_cost_accounting()
 
       # Should have both steps
-      step1 = Enum.find(results, fn r -> r[:step] == "1. Duplicate cleanup" end)
-      assert step1 != nil
-      assert step1.duplicates_removed >= 1
+      dedup = Enum.find(results, fn r -> r[:step] == "Duplicate cleanup" end)
+      assert dedup != nil
+      assert dedup.duplicates_removed >= 1
 
-      step2 = Enum.find(results, fn r -> r[:step] == "2. Shrinkage adjustment" end)
-      assert step2 != nil
-      assert step2.action =~ "Created adjusting entry"
+      shrinkage = Enum.find(results, fn r -> r[:step] && r.step =~ "Shrinkage adjustment" end)
+      assert shrinkage != nil
+      assert shrinkage.action =~ "Created adjusting entry"
 
       # Should now be clean
       assert {:ok, _} = Verification.verify_inventory_cost_accounting()

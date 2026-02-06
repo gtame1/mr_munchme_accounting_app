@@ -66,8 +66,8 @@
               </div>
             </div>
           <% else %>
-            <% results_list = Map.get(@repair_results, :results, []) %>
-            <%= if results_list == [] do %>
+            <% repair_count = Map.get(@repair_results, :count, 0) %>
+            <%= if repair_count == 0 do %>
               <div style="display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px;">
                 <span style="font-size: 1rem;">&#8505;&#65039;</span>
                 <span style="font-size: 0.85rem; color: #1e40af;">
@@ -79,18 +79,7 @@
                 <span style="font-size: 1rem;">&#9989;</span>
                 <div style="font-size: 0.85rem; color: #166534;">
                   <strong><%= format_check_name(String.to_existing_atom(@repair_results.type)) %>:</strong>
-                  Completed <%= length(results_list) %> repair action(s).
-                  <div style="margin-top: 0.5rem; display: flex; flex-direction: column; gap: 0.25rem;">
-                    <%= for result <- results_list do %>
-                      <%= if is_map(result) do %>
-                        <div style="font-size: 0.8rem; color: #3d2318;">
-                          <%= for {key, value} <- result do %>
-                            <span style="margin-right: 1rem;"><strong><%= format_key(key) %>:</strong> <%= value %></span>
-                          <% end %>
-                        </div>
-                      <% end %>
-                    <% end %>
-                  </div>
+                  Completed <%= repair_count %> repair action(s).
                 </div>
               </div>
             <% end %>
