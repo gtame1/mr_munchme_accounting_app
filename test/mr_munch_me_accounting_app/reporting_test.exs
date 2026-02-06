@@ -1,7 +1,7 @@
 defmodule MrMunchMeAccountingApp.ReportingTest do
   use MrMunchMeAccountingApp.DataCase, async: true
 
-  alias MrMunchMeAccountingApp.{Reporting, Orders, Repo}
+  alias MrMunchMeAccountingApp.{Reporting, Repo}
   alias MrMunchMeAccountingApp.Orders.Order
 
   import MrMunchMeAccountingApp.OrdersFixtures
@@ -30,7 +30,7 @@ defmodule MrMunchMeAccountingApp.ReportingTest do
       today = Date.utc_today()
 
       # Create a delivered order
-      order = order_fixture(%{product: product, location: location, status: "delivered"})
+      _order = order_fixture(%{product: product, location: location, status: "delivered"})
 
       result = Reporting.unit_economics(product.id, today, today)
 
@@ -46,7 +46,7 @@ defmodule MrMunchMeAccountingApp.ReportingTest do
       today = Date.utc_today()
 
       # Create order with shipping
-      {:ok, order} =
+      {:ok, _order} =
         %Order{}
         |> Order.changeset(%{
           customer_name: "Test",
@@ -85,7 +85,7 @@ defmodule MrMunchMeAccountingApp.ReportingTest do
     test "filters by date range", %{product: product, location: location} do
       today = Date.utc_today()
       yesterday = Date.add(today, -1)
-      tomorrow = Date.add(today, 1)
+      _tomorrow = Date.add(today, 1)
 
       # Create orders on different dates
       _yesterday_order = order_fixture(%{product: product, location: location, status: "delivered", delivery_date: yesterday})

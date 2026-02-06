@@ -2,10 +2,9 @@ defmodule MrMunchMeAccountingApp.ReconciliationTest do
   use MrMunchMeAccountingApp.DataCase, async: true
 
   alias MrMunchMeAccountingApp.{Reconciliation, Accounting, Inventory, Repo}
-  alias MrMunchMeAccountingApp.Inventory.{Ingredient, Location, InventoryItem}
+  alias MrMunchMeAccountingApp.Inventory.{Ingredient, Location}
 
   import MrMunchMeAccountingApp.AccountingFixtures
-  import MrMunchMeAccountingApp.OrdersFixtures
 
   describe "get_account_balance/2" do
     setup do

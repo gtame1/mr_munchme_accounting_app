@@ -323,8 +323,8 @@ defmodule MrMunchMeAccountingApp.InventoryTest do
 
   describe "ingredients CRUD" do
     test "list_ingredients/0 returns all ingredients ordered by name" do
-      {:ok, apple} = Inventory.create_ingredient(%{code: "APPLE", name: "Apple", unit: "g"})
-      {:ok, banana} = Inventory.create_ingredient(%{code: "BANANA", name: "Banana", unit: "g"})
+      {:ok, _apple} = Inventory.create_ingredient(%{code: "APPLE", name: "Apple", unit: "g"})
+      {:ok, _banana} = Inventory.create_ingredient(%{code: "BANANA", name: "Banana", unit: "g"})
 
       ingredients = Inventory.list_ingredients()
       names = Enum.map(ingredients, & &1.name)

@@ -4,7 +4,7 @@ defmodule MrMunchMeAccountingApp.OrdersFixtures do
   """
 
   alias MrMunchMeAccountingApp.{Orders, Repo}
-  alias MrMunchMeAccountingApp.Orders.{Product, Order, OrderPayment}
+  alias MrMunchMeAccountingApp.Orders.{Product, Order}
   alias MrMunchMeAccountingApp.Inventory.Location
 
   @doc """

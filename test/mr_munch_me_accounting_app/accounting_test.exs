@@ -2,8 +2,8 @@ defmodule MrMunchMeAccountingApp.AccountingTest do
   use MrMunchMeAccountingApp.DataCase, async: true
 
   alias MrMunchMeAccountingApp.{Accounting, Repo}
-  alias MrMunchMeAccountingApp.Accounting.{Account, JournalEntry, JournalLine, MoneyTransfer}
-  alias MrMunchMeAccountingApp.Orders.{Order, OrderPayment}
+  alias MrMunchMeAccountingApp.Accounting.{Account, JournalEntry, MoneyTransfer}
+  alias MrMunchMeAccountingApp.Orders.{OrderPayment}
 
   import MrMunchMeAccountingApp.AccountingFixtures
   import MrMunchMeAccountingApp.OrdersFixtures
@@ -56,7 +56,7 @@ defmodule MrMunchMeAccountingApp.AccountingTest do
     end
 
     test "cash_or_bank_account_options/0 returns only cash/bank accounts" do
-      accounts = standard_accounts_fixture()
+      _accounts = standard_accounts_fixture()
       options = Accounting.cash_or_bank_account_options()
 
       assert length(options) >= 1
