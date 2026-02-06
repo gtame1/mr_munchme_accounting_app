@@ -741,7 +741,14 @@ defmodule MrMunchMeAccountingApp.Inventory.Verification do
           Enum.reduce(orders, [], fn order, acc ->
             {product_total, shipping} = MrMunchMeAccountingApp.Orders.order_total_cents(order)
             order_total = product_total + shipping
-            total_paid = Enum.reduce(order.order_payments, 0, fn p, sum -> sum + (p.amount_cents || 0) end)
+
+            # Use customer_amount_cents for split payments — the partner portion
+            # credits a partner payable account, not AR, so it must be excluded.
+            total_paid =
+              Enum.reduce(order.order_payments, 0, fn p, sum ->
+                sum + (p.customer_amount_cents || p.amount_cents || 0)
+              end)
+
             expected_ar = max(order_total - total_paid, 0)
             gl_ar = Map.get(ar_by_order, order.id, 0)
 
@@ -792,7 +799,14 @@ defmodule MrMunchMeAccountingApp.Inventory.Verification do
         Enum.reduce(orders, [], fn order, acc ->
           {product_total, shipping} = MrMunchMeAccountingApp.Orders.order_total_cents(order)
           order_total = product_total + shipping
-          total_paid = Enum.reduce(order.order_payments, 0, fn p, sum -> sum + (p.amount_cents || 0) end)
+
+          # Use customer_amount_cents for split payments — the partner portion
+          # credits a partner payable account, not AR, so it must be excluded.
+          total_paid =
+            Enum.reduce(order.order_payments, 0, fn p, sum ->
+              sum + (p.customer_amount_cents || p.amount_cents || 0)
+            end)
+
           expected_ar = max(order_total - total_paid, 0)
           gl_ar = Map.get(ar_by_order, order.id, 0)
 
