@@ -86,9 +86,9 @@ defmodule MrMunchMeAccountingApp.OrdersTest do
       assert order.delivery_type == "delivery"
     end
 
-    test "creates order and finds existing customer by phone, syncing customer fields", %{product: product, location: location} do
+    test "rejects new customer with existing phone, prompting to use existing customer list", %{product: product, location: location} do
       # Create a customer first
-      customer = customer_fixture(%{phone: "5559876543", name: "Existing Customer", email: "existing@test.com"})
+      _customer = customer_fixture(%{phone: "5559876543", name: "Existing Customer", email: "existing@test.com"})
 
       attrs = %{
         "customer_name" => "Different Name",
@@ -100,13 +100,11 @@ defmodule MrMunchMeAccountingApp.OrdersTest do
         "delivery_type" => "pickup"
       }
 
-      assert {:ok, %Order{} = order} = Orders.create_order(attrs)
-      # Should link to existing customer
-      assert order.customer_id == customer.id
-      # Denormalized fields should reflect the customer record, not the form input
-      assert order.customer_name == "Existing Customer"
-      assert order.customer_phone == "5559876543"
-      assert order.customer_email == "existing@test.com"
+      assert {:error, %Ecto.Changeset{} = changeset} = Orders.create_order(attrs)
+      errors = errors_on(changeset)
+      assert [msg] = errors[:customer_phone]
+      assert msg =~ "already belongs to Existing Customer"
+      assert msg =~ "existing customer list"
     end
 
     test "creates order with customer_id directly, syncing customer fields", %{product: product, location: location} do

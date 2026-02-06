@@ -364,8 +364,9 @@ defmodule MrMunchMeAccountingApp.Orders do
     end
   end
 
-  # Helper function to find or create customer when customer_id is not provided.
-  # Returns {:ok, %Customer{}} so the caller can populate denormalized fields.
+  # Helper function to create a new customer when customer_id is not provided.
+  # If the phone number already belongs to an existing customer, returns an error
+  # prompting the user to select them from the existing customer list.
   defp handle_customer_creation(attrs) do
     customer_name = attrs["customer_name"] || attrs[:customer_name]
     customer_phone = attrs["customer_phone"] || attrs[:customer_phone]
@@ -373,14 +374,30 @@ defmodule MrMunchMeAccountingApp.Orders do
     delivery_address = attrs["delivery_address"] || attrs[:delivery_address]
 
     if customer_name && customer_phone do
-      customer_attrs = %{
-        name: customer_name,
-        phone: customer_phone,
-        email: customer_email,
-        delivery_address: delivery_address
-      }
+      # Check if a customer with this phone already exists
+      case Customers.get_customer_by_phone(customer_phone) do
+        %Customers.Customer{} = existing ->
+          # Block creation — tell user to pick from existing list
+          changeset =
+            %Order{}
+            |> Order.changeset(attrs)
+            |> Ecto.Changeset.add_error(
+              :customer_phone,
+              "already belongs to #{existing.name}. Please select them from the existing customer list."
+            )
 
-      Customers.find_or_create_by_phone(customer_phone, customer_attrs)
+          {:error, changeset}
+
+        nil ->
+          customer_attrs = %{
+            name: customer_name,
+            phone: customer_phone,
+            email: customer_email,
+            delivery_address: delivery_address
+          }
+
+          Customers.create_customer(customer_attrs)
+      end
     else
       {:error, :missing_customer_info}
     end

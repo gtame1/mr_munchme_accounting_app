@@ -38,6 +38,13 @@ defmodule MrMunchMeAccountingApp.Customers do
   def get_customer!(id), do: Repo.get!(Customer, id)
 
   @doc """
+  Gets a single customer by phone number. Returns nil if not found.
+  """
+  def get_customer_by_phone(phone) do
+    Repo.get_by(Customer, phone: phone)
+  end
+
+  @doc """
   Creates a customer.
 
   ## Examples
