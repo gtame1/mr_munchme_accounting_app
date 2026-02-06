@@ -1836,18 +1836,24 @@ defmodule MrMunchMeAccountingApp.Accounting do
   def balance_sheet(as_of_date) do
 
     # 1) Aggregate balances by account (assets, liabilities, equity)
+    # Use a subquery to get only journal lines whose entry is on or before as_of_date,
+    # then LEFT JOIN to accounts so zero-balance accounts still appear.
+    dated_lines =
+      from jl in JournalLine,
+        join: je in JournalEntry, on: jl.journal_entry_id == je.id,
+        where: je.date <= ^as_of_date,
+        select: %{account_id: jl.account_id, debit_cents: jl.debit_cents, credit_cents: jl.credit_cents}
+
     rows =
       from a in Account,
         where: a.type in ["asset", "liability", "equity"],
-        left_join: jl in JournalLine,
-          on: jl.account_id == a.id,
-        left_join: je in JournalEntry,
-          on: jl.journal_entry_id == je.id and je.date <= ^as_of_date,
+        left_join: dl in subquery(dated_lines),
+          on: dl.account_id == a.id,
         group_by: [a.id, a.code, a.name, a.type, a.normal_balance],
         select: %{
           account: a,
-          debit_cents: coalesce(sum(jl.debit_cents), 0),
-          credit_cents: coalesce(sum(jl.credit_cents), 0)
+          debit_cents: coalesce(sum(dl.debit_cents), 0),
+          credit_cents: coalesce(sum(dl.credit_cents), 0)
         }
 
     base =
@@ -1961,20 +1967,20 @@ defmodule MrMunchMeAccountingApp.Accounting do
       start_date = if last_close, do: Date.add(last_close, 1), else: ~D[2000-01-01]
 
       pnl = profit_and_loss(start_date, close_date)
-      net_income_cents = pnl.net_income_cents
 
       # Get Owner's Drawings balance for the period
       owners_drawings_balance = get_owners_drawings_balance(start_date, close_date)
 
-      # Net amount to close = Net Income - Owner's Drawings
-      # (Owner's Drawings is a debit balance that reduces equity)
-      amount_to_close = net_income_cents - owners_drawings_balance
+      # Get all revenue and expense account balances for the period
+      temp_account_balances = get_temporary_account_balances(start_date, close_date)
 
-      if amount_to_close == 0 and owners_drawings_balance == 0 do
+      has_activity = pnl.net_income_cents != 0 or owners_drawings_balance != 0
+
+      if !has_activity do
         {:ok, :nothing_to_close}
       else
         retained_earnings = get_account_by_code!(@retained_earnings_code)
-        owners_drawings = get_account_by_code!(@owners_drawings_code)
+        owners_drawings_account = get_account_by_code!(@owners_drawings_code)
 
         entry_attrs = %{
           date: close_date,
@@ -1985,10 +1991,31 @@ defmodule MrMunchMeAccountingApp.Accounting do
 
         lines = []
 
-        # Close Owner's Drawings (credit to zero it out)
+        # Close each revenue account (debit to zero out credit balances)
+        lines = Enum.reduce(temp_account_balances, lines, fn
+          %{type: "revenue", account_id: acc_id, net_cents: net, name: name}, acc when net != 0 ->
+            # Revenue has credit-normal balance; debit to close it
+            acc ++ [%{
+              account_id: acc_id,
+              debit_cents: max(net, 0),
+              credit_cents: max(-net, 0),
+              description: "Close #{name} to retained earnings"
+            }]
+          %{type: "expense", account_id: acc_id, net_cents: net, name: name}, acc when net != 0 ->
+            # Expense has debit-normal balance; credit to close it
+            acc ++ [%{
+              account_id: acc_id,
+              debit_cents: max(-net, 0),
+              credit_cents: max(net, 0),
+              description: "Close #{name} to retained earnings"
+            }]
+          _, acc -> acc
+        end)
+
+        # Close Owner's Drawings (credit to zero out debit balance)
         lines = if owners_drawings_balance > 0 do
           lines ++ [%{
-            account_id: owners_drawings.id,
+            account_id: owners_drawings_account.id,
             debit_cents: 0,
             credit_cents: owners_drawings_balance,
             description: "Close owner's drawings to retained earnings"
@@ -1997,7 +2024,10 @@ defmodule MrMunchMeAccountingApp.Accounting do
           lines
         end
 
-        # Credit/Debit Retained Earnings for the net amount
+        # Retained Earnings gets the balancing amount
+        # Net amount = Net Income - Owner's Drawings
+        amount_to_close = pnl.net_income_cents - owners_drawings_balance
+
         lines = if amount_to_close >= 0 do
           lines ++ [%{
             account_id: retained_earnings.id,
@@ -2017,6 +2047,37 @@ defmodule MrMunchMeAccountingApp.Accounting do
         create_journal_entry_with_lines(entry_attrs, lines)
       end
     end
+  end
+
+  # Get balances for all revenue and expense accounts in a period.
+  # Uses inner joins (same pattern as profit_and_loss) so only lines
+  # with entries in the date range are included.
+  defp get_temporary_account_balances(start_date, end_date) do
+    from(je in JournalEntry,
+      join: jl in assoc(je, :journal_lines),
+      join: a in assoc(jl, :account),
+      where: a.type in ["revenue", "expense"],
+      where: je.date >= ^start_date and je.date <= ^end_date,
+      where: je.entry_type != "year_end_close",
+      group_by: [a.id, a.code, a.name, a.type],
+      select: %{
+        account_id: a.id,
+        code: a.code,
+        name: a.name,
+        type: a.type,
+        debit_cents: coalesce(sum(jl.debit_cents), 0),
+        credit_cents: coalesce(sum(jl.credit_cents), 0)
+      }
+    )
+    |> Repo.all()
+    |> Enum.map(fn row ->
+      net = case row.type do
+        "revenue" -> row.credit_cents - row.debit_cents
+        "expense" -> row.debit_cents - row.credit_cents
+        _ -> 0
+      end
+      Map.put(row, :net_cents, net)
+    end)
   end
 
   # Get the debit balance of Owner's Drawings for a period

@@ -4,12 +4,20 @@ defmodule MrMunchMeAccountingApp.Inventory.Verification do
   """
   require Logger
   import Ecto.Query
-  alias MrMunchMeAccountingApp.{Repo, Accounting}
-  alias MrMunchMeAccountingApp.Accounting.{JournalEntry, JournalLine}
+  alias MrMunchMeAccountingApp.{Repo, Accounting, Inventory}
+  alias MrMunchMeAccountingApp.Accounting.{Account, JournalEntry, JournalLine}
   alias MrMunchMeAccountingApp.Inventory.{InventoryItem, InventoryMovement}
+  alias MrMunchMeAccountingApp.Orders.Order
 
   @ingredients_account_code "1200"
   @wip_account_code "1220"
+  @ar_code "1100"
+  @customer_deposits_code "2200"
+  @owners_equity_code "3000"
+  @owners_drawings_code "3100"
+  @gift_contributions_code "4100"
+  @waste_shrinkage_code "6060"
+  @samples_gifts_code "6070"
 
   @doc """
   Verifies that inventory quantities match movements.
@@ -264,15 +272,187 @@ defmodule MrMunchMeAccountingApp.Inventory.Verification do
   end
 
   @doc """
+  Verifies that withdrawal journal entries debit Owner's Drawings (3100) not Owner's Equity (3000).
+  """
+  def verify_withdrawal_accounts do
+    case Repo.get_by(Account, code: @owners_equity_code) do
+      nil ->
+        {:ok, %{checked: 0, issues: 0}}
+
+      owners_equity ->
+        incorrect =
+          from(jl in JournalLine,
+            join: je in assoc(jl, :journal_entry),
+            where: je.entry_type == "withdrawal" and
+                   jl.account_id == ^owners_equity.id and
+                   jl.debit_cents > 0,
+            select: %{
+              journal_entry_id: je.id,
+              date: je.date,
+              reference: je.reference,
+              debit_cents: jl.debit_cents
+            }
+          )
+          |> Repo.all()
+
+        if incorrect == [] do
+          {:ok, %{checked: "all withdrawals", issues: 0}}
+        else
+          total_cents = Enum.reduce(incorrect, 0, fn w, acc -> acc + w.debit_cents end)
+          {:error, [
+            "Found #{length(incorrect)} withdrawal(s) incorrectly debiting Owner's Equity (3000) instead of Owner's Drawings (3100). Total: #{format_currency(total_cents)}"
+          ]}
+        end
+    end
+  end
+
+  @doc """
+  Verifies that there are no duplicate COGS journal entries (same reference, multiple entries).
+  """
+  def verify_duplicate_cogs_entries do
+    in_prep_dupes =
+      from(je in JournalEntry,
+        where: je.entry_type == "order_in_prep",
+        where: like(je.reference, "Order #%"),
+        group_by: je.reference,
+        having: count(je.id) > 1,
+        select: {je.reference, count(je.id)}
+      )
+      |> Repo.all()
+
+    delivered_dupes =
+      from(je in JournalEntry,
+        where: je.entry_type == "order_delivered",
+        where: like(je.reference, "Order #%"),
+        group_by: je.reference,
+        having: count(je.id) > 1,
+        select: {je.reference, count(je.id)}
+      )
+      |> Repo.all()
+
+    total_groups = length(in_prep_dupes) + length(delivered_dupes)
+
+    if total_groups == 0 do
+      {:ok, %{checked: "all order entries", duplicate_groups: 0}}
+    else
+      issues =
+        Enum.map(in_prep_dupes, fn {ref, count} ->
+          "Duplicate order_in_prep: #{ref} has #{count} entries (expected 1)"
+        end) ++
+        Enum.map(delivered_dupes, fn {ref, count} ->
+          "Duplicate order_delivered: #{ref} has #{count} entries (expected 1)"
+        end)
+
+      {:error, issues}
+    end
+  end
+
+  @doc """
+  Verifies that delivered gift orders have correct gift accounting (not sale-style).
+  Checks both the original order_delivered entry AND any correction entries for the order.
+  """
+  def verify_gift_order_accounting do
+    samples_gifts = Repo.get_by(Account, code: @samples_gifts_code)
+
+    gift_orders =
+      from(o in Order,
+        where: o.is_gift == true and o.status == "delivered",
+        select: o
+      )
+      |> Repo.all()
+
+    if gift_orders == [] do
+      {:ok, %{checked: 0, issues: 0}}
+    else
+      affected =
+        Enum.reduce(gift_orders, [], fn order, acc ->
+          reference = "Order ##{order.id}"
+
+          # Look for ANY journal entry for this order that has a 6070 (Samples & Gifts) line.
+          # This covers both: orders originally delivered as gifts (order_delivered entry has 6070)
+          # and orders corrected later (a separate "other" correction entry has 6070).
+          entries =
+            from(je in JournalEntry,
+              where: je.reference == ^reference,
+              select: je
+            )
+            |> Repo.all()
+
+          case entries do
+            [] -> acc
+            entries ->
+              has_gift_line =
+                samples_gifts &&
+                Enum.any?(entries, fn entry ->
+                  lines =
+                    from(jl in JournalLine,
+                      where: jl.journal_entry_id == ^entry.id
+                    )
+                    |> Repo.all()
+
+                  Enum.any?(lines, fn l -> l.account_id == samples_gifts.id end)
+                end)
+
+              if has_gift_line do
+                acc
+              else
+                [order.id | acc]
+              end
+          end
+        end)
+
+      if affected == [] do
+        {:ok, %{checked: length(gift_orders), issues: 0}}
+      else
+        {:error, [
+          "Found #{length(affected)} delivered gift order(s) with sale-style accounting instead of gift accounting: Order(s) ##{Enum.join(Enum.reverse(affected), ", #")}"
+        ]}
+      end
+    end
+  end
+
+  @doc """
+  Verifies that no inventory movements have $0 cost when they shouldn't.
+  """
+  def verify_movement_costs do
+    zero_cost_movements =
+      from(m in InventoryMovement,
+        where: m.movement_type in ["usage", "write_off"],
+        where: m.total_cost_cents == 0 or m.unit_cost_cents == 0,
+        where: not is_nil(m.from_location_id),
+        select: count(m.id)
+      )
+      |> Repo.one()
+
+    count = case zero_cost_movements do
+      nil -> 0
+      val when is_integer(val) -> val
+      %Decimal{} = val -> Decimal.to_integer(val)
+    end
+
+    if count == 0 do
+      {:ok, %{checked: "all movements", zero_cost: 0}}
+    else
+      {:error, [
+        "Found #{count} usage/write-off movement(s) with $0 cost that may need backfilling"
+      ]}
+    end
+  end
+
+  @doc """
   Runs all verification checks and returns a report.
   """
   def run_all_checks do
     %{
       inventory_quantities: verify_inventory_quantities(),
-      wip_balance: verify_wip_balance(),
       inventory_cost_accounting: verify_inventory_cost_accounting(),
+      movement_costs: verify_movement_costs(),
+      wip_balance: verify_wip_balance(),
       order_wip_consistency: verify_order_wip_consistency(),
-      journal_entries_balanced: verify_journal_entries_balanced()
+      journal_entries_balanced: verify_journal_entries_balanced(),
+      duplicate_cogs_entries: verify_duplicate_cogs_entries(),
+      withdrawal_accounts: verify_withdrawal_accounts(),
+      gift_order_accounting: verify_gift_order_accounting()
     }
   end
 
@@ -324,7 +504,424 @@ defmodule MrMunchMeAccountingApp.Inventory.Verification do
     end)
   end
 
-  # Helper functions
+  @doc """
+  Repairs inventory cost accounting by creating an adjusting journal entry
+  to sync account 1200 balance with actual inventory value (qty × avg_cost).
+  Uses Inventory Waste & Shrinkage (6060) as the offset account to avoid
+  misrepresenting COGS.
+  """
+  def repair_inventory_cost_accounting do
+    ingredients_account = Accounting.get_account_by_code!(@ingredients_account_code)
+    waste_account = Accounting.get_account_by_code!(@waste_shrinkage_code)
+
+    # Calculate inventory value from InventoryItem records
+    inventory_value =
+      from(ii in InventoryItem,
+        select: fragment("COALESCE(SUM(? * ?), 0)",
+          ii.quantity_on_hand,
+          ii.avg_cost_per_unit_cents)
+      )
+      |> Repo.one()
+      |> case do
+        val when is_integer(val) -> val
+        %Decimal{} = val -> Decimal.to_integer(val)
+        _ -> 0
+      end
+
+    account_balance = get_account_balance(ingredients_account.id)
+    diff = inventory_value - account_balance
+
+    if abs(diff) < 100 do
+      {:ok, []}
+    else
+      lines =
+        if diff > 0 do
+          # Inventory worth more than accounting shows: Dr Inventory, Cr Waste & Shrinkage
+          [
+            %{account_id: ingredients_account.id, debit_cents: diff, credit_cents: 0,
+              description: "Adjust Ingredients Inventory to match actual value"},
+            %{account_id: waste_account.id, debit_cents: 0, credit_cents: diff,
+              description: "Offset inventory adjustment (waste & shrinkage reversal)"}
+          ]
+        else
+          # Inventory worth less: Dr Waste & Shrinkage, Cr Inventory
+          abs_diff = abs(diff)
+          [
+            %{account_id: waste_account.id, debit_cents: abs_diff, credit_cents: 0,
+              description: "Inventory shrinkage/waste adjustment"},
+            %{account_id: ingredients_account.id, debit_cents: 0, credit_cents: abs_diff,
+              description: "Adjust Ingredients Inventory to match actual value"}
+          ]
+        end
+
+      entry_attrs = %{
+        date: Date.utc_today(),
+        entry_type: "other",
+        reference: "Inventory Cost Adjustment",
+        description: "Adjust account 1200 balance to match inventory value (diff: #{format_currency(diff)})"
+      }
+
+      case Accounting.create_journal_entry_with_lines(entry_attrs, lines) do
+        {:ok, entry} ->
+          {:ok, [%{
+            action: "Created adjusting entry ##{entry.id}",
+            inventory_value: format_currency(inventory_value),
+            account_balance: format_currency(account_balance),
+            adjustment: format_currency(diff)
+          }]}
+        {:error, changeset} ->
+          {:error, "Failed to create adjusting entry: #{inspect(changeset.errors)}"}
+      end
+    end
+  end
+
+  @doc """
+  Repairs duplicate COGS journal entries by keeping the first (lowest ID) and deleting duplicates.
+  """
+  def repair_duplicate_cogs_entries do
+    in_prep_dupes =
+      from(je in JournalEntry,
+        where: je.entry_type == "order_in_prep",
+        where: like(je.reference, "Order #%"),
+        group_by: je.reference,
+        having: count(je.id) > 1,
+        select: {je.reference, count(je.id)}
+      )
+      |> Repo.all()
+
+    delivered_dupes =
+      from(je in JournalEntry,
+        where: je.entry_type == "order_delivered",
+        where: like(je.reference, "Order #%"),
+        group_by: je.reference,
+        having: count(je.id) > 1,
+        select: {je.reference, count(je.id)}
+      )
+      |> Repo.all()
+
+    all_dupes = in_prep_dupes ++ delivered_dupes
+
+    if all_dupes == [] do
+      {:ok, []}
+    else
+      results =
+        Enum.flat_map(in_prep_dupes, fn {reference, _count} ->
+          delete_duplicate_journal_entries(reference, "order_in_prep")
+        end) ++
+        Enum.flat_map(delivered_dupes, fn {reference, _count} ->
+          delete_duplicate_journal_entries(reference, "order_delivered")
+        end)
+
+      {:ok, results}
+    end
+  end
+
+  @doc """
+  Repairs withdrawal accounts by creating a correcting entry to move debits
+  from Owner's Equity (3000) to Owner's Drawings (3100).
+  """
+  def repair_withdrawal_accounts do
+    owners_equity = Repo.get_by(Account, code: @owners_equity_code)
+    owners_drawings = Repo.get_by(Account, code: @owners_drawings_code)
+
+    if is_nil(owners_equity) or is_nil(owners_drawings) do
+      {:error, "Required accounts (3000 or 3100) not found"}
+    else
+      incorrect =
+        from(jl in JournalLine,
+          join: je in assoc(jl, :journal_entry),
+          where: je.entry_type == "withdrawal" and
+                 jl.account_id == ^owners_equity.id and
+                 jl.debit_cents > 0,
+          select: jl.debit_cents
+        )
+        |> Repo.all()
+
+      if incorrect == [] do
+        {:ok, []}
+      else
+        total_amount = Enum.sum(incorrect)
+
+        entry_attrs = %{
+          date: Date.utc_today(),
+          entry_type: "other",
+          reference: "Withdrawal Account Correction",
+          description: "Correct historical withdrawals: move from Owner's Equity (3000) to Owner's Drawings (3100)"
+        }
+
+        lines = [
+          %{account_id: owners_drawings.id, debit_cents: total_amount, credit_cents: 0,
+            description: "Transfer historical withdrawals to Owner's Drawings"},
+          %{account_id: owners_equity.id, debit_cents: 0, credit_cents: total_amount,
+            description: "Reverse incorrect withdrawal debits from Owner's Equity"}
+        ]
+
+        case Accounting.create_journal_entry_with_lines(entry_attrs, lines) do
+          {:ok, entry} ->
+            {:ok, [%{
+              action: "Created correction entry ##{entry.id}",
+              amount: format_currency(total_amount),
+              details: "Dr Owner's Drawings (3100), Cr Owner's Equity (3000)"
+            }]}
+          {:error, changeset} ->
+            {:error, "Failed to create correction entry: #{inspect(changeset.errors)}"}
+        end
+      end
+    end
+  end
+
+  @doc """
+  Repairs gift order accounting by creating correction entries for delivered orders
+  that were retroactively marked as gifts but still have sale-style accounting.
+  """
+  def repair_gift_order_accounting do
+    wip = Repo.get_by(Account, code: @wip_account_code)
+    ar = Repo.get_by(Account, code: @ar_code)
+    customer_deposits = Repo.get_by(Account, code: @customer_deposits_code)
+    samples_gifts = Repo.get_by(Account, code: @samples_gifts_code)
+    gift_contributions = Repo.get_by(Account, code: @gift_contributions_code)
+
+    if Enum.any?([wip, ar, customer_deposits, samples_gifts, gift_contributions], &is_nil/1) do
+      {:error, "Required accounts not found. Run migrations first."}
+    else
+      affected_orders = find_gift_orders_needing_fix(samples_gifts)
+
+      if affected_orders == [] do
+        {:ok, []}
+      else
+        results =
+          Enum.map(affected_orders, fn {order, _entry, lines, payment_entries} ->
+            apply_gift_correction(order, lines, payment_entries, wip, ar, customer_deposits, samples_gifts, gift_contributions)
+          end)
+
+        successes = Enum.filter(results, &match?({:ok, _}, &1)) |> Enum.map(fn {:ok, r} -> r end)
+        failures = Enum.filter(results, &match?({:error, _}, &1))
+
+        if failures == [] do
+          {:ok, successes}
+        else
+          {:ok, successes}
+        end
+      end
+    end
+  end
+
+  @doc """
+  Repairs movement costs by calling Inventory.backfill_movement_costs/0.
+  """
+  def repair_movement_costs do
+    case Inventory.backfill_movement_costs() do
+      {:ok, count} ->
+        if count > 0 do
+          {:ok, [%{action: "Backfilled costs for #{count} movement(s)"}]}
+        else
+          {:ok, []}
+        end
+    end
+  end
+
+  @doc """
+  Dispatcher function for running repairs by type string.
+  """
+  def run_repair(repair_type) do
+    case repair_type do
+      "inventory_quantities" -> repair_inventory_quantities()
+      "inventory_cost_accounting" -> repair_inventory_cost_accounting()
+      "duplicate_cogs_entries" -> repair_duplicate_cogs_entries()
+      "withdrawal_accounts" -> repair_withdrawal_accounts()
+      "gift_order_accounting" -> repair_gift_order_accounting()
+      "movement_costs" -> repair_movement_costs()
+      _ -> {:error, "Unknown repair type: #{repair_type}"}
+    end
+  end
+
+  # Map of checks that have corresponding repair functions
+  @repairable_checks MapSet.new([
+    :inventory_quantities,
+    :inventory_cost_accounting,
+    :duplicate_cogs_entries,
+    :withdrawal_accounts,
+    :gift_order_accounting,
+    :movement_costs
+  ])
+
+  def repairable?(check_name), do: MapSet.member?(@repairable_checks, check_name)
+
+  # ── Private helpers for gift order repair ───────────────────────────────
+
+  defp find_gift_orders_needing_fix(samples_gifts) do
+    gift_orders =
+      from(o in Order,
+        where: o.is_gift == true and o.status == "delivered",
+        select: o
+      )
+      |> Repo.all()
+
+    Enum.reduce(gift_orders, [], fn order, acc ->
+      reference = "Order ##{order.id}"
+
+      # Check ALL entries for this order (delivered + any corrections)
+      all_entries =
+        from(je in JournalEntry,
+          where: je.reference == ^reference
+        )
+        |> Repo.all()
+
+      # Find the original order_delivered entry (needed for the repair)
+      delivered_entry = Enum.find(all_entries, fn e -> e.entry_type == "order_delivered" end)
+
+      case delivered_entry do
+        nil -> acc
+        entry ->
+          # Check if ANY entry for this order already has a 6070 line
+          has_gift_line =
+            Enum.any?(all_entries, fn e ->
+              from(jl in JournalLine,
+                where: jl.journal_entry_id == ^e.id and jl.account_id == ^samples_gifts.id,
+                select: count(jl.id)
+              )
+              |> Repo.one()
+              |> Kernel.>(0)
+            end)
+
+          if has_gift_line do
+            acc
+          else
+            lines =
+              from(jl in JournalLine,
+                where: jl.journal_entry_id == ^entry.id,
+                preload: [:account]
+              )
+              |> Repo.all()
+
+            payment_entries = find_order_payment_entries(order.id)
+            [{order, entry, lines, payment_entries} | acc]
+          end
+      end
+    end)
+    |> Enum.reverse()
+  end
+
+  defp find_order_payment_entries(order_id) do
+    reference_prefix = "Order ##{order_id} payment #%"
+
+    entries =
+      from(je in JournalEntry,
+        where: je.entry_type == "order_payment" and like(je.reference, ^reference_prefix)
+      )
+      |> Repo.all()
+
+    Enum.map(entries, fn entry ->
+      lines =
+        from(jl in JournalLine,
+          where: jl.journal_entry_id == ^entry.id,
+          preload: [:account]
+        )
+        |> Repo.all()
+
+      {entry, lines}
+    end)
+  end
+
+  defp apply_gift_correction(order, original_lines, payment_entries, wip, ar, customer_deposits, samples_gifts, gift_contributions) do
+    # Reverse all original delivery lines
+    reversal_lines =
+      Enum.map(original_lines, fn line ->
+        %{
+          account_id: line.account_id,
+          debit_cents: line.credit_cents,
+          credit_cents: line.debit_cents,
+          description: "Reversal: #{line.description || "line for order ##{order.id}"}"
+        }
+      end)
+
+    # Find WIP credit amount (production cost)
+    cost_cents =
+      Enum.reduce(original_lines, 0, fn line, acc ->
+        if line.account_id == wip.id and line.credit_cents > 0 do
+          acc + line.credit_cents
+        else
+          acc
+        end
+      end)
+
+    # Gift expense lines
+    gift_lines =
+      if cost_cents > 0 do
+        [
+          %{account_id: samples_gifts.id, debit_cents: cost_cents, credit_cents: 0,
+            description: "Samples & Gifts expense for gift order ##{order.id}"},
+          %{account_id: wip.id, debit_cents: 0, credit_cents: cost_cents,
+            description: "Relieve WIP for gift order ##{order.id}"}
+        ]
+      else
+        []
+      end
+
+    # Payment reclassification lines
+    payment_reclassification_lines =
+      Enum.flat_map(payment_entries, fn {_pentry, plines} ->
+        Enum.flat_map(plines, fn line ->
+          cond do
+            line.account_id == ar.id and line.credit_cents > 0 ->
+              [
+                %{account_id: ar.id, debit_cents: line.credit_cents, credit_cents: 0,
+                  description: "Reverse AR credit from payment for gift order ##{order.id}"},
+                %{account_id: gift_contributions.id, debit_cents: 0, credit_cents: line.credit_cents,
+                  description: "Reclassify payment as gift contribution for order ##{order.id}"}
+              ]
+            line.account_id == customer_deposits.id and line.credit_cents > 0 ->
+              [
+                %{account_id: customer_deposits.id, debit_cents: line.credit_cents, credit_cents: 0,
+                  description: "Reverse deposit credit from payment for gift order ##{order.id}"},
+                %{account_id: gift_contributions.id, debit_cents: 0, credit_cents: line.credit_cents,
+                  description: "Reclassify deposit as gift contribution for order ##{order.id}"}
+              ]
+            true -> []
+          end
+        end)
+      end)
+
+    all_lines = reversal_lines ++ gift_lines ++ payment_reclassification_lines
+
+    entry_attrs = %{
+      date: Date.utc_today(),
+      entry_type: "other",
+      reference: "Order ##{order.id}",
+      description: "Correct order ##{order.id}: convert sale accounting to gift/sample"
+    }
+
+    case Accounting.create_journal_entry_with_lines(entry_attrs, all_lines) do
+      {:ok, entry} ->
+        {:ok, %{action: "Order ##{order.id} — correction entry ##{entry.id} created"}}
+      {:error, changeset} ->
+        {:error, "Order ##{order.id} — failed: #{inspect(changeset.errors)}"}
+    end
+  end
+
+  # ── Private helper for duplicate COGS repair ────────────────────────────
+
+  defp delete_duplicate_journal_entries(reference, entry_type) do
+    entries =
+      from(je in JournalEntry,
+        where: je.reference == ^reference and je.entry_type == ^entry_type,
+        order_by: [asc: je.id],
+        select: je
+      )
+      |> Repo.all()
+
+    case entries do
+      [_keep | to_delete] when to_delete != [] ->
+        Enum.map(to_delete, fn entry ->
+          Repo.delete!(entry)
+          %{action: "Deleted duplicate #{entry_type} entry ##{entry.id} for #{reference}"}
+        end)
+      _ ->
+        []
+    end
+  end
+
+  # ── Shared helper functions ─────────────────────────────────────────────
 
   # Make calculate_quantity_from_movements public so it can be used by repair function
   def calculate_quantity_from_movements(ingredient_id, location_id) do

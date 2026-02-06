@@ -1,20 +1,5 @@
 # MrMunchMeAccountingApp
 
-
-## TODOs
-- Add error handling to forms to any forms missing it
-- Add notes to inventory purchases
-- Change all forms that accept cents to full pesos.
-- Edit specific inventory used in each order. Some orders (few) use a bit more or a bit less inventory, or some might use more ingredients or less. How can we add something that can allow us to edit the order used inventory?
-- Why is order status update so slow?
-- What happens if i delete a customer with an active order? Do we need to catch that error?
-- Should we add UI to add new balance sheet accounts?
-- Fix bug when moving from existing->new->existing user glitches.
-- Add cutoff for when reconciliation was made in UI. Like "reconciled on x date" and show a line that divides the table or something like that.
-- Fix how account balances are listed. Should be from newest to oldest and the balance should be updating as we move up.
-- Manual: Fix inventory value.
-
-
 ## Mix Tasks
 
 ### Diagnostic & Fix Tasks
@@ -25,6 +10,14 @@ Fixes historical withdrawal entries that incorrectly debited Owner's Equity (300
 ```sh
 MIX_ENV=prod mix fix_withdrawal_accounts           # Dry run - shows what would be fixed
 MIX_ENV=prod mix fix_withdrawal_accounts --fix     # Apply the fix
+```
+
+#### Fix Gift Order Accounting
+Fixes accounting entries for orders that were delivered as regular sales but later marked as gifts (`is_gift = true`). Reverses the original sale/COGS entries, records the gift expense (Dr Samples & Gifts 6070, Cr WIP 1220), and reclassifies any payments as gift contributions (Cr Other Income 4100) so AR and Customer Deposits stay clean.
+
+```sh
+MIX_ENV=prod mix fix_gift_order_accounting           # Dry run - shows what would be fixed
+MIX_ENV=prod mix fix_gift_order_accounting --fix     # Apply the corrections
 ```
 
 #### Diagnose COGS

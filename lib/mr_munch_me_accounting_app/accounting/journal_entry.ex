@@ -27,6 +27,7 @@ defmodule MrMunchMeAccountingApp.Accounting.JournalEntry do
     order_payment
     internal_transfer
     reconciliation
+    year_end_close
     other
   )
   @entry_types [
@@ -41,6 +42,7 @@ defmodule MrMunchMeAccountingApp.Accounting.JournalEntry do
     {"Order Payment", "order_payment"},
     {"Internal Transfer", "internal_transfer"},
     {"Reconciliation", "reconciliation"},
+    {"Year-End Close", "year_end_close"},
     {"Other", "other"}
   ]
 

@@ -216,39 +216,32 @@ defmodule MrMunchMeAccountingAppWeb.ReportController do
     end)
   end
 
-  def inventory_verification(conn, _params) do
+  def diagnostics(conn, params) do
     results = Verification.run_all_checks()
 
     # Handle repair action (POST request)
     if conn.method == "POST" do
-      case Verification.repair_inventory_quantities() do
-        {:ok, repairs_list} when repairs_list != [] ->
-          # Store repairs in session and redirect
+      repair_type = Map.get(params, "repair_type", "inventory_quantities")
+
+      case Verification.run_repair(repair_type) do
+        {:ok, repairs_list} when is_list(repairs_list) ->
           conn
-          |> put_session(:repair_results, repairs_list)
-          |> redirect(to: ~p"/reports/inventory_verification#repair-results")
-        {:ok, []} ->
-          # No repairs needed
-          render(conn, :inventory_verification,
-            results: results,
-            repairs: []
-          )
-        {:error, _reason} ->
-          render(conn, :inventory_verification,
-            results: results,
-            repairs: []
-          )
+          |> put_session(:repair_results, %{type: repair_type, results: repairs_list})
+          |> redirect(to: ~p"/reports/diagnostics#repair-results")
+
+        {:error, reason} ->
+          conn
+          |> put_session(:repair_results, %{type: repair_type, error: inspect(reason)})
+          |> redirect(to: ~p"/reports/diagnostics#repair-results")
       end
     else
-      # GET request - retrieve repairs from session
-      repairs = get_session(conn, :repair_results) || []
-
-      # Clear repair results from session after reading
+      # GET request - retrieve repair results from session
+      repair_results = get_session(conn, :repair_results)
       conn = delete_session(conn, :repair_results)
 
-      render(conn, :inventory_verification,
+      render(conn, :diagnostics,
         results: results,
-        repairs: repairs
+        repair_results: repair_results
       )
     end
   end
@@ -330,7 +323,7 @@ defmodule MrMunchMeAccountingAppWeb.ReportHTML do
 
   defp get_check_explanation(:inventory_cost_accounting) do
     "Verifies that the total value of inventory items (quantity × average cost) matches the Ingredients Inventory account balance. " <>
-    "If mismatched, review inventory purchases, cost updates, and journal entries affecting the inventory account."
+    "Repair adjusts via Inventory Waste & Shrinkage (6060) to avoid affecting COGS."
   end
 
   defp get_check_explanation(:order_wip_consistency) do
@@ -341,6 +334,26 @@ defmodule MrMunchMeAccountingAppWeb.ReportHTML do
   defp get_check_explanation(:journal_entries_balanced) do
     "Verifies that all journal entries have balanced debits and credits (total debits = total credits). " <>
     "This is a fundamental accounting rule. If unbalanced, review the journal entry creation logic and manually correct entries."
+  end
+
+  defp get_check_explanation(:withdrawal_accounts) do
+    "Verifies that withdrawal entries debit Owner's Drawings (3100) instead of Owner's Equity (3000). " <>
+    "Historical entries may have used the wrong account."
+  end
+
+  defp get_check_explanation(:duplicate_cogs_entries) do
+    "Checks for duplicate journal entries for the same order (same reference, multiple entries). " <>
+    "Duplicates inflate COGS and WIP values."
+  end
+
+  defp get_check_explanation(:gift_order_accounting) do
+    "Verifies that delivered orders marked as gifts have proper gift accounting " <>
+    "(Dr Samples & Gifts 6070, Cr WIP 1220) instead of sale-style entries."
+  end
+
+  defp get_check_explanation(:movement_costs) do
+    "Checks for inventory movements (usage/write-off) with $0 cost. " <>
+    "These may have been recorded before purchases were added and need cost backfilling."
   end
 
   defp get_check_explanation(_) do
@@ -358,7 +371,7 @@ defmodule MrMunchMeAccountingAppWeb.ReportHTML do
 
   defp format_value(key, value) when is_integer(value) do
     # Check if this key represents a count, not a currency
-    count_keys = [:checked_entries, :unbalanced, :checked_items, :checked_orders, :issues]
+    count_keys = [:checked_entries, :unbalanced, :checked_items, :checked_orders, :issues, :duplicate_groups, :zero_cost, :orders_in_prep, :checked]
 
     if key in count_keys do
       # Format as plain number
@@ -375,6 +388,10 @@ defmodule MrMunchMeAccountingAppWeb.ReportHTML do
 
   defp format_value(_key, value) when is_list(value) do
     "#{length(value)} items"
+  end
+
+  defp format_value(_key, value) when is_binary(value) do
+    value
   end
 
   defp format_value(_key, value) do

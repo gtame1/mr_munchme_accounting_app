@@ -165,6 +165,7 @@ equity = [
 
 revenue = [
   %{code: "4000", name: "Sales", type: "revenue", normal_balance: "credit"},
+  %{code: "4100", name: "Other Income (Gift Contributions)", type: "revenue", normal_balance: "credit"},
 ]
 
 # -------------------------
