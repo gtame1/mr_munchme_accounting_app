@@ -18,10 +18,10 @@ defmodule MrMunchMeAccountingAppWeb.OrderController do
     # 2) Use these params for the query
     all_orders = Orders.list_orders(params)
 
-    # Calculate payment summaries for each order
+    # Calculate payment summaries — orders already have :order_payments preloaded, no extra queries
     orders_with_payment_status =
       Enum.map(all_orders, fn order ->
-        payment_summary = Orders.payment_summary(order)
+        payment_summary = Orders.payment_summary_from_preloaded(order)
         Map.put(order, :payment_summary, payment_summary)
       end)
 
@@ -45,10 +45,10 @@ defmodule MrMunchMeAccountingAppWeb.OrderController do
     total_to_load = completed_offset + completed_limit
     completed_orders = Orders.list_delivered_and_paid_orders(total_to_load, 0)
 
-    # Calculate payment summaries for completed orders
+    # Calculate payment summaries — orders already have :order_payments preloaded
     completed_orders_with_payment_status =
       Enum.map(completed_orders, fn order ->
-        payment_summary = Orders.payment_summary(order)
+        payment_summary = Orders.payment_summary_from_preloaded(order)
         Map.put(order, :payment_summary, payment_summary)
       end)
 
@@ -68,10 +68,10 @@ defmodule MrMunchMeAccountingAppWeb.OrderController do
     total_canceled_to_load = canceled_offset + canceled_limit
     canceled_orders = Orders.list_canceled_orders(total_canceled_to_load, 0)
 
-    # Calculate payment summaries for canceled orders
+    # Calculate payment summaries — orders already have :order_payments preloaded
     canceled_orders_with_payment_status =
       Enum.map(canceled_orders, fn order ->
-        payment_summary = Orders.payment_summary(order)
+        payment_summary = Orders.payment_summary_from_preloaded(order)
         Map.put(order, :payment_summary, payment_summary)
       end)
 

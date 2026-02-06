@@ -11,7 +11,7 @@ if database_url = System.get_env("DATABASE_URL") do
       verify: :verify_none,
       server_name_indication: to_charlist(db_uri.host || "")
     ],
-    pool_size: String.to_integer(System.get_env("POOL_SIZE") || "10")
+    pool_size: String.to_integer(System.get_env("POOL_SIZE") || "2")
 end
 
 # Only configure server when running the app (not when building)

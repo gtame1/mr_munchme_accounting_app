@@ -627,6 +627,102 @@ defmodule MrMunchMeAccountingApp.Inventory do
   end
 
   @doc """
+  Calculate inventory values for ALL ingredient+location pairs in a single batch query.
+  Returns a map of `{ingredient_id, location_id} => value_cents`.
+  This replaces calling `inventory_item_value_cents/2` per item (N+1 → 1 query).
+  """
+  def batch_inventory_values do
+    # Purchases: ingredient receives at to_location
+    purchases =
+      from(m in InventoryMovement,
+        where: m.movement_type == "purchase",
+        group_by: [m.ingredient_id, m.to_location_id],
+        select: %{
+          ingredient_id: m.ingredient_id,
+          location_id: m.to_location_id,
+          total: coalesce(sum(m.total_cost_cents), 0)
+        }
+      )
+      |> Repo.all()
+      |> Enum.reduce(%{}, fn row, acc ->
+        key = {row.ingredient_id, row.location_id}
+        Map.update(acc, key, to_int(row.total), &(&1 + to_int(row.total)))
+      end)
+
+    # Consumption (usage + write_off): deducted from from_location
+    consumption =
+      from(m in InventoryMovement,
+        where: m.movement_type in ["usage", "write_off"],
+        group_by: [m.ingredient_id, m.from_location_id],
+        select: %{
+          ingredient_id: m.ingredient_id,
+          location_id: m.from_location_id,
+          total: coalesce(sum(m.total_cost_cents), 0)
+        }
+      )
+      |> Repo.all()
+      |> Enum.reduce(%{}, fn row, acc ->
+        key = {row.ingredient_id, row.location_id}
+        Map.update(acc, key, to_int(row.total), &(&1 + to_int(row.total)))
+      end)
+
+    # Transfers out: deducted from from_location
+    transfers_out =
+      from(m in InventoryMovement,
+        where: m.movement_type == "transfer",
+        group_by: [m.ingredient_id, m.from_location_id],
+        select: %{
+          ingredient_id: m.ingredient_id,
+          location_id: m.from_location_id,
+          total: coalesce(sum(m.total_cost_cents), 0)
+        }
+      )
+      |> Repo.all()
+      |> Enum.reduce(%{}, fn row, acc ->
+        key = {row.ingredient_id, row.location_id}
+        Map.update(acc, key, to_int(row.total), &(&1 + to_int(row.total)))
+      end)
+
+    # Transfers in: added to to_location
+    transfers_in =
+      from(m in InventoryMovement,
+        where: m.movement_type == "transfer",
+        group_by: [m.ingredient_id, m.to_location_id],
+        select: %{
+          ingredient_id: m.ingredient_id,
+          location_id: m.to_location_id,
+          total: coalesce(sum(m.total_cost_cents), 0)
+        }
+      )
+      |> Repo.all()
+      |> Enum.reduce(%{}, fn row, acc ->
+        key = {row.ingredient_id, row.location_id}
+        Map.update(acc, key, to_int(row.total), &(&1 + to_int(row.total)))
+      end)
+
+    # Combine: purchases + transfers_in - consumption - transfers_out
+    all_keys =
+      MapSet.new(Map.keys(purchases))
+      |> MapSet.union(MapSet.new(Map.keys(consumption)))
+      |> MapSet.union(MapSet.new(Map.keys(transfers_out)))
+      |> MapSet.union(MapSet.new(Map.keys(transfers_in)))
+
+    Enum.reduce(all_keys, %{}, fn key, acc ->
+      value =
+        Map.get(purchases, key, 0) +
+        Map.get(transfers_in, key, 0) -
+        Map.get(consumption, key, 0) -
+        Map.get(transfers_out, key, 0)
+
+      Map.put(acc, key, value)
+    end)
+  end
+
+  defp to_int(%Decimal{} = dec), do: Decimal.to_integer(dec)
+  defp to_int(int) when is_integer(int), do: int
+  defp to_int(_), do: 0
+
+  @doc """
   Total inventory value calculated from actual purchase costs.
   Formula: sum(all purchase total_cost_cents) - sum(all usage/write_off total_cost_cents)
   This gives the actual cost of remaining inventory based on what was actually spent.

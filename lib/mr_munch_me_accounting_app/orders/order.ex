@@ -33,6 +33,7 @@ defmodule MrMunchMeAccountingApp.Orders.Order do
     belongs_to :customer, Customer
 
     has_many :order_ingredients, MrMunchMeAccountingApp.Orders.OrderIngredient, on_replace: :delete
+    has_many :order_payments, MrMunchMeAccountingApp.Orders.OrderPayment
 
     timestamps()
   end

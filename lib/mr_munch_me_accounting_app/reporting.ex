@@ -215,6 +215,9 @@ defmodule MrMunchMeAccountingApp.Reporting do
     stock_items = Inventory.list_stock_items()
     |> Enum.filter(fn stock -> stock.quantity_on_hand > 0 end)
 
+    # Batch-load all inventory values (4 queries instead of 4 × N)
+    values_map = Inventory.batch_inventory_values()
+
     # Group by inventory type
     stock_by_type =
       stock_items
@@ -222,18 +225,21 @@ defmodule MrMunchMeAccountingApp.Reporting do
         Inventory.inventory_type(stock.ingredient.code)
       end)
 
-    # Count items by type
+    # Count items by type — use batch map for values, no extra DB calls
     counts_by_type =
       Enum.map(stock_by_type, fn {type, items} ->
         total_value = Enum.reduce(items, 0, fn stock, acc ->
-          acc + Inventory.inventory_item_value_cents(stock.ingredient_id, stock.location_id)
+          acc + Map.get(values_map, {stock.ingredient_id, stock.location_id}, 0)
         end)
         {type, %{count: length(items), total_value_cents: total_value}}
       end)
       |> Enum.into(%{})
 
-    # Get total inventory value
-    total_value_cents = Inventory.total_inventory_value_cents()
+    # Total value from the batch map
+    total_value_cents =
+      values_map
+      |> Map.values()
+      |> Enum.sum()
 
     %{
       total_value_cents: total_value_cents,

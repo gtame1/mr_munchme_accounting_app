@@ -68,7 +68,7 @@ defmodule MrMunchMeAccountingApp.Orders do
         as: :prep_location,
         left_join: c in assoc(o, :customer),
         as: :customer,
-        preload: [product: p, prep_location: l, customer: c]
+        preload: [:order_payments, product: p, prep_location: l, customer: c]
 
     # Exclude canceled orders by default unless explicitly filtering for canceled status
     query =
@@ -97,7 +97,7 @@ defmodule MrMunchMeAccountingApp.Orders do
         join: p in assoc(o, :product),
         join: l in assoc(o, :prep_location),
         left_join: c in assoc(o, :customer),
-        preload: [product: p, prep_location: l, customer: c],
+        preload: [:order_payments, product: p, prep_location: l, customer: c],
         order_by: [desc: o.delivery_date, desc: o.id],
         limit: ^limit,
         offset: ^offset
@@ -120,17 +120,18 @@ defmodule MrMunchMeAccountingApp.Orders do
         join: p in assoc(o, :product),
         join: l in assoc(o, :prep_location),
         left_join: c in assoc(o, :customer),
-        preload: [product: p, prep_location: l, customer: c],
+        preload: [:order_payments, product: p, prep_location: l, customer: c],
         order_by: [desc: o.delivery_date, desc: o.id],
         limit: ^batch_size,
         offset: ^offset
 
     # Load all orders and filter for fully paid ones, then take only the limit we need
+    # order_payments already preloaded — no extra DB calls
     delivered_orders
     |> Repo.all()
     |> Enum.filter(fn order ->
-      payment_summary = payment_summary(order)
-      payment_summary.fully_paid?
+      summary = payment_summary_from_preloaded(order)
+      summary.fully_paid?
     end)
     |> Enum.take(limit)
   end
@@ -138,18 +139,18 @@ defmodule MrMunchMeAccountingApp.Orders do
   def count_delivered_and_paid_orders do
     import Ecto.Query
 
-    # Get all delivered orders
+    # Get all delivered orders with payments preloaded (single batch query)
     delivered_orders =
       from o in Order,
         where: o.status == "delivered",
-        preload: [:product]
+        preload: [:product, :order_payments]
 
-    # Count how many are fully paid
+    # Count how many are fully paid — no N+1 since payments are preloaded
     delivered_orders
     |> Repo.all()
     |> Enum.count(fn order ->
-      payment_summary = payment_summary(order)
-      payment_summary.fully_paid?
+      summary = payment_summary_from_preloaded(order)
+      summary.fully_paid?
     end)
   end
 
@@ -523,9 +524,20 @@ defmodule MrMunchMeAccountingApp.Orders do
   # ---------------------------
 
   def payment_summary(%Order{} = order) do
-    order = Repo.preload(order, :product)
-    payments = list_payments_for_order(order.id)
+    order = Repo.preload(order, [:product, :order_payments])
+    compute_payment_summary(order, order.order_payments)
+  end
 
+  @doc """
+  Compute payment summary from an order that already has :product and :order_payments preloaded.
+  No additional DB queries — use this in batch/list contexts to avoid N+1.
+  """
+  def payment_summary_from_preloaded(%Order{} = order) do
+    payments = order.order_payments || []
+    compute_payment_summary(order, payments)
+  end
+
+  defp compute_payment_summary(%Order{} = order, payments) when is_list(payments) do
     total_paid_cents =
       Enum.reduce(payments, 0, fn p, acc ->
         (p.amount_cents || 0) + acc

@@ -5,12 +5,14 @@ defmodule MrMunchMeAccountingAppWeb.InventoryController do
   alias MrMunchMeAccountingApp.Accounting
 
   def index(conn, _params) do
+    # Batch-load all inventory values in 4 queries instead of 4 × N
+    values_map = Inventory.batch_inventory_values()
+
     stock_items =
       Inventory.list_stock_items()
       |> Enum.filter(fn stock -> stock.quantity_on_hand > 0 end)
       |> Enum.map(fn stock ->
-        # Calculate actual inventory value from purchase costs
-        total_value_cents = Inventory.inventory_item_value_cents(stock.ingredient_id, stock.location_id)
+        total_value_cents = Map.get(values_map, {stock.ingredient_id, stock.location_id}, 0)
         Map.put(stock, :total_value_cents, total_value_cents)
       end)
 
