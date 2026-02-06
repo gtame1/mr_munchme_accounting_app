@@ -7,7 +7,7 @@ defmodule MrMunchMeAccountingApp.Inventory.Verification do
   alias MrMunchMeAccountingApp.{Repo, Accounting, Inventory}
   alias MrMunchMeAccountingApp.Accounting.{Account, JournalEntry, JournalLine}
   alias MrMunchMeAccountingApp.Inventory.{Ingredient, InventoryItem, InventoryMovement}
-  alias MrMunchMeAccountingApp.Orders.Order
+  alias MrMunchMeAccountingApp.Orders.{Order, OrderPayment}
 
   @ingredients_account_code "1200"
   @wip_account_code "1220"
@@ -17,6 +17,7 @@ defmodule MrMunchMeAccountingApp.Inventory.Verification do
   @owners_drawings_code "3100"
   @gift_contributions_code "4100"
   @waste_shrinkage_code "6060"
+  @sales_code "4000"
   @samples_gifts_code "6070"
 
   @doc """
@@ -476,7 +477,9 @@ defmodule MrMunchMeAccountingApp.Inventory.Verification do
       journal_entries_balanced: verify_journal_entries_balanced(),
       duplicate_cogs_entries: verify_duplicate_cogs_entries(),
       withdrawal_accounts: verify_withdrawal_accounts(),
-      gift_order_accounting: verify_gift_order_accounting()
+      gift_order_accounting: verify_gift_order_accounting(),
+      ar_balance: verify_ar_balance(),
+      customer_deposits: verify_customer_deposits()
     }
   end
 
@@ -687,6 +690,287 @@ defmodule MrMunchMeAccountingApp.Inventory.Verification do
     end
   end
 
+  # ── AR Balance verification & repair ─────────────────────────────────
+
+  @doc """
+  Verifies that per-order AR (1100) in the GL matches the expected outstanding
+  amount (order_total − total payments received) for each delivered, non-gift order.
+  """
+  def verify_ar_balance do
+    ar_account = Repo.get_by(Account, code: @ar_code)
+
+    if is_nil(ar_account) do
+      {:error, ["Accounts Receivable account (#{@ar_code}) not found"]}
+    else
+      orders =
+        from(o in Order,
+          where: o.status == "delivered" and o.is_gift == false,
+          preload: [:product, :order_payments]
+        )
+        |> Repo.all()
+
+      if orders == [] do
+        {:ok, %{checked_orders: 0, issues: 0}}
+      else
+        ar_by_order = get_gl_balance_by_order(ar_account.id)
+
+        issues =
+          Enum.reduce(orders, [], fn order, acc ->
+            {product_total, shipping} = MrMunchMeAccountingApp.Orders.order_total_cents(order)
+            order_total = product_total + shipping
+            total_paid = Enum.reduce(order.order_payments, 0, fn p, sum -> sum + (p.amount_cents || 0) end)
+            expected_ar = max(order_total - total_paid, 0)
+            gl_ar = Map.get(ar_by_order, order.id, 0)
+
+            if expected_ar != gl_ar do
+              diff = expected_ar - gl_ar
+
+              [
+                "Order ##{order.id}: Expected AR=#{format_currency(expected_ar)}, " <>
+                  "GL AR=#{format_currency(gl_ar)}, Difference=#{format_currency(diff)}"
+                | acc
+              ]
+            else
+              acc
+            end
+          end)
+
+        if issues == [] do
+          {:ok, %{checked_orders: length(orders), issues: 0}}
+        else
+          {:error, Enum.reverse(issues)}
+        end
+      end
+    end
+  end
+
+  @doc """
+  Repairs AR balance mismatches by creating correction journal entries.
+  If GL AR is too low → Dr AR (1100), Cr Sales (4000).
+  If GL AR is too high → Dr Sales (4000), Cr AR (1100).
+  """
+  def repair_ar_balance do
+    ar_account = Repo.get_by(Account, code: @ar_code)
+    sales_account = Repo.get_by(Account, code: @sales_code)
+
+    if is_nil(ar_account) or is_nil(sales_account) do
+      {:error, "Required accounts (#{@ar_code} or #{@sales_code}) not found"}
+    else
+      orders =
+        from(o in Order,
+          where: o.status == "delivered" and o.is_gift == false,
+          preload: [:product, :order_payments]
+        )
+        |> Repo.all()
+
+      ar_by_order = get_gl_balance_by_order(ar_account.id)
+
+      results =
+        Enum.reduce(orders, [], fn order, acc ->
+          {product_total, shipping} = MrMunchMeAccountingApp.Orders.order_total_cents(order)
+          order_total = product_total + shipping
+          total_paid = Enum.reduce(order.order_payments, 0, fn p, sum -> sum + (p.amount_cents || 0) end)
+          expected_ar = max(order_total - total_paid, 0)
+          gl_ar = Map.get(ar_by_order, order.id, 0)
+
+          diff = expected_ar - gl_ar
+
+          if diff != 0 do
+            abs_diff = abs(diff)
+
+            lines =
+              if diff > 0 do
+                # GL AR too low: Dr AR, Cr Sales
+                [
+                  %{account_id: ar_account.id, debit_cents: abs_diff, credit_cents: 0,
+                    description: "AR correction: increase AR for order ##{order.id}"},
+                  %{account_id: sales_account.id, debit_cents: 0, credit_cents: abs_diff,
+                    description: "AR correction offset for order ##{order.id}"}
+                ]
+              else
+                # GL AR too high: Dr Sales, Cr AR
+                [
+                  %{account_id: sales_account.id, debit_cents: abs_diff, credit_cents: 0,
+                    description: "AR correction: reverse excess AR for order ##{order.id}"},
+                  %{account_id: ar_account.id, debit_cents: 0, credit_cents: abs_diff,
+                    description: "AR correction: reduce AR for order ##{order.id}"}
+                ]
+              end
+
+            entry_attrs = %{
+              date: Date.utc_today(),
+              entry_type: "other",
+              reference: "Order ##{order.id} AR correction",
+              description: "AR balance correction for order ##{order.id}"
+            }
+
+            case Accounting.create_journal_entry_with_lines(entry_attrs, lines) do
+              {:ok, entry} ->
+                [%{
+                  action: "Order ##{order.id} — AR correction entry ##{entry.id}",
+                  amount: format_currency(abs_diff),
+                  details: if(diff > 0, do: "Increased AR", else: "Decreased AR")
+                } | acc]
+
+              {:error, _} ->
+                acc
+            end
+          else
+            acc
+          end
+        end)
+
+      {:ok, Enum.reverse(results)}
+    end
+  end
+
+  # ── Customer Deposits verification & repair ────────────────────────────
+
+  @doc """
+  Verifies that Customer Deposits (2200) balance is correct per order.
+  For delivered orders, deposits should have been transferred to AR (balance = 0).
+  For non-delivered orders, deposits should still be in 2200.
+  """
+  def verify_customer_deposits do
+    customer_deposits_account = Repo.get_by(Account, code: @customer_deposits_code)
+
+    if is_nil(customer_deposits_account) do
+      {:error, ["Customer Deposits account (#{@customer_deposits_code}) not found"]}
+    else
+      # Get deposit payment totals per order
+      deposit_totals =
+        from(p in OrderPayment,
+          where: p.is_deposit == true,
+          group_by: p.order_id,
+          select: {p.order_id, sum(fragment("COALESCE(?, ?)", p.customer_amount_cents, p.amount_cents))}
+        )
+        |> Repo.all()
+        |> Map.new()
+
+      order_ids = Map.keys(deposit_totals)
+
+      if order_ids == [] do
+        {:ok, %{checked_orders: 0, issues: 0}}
+      else
+        orders =
+          from(o in Order, where: o.id in ^order_ids)
+          |> Repo.all()
+
+        gl_deposits_by_order = get_gl_liability_balance_by_order(customer_deposits_account.id)
+
+        issues =
+          Enum.reduce(orders, [], fn order, acc ->
+            deposit_paid = Map.get(deposit_totals, order.id, 0)
+            gl_deposits = Map.get(gl_deposits_by_order, order.id, 0)
+
+            expected =
+              if order.status == "delivered" do
+                0
+              else
+                deposit_paid
+              end
+
+            if gl_deposits != expected do
+              [
+                "Order ##{order.id} (#{order.status}): Expected deposits balance=#{format_currency(expected)}, " <>
+                  "GL shows=#{format_currency(gl_deposits)}"
+                | acc
+              ]
+            else
+              acc
+            end
+          end)
+
+        if issues == [] do
+          {:ok, %{checked_orders: length(orders), issues: 0}}
+        else
+          {:error, Enum.reverse(issues)}
+        end
+      end
+    end
+  end
+
+  @doc """
+  Repairs stale customer deposits on delivered orders by creating the missing
+  Dr Customer Deposits (2200) / Cr AR (1100) transfer entries.
+  """
+  def repair_customer_deposits do
+    ar_account = Repo.get_by(Account, code: @ar_code)
+    customer_deposits_account = Repo.get_by(Account, code: @customer_deposits_code)
+
+    if is_nil(ar_account) or is_nil(customer_deposits_account) do
+      {:error, "Required accounts (#{@ar_code} or #{@customer_deposits_code}) not found"}
+    else
+      deposit_totals =
+        from(p in OrderPayment,
+          where: p.is_deposit == true,
+          group_by: p.order_id,
+          select: {p.order_id, sum(fragment("COALESCE(?, ?)", p.customer_amount_cents, p.amount_cents))}
+        )
+        |> Repo.all()
+        |> Map.new()
+
+      order_ids = Map.keys(deposit_totals)
+
+      if order_ids == [] do
+        {:ok, []}
+      else
+        # Only repair stale deposits on delivered orders
+        delivered_orders =
+          from(o in Order, where: o.id in ^order_ids and o.status == "delivered")
+          |> Repo.all()
+
+        gl_deposits_by_order = get_gl_liability_balance_by_order(customer_deposits_account.id)
+
+        results =
+          Enum.reduce(delivered_orders, [], fn order, acc ->
+            gl_deposits = Map.get(gl_deposits_by_order, order.id, 0)
+
+            if gl_deposits > 0 do
+              # Stale deposits: create the missing transfer
+              lines = [
+                %{
+                  account_id: customer_deposits_account.id,
+                  debit_cents: gl_deposits,
+                  credit_cents: 0,
+                  description: "Transfer stale deposits for delivered order ##{order.id}"
+                },
+                %{
+                  account_id: ar_account.id,
+                  debit_cents: 0,
+                  credit_cents: gl_deposits,
+                  description: "Reduce AR by transferred deposits for order ##{order.id}"
+                }
+              ]
+
+              entry_attrs = %{
+                date: Date.utc_today(),
+                entry_type: "other",
+                reference: "Order ##{order.id} deposit transfer",
+                description: "Transfer stale customer deposits for delivered order ##{order.id}"
+              }
+
+              case Accounting.create_journal_entry_with_lines(entry_attrs, lines) do
+                {:ok, entry} ->
+                  [%{
+                    action: "Order ##{order.id} — deposit transfer entry ##{entry.id}",
+                    amount: format_currency(gl_deposits),
+                    details: "Transferred stale deposits from 2200 to reduce AR"
+                  } | acc]
+
+                {:error, _} ->
+                  acc
+              end
+            else
+              acc
+            end
+          end)
+
+        {:ok, Enum.reverse(results)}
+      end
+    end
+  end
+
   @doc """
   Repairs gift order accounting by creating correction entries for delivered orders
   that were retroactively marked as gifts but still have sale-style accounting.
@@ -826,6 +1110,8 @@ defmodule MrMunchMeAccountingApp.Inventory.Verification do
       "withdrawal_accounts" -> repair_withdrawal_accounts()
       "gift_order_accounting" -> repair_gift_order_accounting()
       "movement_costs" -> repair_movement_costs()
+      "ar_balance" -> repair_ar_balance()
+      "customer_deposits" -> repair_customer_deposits()
       _ -> {:error, "Unknown repair type: #{repair_type}"}
     end
   end
@@ -838,10 +1124,61 @@ defmodule MrMunchMeAccountingApp.Inventory.Verification do
     :duplicate_movements,
     :withdrawal_accounts,
     :gift_order_accounting,
-    :movement_costs
+    :movement_costs,
+    :ar_balance,
+    :customer_deposits
   ])
 
   def repairable?(check_name), do: MapSet.member?(@repairable_checks, check_name)
+
+  # ── Private helpers for AR / Customer Deposits checks ──────────────────
+
+  # Returns %{order_id => net_balance} where net_balance = debits − credits
+  # for an asset account (e.g. AR 1100). Aggregates across ALL entry types
+  # that reference "Order #N" (delivery entries, payment entries, corrections).
+  defp get_gl_balance_by_order(account_id) do
+    from(jl in JournalLine,
+      join: je in assoc(jl, :journal_entry),
+      where: jl.account_id == ^account_id,
+      where: like(je.reference, "Order #%"),
+      select: %{reference: je.reference, debit_cents: jl.debit_cents, credit_cents: jl.credit_cents}
+    )
+    |> Repo.all()
+    |> Enum.reduce(%{}, fn line, acc ->
+      case Regex.run(~r/Order #(\d+)/, line.reference) do
+        [_, id_str] ->
+          order_id = String.to_integer(id_str)
+          current = Map.get(acc, order_id, 0)
+          Map.put(acc, order_id, current + line.debit_cents - line.credit_cents)
+
+        _ ->
+          acc
+      end
+    end)
+  end
+
+  # Returns %{order_id => net_balance} where net_balance = credits − debits
+  # for a liability account (e.g. Customer Deposits 2200).
+  defp get_gl_liability_balance_by_order(account_id) do
+    from(jl in JournalLine,
+      join: je in assoc(jl, :journal_entry),
+      where: jl.account_id == ^account_id,
+      where: like(je.reference, "Order #%"),
+      select: %{reference: je.reference, debit_cents: jl.debit_cents, credit_cents: jl.credit_cents}
+    )
+    |> Repo.all()
+    |> Enum.reduce(%{}, fn line, acc ->
+      case Regex.run(~r/Order #(\d+)/, line.reference) do
+        [_, id_str] ->
+          order_id = String.to_integer(id_str)
+          current = Map.get(acc, order_id, 0)
+          Map.put(acc, order_id, current + line.credit_cents - line.debit_cents)
+
+        _ ->
+          acc
+      end
+    end)
+  end
 
   # ── Private helpers for gift order repair ───────────────────────────────
 

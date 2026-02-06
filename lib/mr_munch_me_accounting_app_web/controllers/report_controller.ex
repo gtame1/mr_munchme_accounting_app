@@ -274,7 +274,7 @@ defmodule MrMunchMeAccountingAppWeb.ReportController do
         start_of_month = %Date{today | day: 1}
         {start_of_month, today}
       {earliest, latest} ->
-        {earliest, latest}
+        {earliest, Enum.max([latest, Date.utc_today()], Date)}
     end
   end
 
@@ -359,6 +359,17 @@ defmodule MrMunchMeAccountingAppWeb.ReportHTML do
   defp get_check_explanation(:duplicate_movements) do
     "Checks for duplicate inventory movements (same ingredient, location, type, quantity, date, and source). " <>
     "Duplicates inflate inventory counts and costs. Repair deletes duplicates and recalculates quantities."
+  end
+
+  defp get_check_explanation(:ar_balance) do
+    "Verifies that Accounts Receivable (1100) per order matches the expected outstanding amount " <>
+    "(order total minus payments received). Repair creates adjustment entries to correct AR mismatches."
+  end
+
+  defp get_check_explanation(:customer_deposits) do
+    "Verifies that Customer Deposits (2200) are properly transferred to AR when orders are delivered. " <>
+    "Stale deposits on delivered orders indicate the deposit-to-AR transfer was missed. " <>
+    "Repair creates the missing Dr 2200 / Cr 1100 transfer entries."
   end
 
   defp get_check_explanation(_) do

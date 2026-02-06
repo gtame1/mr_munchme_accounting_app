@@ -3,7 +3,7 @@ defmodule MrMunchMeAccountingApp.Inventory.VerificationTest do
 
   alias MrMunchMeAccountingApp.{Accounting, Inventory, Repo}
   alias MrMunchMeAccountingApp.Inventory.{Ingredient, Location, InventoryItem, InventoryMovement, Verification}
-  alias MrMunchMeAccountingApp.Orders.Order
+  alias MrMunchMeAccountingApp.Orders.{Order, OrderPayment}
 
   # Get or create an account, handling the case where it already exists
   # (can happen with async tests sharing the database)
@@ -980,6 +980,373 @@ defmodule MrMunchMeAccountingApp.Inventory.VerificationTest do
     end
   end
 
+  # ── verify_ar_balance ───────────────────────────────────────────────────
+
+  describe "verify_ar_balance/0" do
+    test "returns ok when no delivered orders exist" do
+      assert {:ok, %{checked_orders: 0, issues: 0}} = Verification.verify_ar_balance()
+    end
+
+    test "returns ok when AR matches for a fully paid delivered order", %{
+      ar_account: ar_account,
+      sales_account: sales_account,
+      cash_account: cash_account,
+      location: location
+    } do
+      product = create_product()
+      order = create_regular_order(product, location, "delivered")
+
+      # Create delivery entry: Dr AR 10000, Cr Sales 10000
+      {:ok, _} =
+        Accounting.create_journal_entry(%{
+          "date" => Date.utc_today(),
+          "description" => "Delivered order",
+          "entry_type" => "order_delivered",
+          "reference" => "Order ##{order.id}",
+          "journal_lines" => [
+            %{"account_id" => ar_account.id, "debit_cents" => 10000, "credit_cents" => 0,
+              "description" => "AR for order"},
+            %{"account_id" => sales_account.id, "debit_cents" => 0, "credit_cents" => 10000,
+              "description" => "Sales revenue"}
+          ]
+        })
+
+      # Create payment entry: Dr Cash, Cr AR 10000
+      {:ok, _payment} =
+        %OrderPayment{}
+        |> OrderPayment.changeset(%{
+          order_id: order.id,
+          payment_date: Date.utc_today(),
+          amount_cents: 10000,
+          paid_to_account_id: cash_account.id,
+          is_deposit: false
+        })
+        |> Repo.insert()
+
+      {:ok, _} =
+        Accounting.create_journal_entry(%{
+          "date" => Date.utc_today(),
+          "description" => "Payment received",
+          "entry_type" => "order_payment",
+          "reference" => "Order ##{order.id} payment #1",
+          "journal_lines" => [
+            %{"account_id" => cash_account.id, "debit_cents" => 10000, "credit_cents" => 0,
+              "description" => "Cash received"},
+            %{"account_id" => ar_account.id, "debit_cents" => 0, "credit_cents" => 10000,
+              "description" => "Reduce AR"}
+          ]
+        })
+
+      assert {:ok, %{checked_orders: 1, issues: 0}} = Verification.verify_ar_balance()
+    end
+
+    test "returns error when AR mismatch exists", %{
+      ar_account: ar_account,
+      sales_account: sales_account,
+      location: location
+    } do
+      product = create_product()
+      order = create_regular_order(product, location, "delivered")
+
+      # Create delivery entry with WRONG AR amount (5000 instead of 10000)
+      {:ok, _} =
+        Accounting.create_journal_entry(%{
+          "date" => Date.utc_today(),
+          "description" => "Delivered order (wrong AR)",
+          "entry_type" => "order_delivered",
+          "reference" => "Order ##{order.id}",
+          "journal_lines" => [
+            %{"account_id" => ar_account.id, "debit_cents" => 5000, "credit_cents" => 0,
+              "description" => "AR for order"},
+            %{"account_id" => sales_account.id, "debit_cents" => 0, "credit_cents" => 5000,
+              "description" => "Sales revenue"}
+          ]
+        })
+
+      # No payments, so expected AR = 10000, but GL AR = 5000
+      assert {:error, issues} = Verification.verify_ar_balance()
+      assert length(issues) == 1
+      assert hd(issues) =~ "Order ##{order.id}"
+      assert hd(issues) =~ "Difference"
+    end
+  end
+
+  # ── repair_ar_balance ──────────────────────────────────────────────────
+
+  describe "repair_ar_balance/0" do
+    test "fixes AR mismatch and verify passes after", %{
+      ar_account: ar_account,
+      sales_account: sales_account,
+      location: location
+    } do
+      product = create_product()
+      order = create_regular_order(product, location, "delivered")
+
+      # Create delivery entry with wrong AR
+      {:ok, _} =
+        Accounting.create_journal_entry(%{
+          "date" => Date.utc_today(),
+          "description" => "Delivered order (wrong AR)",
+          "entry_type" => "order_delivered",
+          "reference" => "Order ##{order.id}",
+          "journal_lines" => [
+            %{"account_id" => ar_account.id, "debit_cents" => 5000, "credit_cents" => 0,
+              "description" => "AR for order"},
+            %{"account_id" => sales_account.id, "debit_cents" => 0, "credit_cents" => 5000,
+              "description" => "Sales revenue"}
+          ]
+        })
+
+      # Verify is broken
+      assert {:error, _} = Verification.verify_ar_balance()
+
+      # Repair
+      assert {:ok, [result]} = Verification.repair_ar_balance()
+      assert result.action =~ "Order ##{order.id}"
+      assert result.action =~ "AR correction"
+
+      # Verify passes after repair
+      assert {:ok, %{checked_orders: 1, issues: 0}} = Verification.verify_ar_balance()
+    end
+  end
+
+  # ── verify_customer_deposits ───────────────────────────────────────────
+
+  describe "verify_customer_deposits/0" do
+    test "returns ok when no deposit payments exist" do
+      assert {:ok, %{checked_orders: 0, issues: 0}} = Verification.verify_customer_deposits()
+    end
+
+    test "returns ok when deposits properly transferred on delivery", %{
+      ar_account: ar_account,
+      sales_account: sales_account,
+      customer_deposits_account: customer_deposits_account,
+      cash_account: cash_account,
+      location: location
+    } do
+      product = create_product()
+      order = create_regular_order(product, location, "delivered")
+
+      # Record deposit payment
+      {:ok, _payment} =
+        %OrderPayment{}
+        |> OrderPayment.changeset(%{
+          order_id: order.id,
+          payment_date: Date.utc_today(),
+          amount_cents: 5000,
+          paid_to_account_id: cash_account.id,
+          is_deposit: true
+        })
+        |> Repo.insert()
+
+      # Deposit payment journal entry: Dr Cash, Cr Customer Deposits
+      {:ok, _} =
+        Accounting.create_journal_entry(%{
+          "date" => Date.utc_today(),
+          "description" => "Deposit received",
+          "entry_type" => "order_payment",
+          "reference" => "Order ##{order.id} payment #1",
+          "journal_lines" => [
+            %{"account_id" => cash_account.id, "debit_cents" => 5000, "credit_cents" => 0,
+              "description" => "Cash received"},
+            %{"account_id" => customer_deposits_account.id, "debit_cents" => 0, "credit_cents" => 5000,
+              "description" => "Customer deposit"}
+          ]
+        })
+
+      # Delivery entry with deposit transfer:
+      # Revenue: Dr AR 10000, Cr Sales 10000 (balanced)
+      # Deposit transfer: Dr Deposits 5000, Cr AR 5000 (balanced)
+      # Net AR = 10000 - 5000 = 5000
+      {:ok, _} =
+        Accounting.create_journal_entry(%{
+          "date" => Date.utc_today(),
+          "description" => "Delivered order",
+          "entry_type" => "order_delivered",
+          "reference" => "Order ##{order.id}",
+          "journal_lines" => [
+            %{"account_id" => ar_account.id, "debit_cents" => 10000, "credit_cents" => 0,
+              "description" => "AR for order"},
+            %{"account_id" => sales_account.id, "debit_cents" => 0, "credit_cents" => 10000,
+              "description" => "Sales revenue"},
+            %{"account_id" => customer_deposits_account.id, "debit_cents" => 5000, "credit_cents" => 0,
+              "description" => "Transfer deposit"},
+            %{"account_id" => ar_account.id, "debit_cents" => 0, "credit_cents" => 5000,
+              "description" => "Reduce AR by deposit"}
+          ]
+        })
+
+      # Deposits fully transferred: GL balance for 2200 = 5000 (Cr) - 5000 (Dr) = 0
+      assert {:ok, %{checked_orders: 1, issues: 0}} = Verification.verify_customer_deposits()
+    end
+
+    test "returns error for stale deposits on delivered order", %{
+      customer_deposits_account: customer_deposits_account,
+      cash_account: cash_account,
+      ar_account: ar_account,
+      sales_account: sales_account,
+      location: location
+    } do
+      product = create_product()
+      order = create_regular_order(product, location, "delivered")
+
+      # Record deposit payment
+      {:ok, _payment} =
+        %OrderPayment{}
+        |> OrderPayment.changeset(%{
+          order_id: order.id,
+          payment_date: Date.utc_today(),
+          amount_cents: 5000,
+          paid_to_account_id: cash_account.id,
+          is_deposit: true
+        })
+        |> Repo.insert()
+
+      # Deposit payment journal entry: Dr Cash, Cr Customer Deposits
+      {:ok, _} =
+        Accounting.create_journal_entry(%{
+          "date" => Date.utc_today(),
+          "description" => "Deposit received",
+          "entry_type" => "order_payment",
+          "reference" => "Order ##{order.id} payment #1",
+          "journal_lines" => [
+            %{"account_id" => cash_account.id, "debit_cents" => 5000, "credit_cents" => 0,
+              "description" => "Cash received"},
+            %{"account_id" => customer_deposits_account.id, "debit_cents" => 0, "credit_cents" => 5000,
+              "description" => "Customer deposit"}
+          ]
+        })
+
+      # Delivery entry WITHOUT deposit transfer (simulating the bug)
+      {:ok, _} =
+        Accounting.create_journal_entry(%{
+          "date" => Date.utc_today(),
+          "description" => "Delivered order (missing transfer)",
+          "entry_type" => "order_delivered",
+          "reference" => "Order ##{order.id}",
+          "journal_lines" => [
+            %{"account_id" => ar_account.id, "debit_cents" => 10000, "credit_cents" => 0,
+              "description" => "AR for order"},
+            %{"account_id" => sales_account.id, "debit_cents" => 0, "credit_cents" => 10000,
+              "description" => "Sales revenue"}
+          ]
+        })
+
+      # Deposits NOT transferred: GL balance for 2200 = 5000 (should be 0 for delivered)
+      assert {:error, issues} = Verification.verify_customer_deposits()
+      assert length(issues) == 1
+      assert hd(issues) =~ "Order ##{order.id}"
+      assert hd(issues) =~ "delivered"
+    end
+
+    test "returns ok for undelivered order with deposits in 2200", %{
+      customer_deposits_account: customer_deposits_account,
+      cash_account: cash_account,
+      location: location
+    } do
+      product = create_product()
+      order = create_regular_order(product, location, "in_prep")
+
+      # Record deposit payment
+      {:ok, _payment} =
+        %OrderPayment{}
+        |> OrderPayment.changeset(%{
+          order_id: order.id,
+          payment_date: Date.utc_today(),
+          amount_cents: 3000,
+          paid_to_account_id: cash_account.id,
+          is_deposit: true
+        })
+        |> Repo.insert()
+
+      # Deposit payment journal entry: Dr Cash, Cr Customer Deposits
+      {:ok, _} =
+        Accounting.create_journal_entry(%{
+          "date" => Date.utc_today(),
+          "description" => "Deposit received",
+          "entry_type" => "order_payment",
+          "reference" => "Order ##{order.id} payment #1",
+          "journal_lines" => [
+            %{"account_id" => cash_account.id, "debit_cents" => 3000, "credit_cents" => 0,
+              "description" => "Cash received"},
+            %{"account_id" => customer_deposits_account.id, "debit_cents" => 0, "credit_cents" => 3000,
+              "description" => "Customer deposit"}
+          ]
+        })
+
+      # Undelivered order: deposits should stay in 2200 (expected = 3000)
+      assert {:ok, %{checked_orders: 1, issues: 0}} = Verification.verify_customer_deposits()
+    end
+  end
+
+  # ── repair_customer_deposits ───────────────────────────────────────────
+
+  describe "repair_customer_deposits/0" do
+    test "transfers stale deposits and verify passes after", %{
+      customer_deposits_account: customer_deposits_account,
+      cash_account: cash_account,
+      ar_account: ar_account,
+      sales_account: sales_account,
+      location: location
+    } do
+      product = create_product()
+      order = create_regular_order(product, location, "delivered")
+
+      # Record deposit payment
+      {:ok, _payment} =
+        %OrderPayment{}
+        |> OrderPayment.changeset(%{
+          order_id: order.id,
+          payment_date: Date.utc_today(),
+          amount_cents: 5000,
+          paid_to_account_id: cash_account.id,
+          is_deposit: true
+        })
+        |> Repo.insert()
+
+      # Deposit payment journal entry
+      {:ok, _} =
+        Accounting.create_journal_entry(%{
+          "date" => Date.utc_today(),
+          "description" => "Deposit received",
+          "entry_type" => "order_payment",
+          "reference" => "Order ##{order.id} payment #1",
+          "journal_lines" => [
+            %{"account_id" => cash_account.id, "debit_cents" => 5000, "credit_cents" => 0,
+              "description" => "Cash received"},
+            %{"account_id" => customer_deposits_account.id, "debit_cents" => 0, "credit_cents" => 5000,
+              "description" => "Customer deposit"}
+          ]
+        })
+
+      # Delivery WITHOUT deposit transfer (the bug)
+      {:ok, _} =
+        Accounting.create_journal_entry(%{
+          "date" => Date.utc_today(),
+          "description" => "Delivered order (missing transfer)",
+          "entry_type" => "order_delivered",
+          "reference" => "Order ##{order.id}",
+          "journal_lines" => [
+            %{"account_id" => ar_account.id, "debit_cents" => 10000, "credit_cents" => 0,
+              "description" => "AR for order"},
+            %{"account_id" => sales_account.id, "debit_cents" => 0, "credit_cents" => 10000,
+              "description" => "Sales revenue"}
+          ]
+        })
+
+      # Verify is broken
+      assert {:error, _} = Verification.verify_customer_deposits()
+
+      # Repair
+      assert {:ok, [result]} = Verification.repair_customer_deposits()
+      assert result.action =~ "Order ##{order.id}"
+      assert result.action =~ "deposit transfer"
+
+      # Verify passes after repair
+      assert {:ok, %{checked_orders: 1, issues: 0}} = Verification.verify_customer_deposits()
+    end
+  end
+
   # ── run_repair dispatcher ──────────────────────────────────────────────
 
   describe "run_repair/1" do
@@ -989,6 +1356,8 @@ defmodule MrMunchMeAccountingApp.Inventory.VerificationTest do
       assert {:ok, _} = Verification.run_repair("duplicate_cogs_entries")
       assert {:ok, _} = Verification.run_repair("duplicate_movements")
       assert {:ok, _} = Verification.run_repair("movement_costs")
+      assert {:ok, _} = Verification.run_repair("ar_balance")
+      assert {:ok, _} = Verification.run_repair("customer_deposits")
     end
 
     test "returns error for unknown repair type" do
@@ -1008,6 +1377,8 @@ defmodule MrMunchMeAccountingApp.Inventory.VerificationTest do
       assert Verification.repairable?(:withdrawal_accounts)
       assert Verification.repairable?(:gift_order_accounting)
       assert Verification.repairable?(:movement_costs)
+      assert Verification.repairable?(:ar_balance)
+      assert Verification.repairable?(:customer_deposits)
     end
 
     test "returns false for non-repairable checks" do
@@ -1048,8 +1419,10 @@ defmodule MrMunchMeAccountingApp.Inventory.VerificationTest do
       assert Map.has_key?(results, :duplicate_cogs_entries)
       assert Map.has_key?(results, :withdrawal_accounts)
       assert Map.has_key?(results, :gift_order_accounting)
+      assert Map.has_key?(results, :ar_balance)
+      assert Map.has_key?(results, :customer_deposits)
 
-      assert map_size(results) == 10
+      assert map_size(results) == 12
 
       # All should pass in a clean test environment
       Enum.each(results, fn {check_name, result} ->
@@ -1074,6 +1447,24 @@ defmodule MrMunchMeAccountingApp.Inventory.VerificationTest do
       |> Repo.insert()
 
     product
+  end
+
+  defp create_regular_order(product, location, status) do
+    {:ok, order} =
+      %Order{}
+      |> Order.changeset(%{
+        customer_name: "Test Customer",
+        customer_phone: "555#{System.unique_integer([:positive])}",
+        product_id: product.id,
+        prep_location_id: location.id,
+        delivery_date: Date.utc_today(),
+        delivery_type: "pickup",
+        status: status,
+        is_gift: false
+      })
+      |> Repo.insert()
+
+    order
   end
 
   defp create_gift_order(product, location, status) do

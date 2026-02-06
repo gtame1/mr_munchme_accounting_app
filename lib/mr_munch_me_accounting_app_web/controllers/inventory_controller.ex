@@ -74,7 +74,7 @@ defmodule MrMunchMeAccountingAppWeb.InventoryController do
         {movements, limit, has_more}
       end
 
-    total_value_cents = Inventory.total_inventory_value_cents()
+    total_value_cents = stock_items |> Enum.reduce(0, fn s, acc -> acc + (s.total_value_cents || 0) end)
     ingredient_options = Inventory.ingredient_select_options()
     location_options = Inventory.location_select_options()
     {earliest_date, latest_date} = Inventory.movement_date_range()
