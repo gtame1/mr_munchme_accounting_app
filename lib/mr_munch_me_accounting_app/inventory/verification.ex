@@ -619,8 +619,9 @@ defmodule MrMunchMeAccountingApp.Inventory.Verification do
   end
 
   @doc """
-  Repairs withdrawal accounts by creating a correcting entry to move debits
-  from Owner's Equity (3000) to Owner's Drawings (3100).
+  Repairs withdrawal accounts by updating incorrect journal lines in-place
+  to debit Owner's Drawings (3100) instead of Owner's Equity (3000).
+  Also cleans up any previous correction entries that are no longer needed.
   """
   def repair_withdrawal_accounts do
     owners_equity = Repo.get_by(Account, code: @owners_equity_code)
@@ -629,46 +630,60 @@ defmodule MrMunchMeAccountingApp.Inventory.Verification do
     if is_nil(owners_equity) or is_nil(owners_drawings) do
       {:error, "Required accounts (3000 or 3100) not found"}
     else
-      incorrect =
+      # Find all withdrawal journal lines that incorrectly debit 3000
+      incorrect_lines =
         from(jl in JournalLine,
           join: je in assoc(jl, :journal_entry),
           where: je.entry_type == "withdrawal" and
                  jl.account_id == ^owners_equity.id and
                  jl.debit_cents > 0,
-          select: jl.debit_cents
+          select: jl
         )
         |> Repo.all()
 
-      if incorrect == [] do
-        {:ok, []}
+      if incorrect_lines == [] do
+        # Nothing to fix — but check for stale correction entries to clean up
+        cleanup_results = cleanup_stale_withdrawal_corrections()
+        {:ok, cleanup_results}
       else
-        total_amount = Enum.sum(incorrect)
+        total_amount = Enum.reduce(incorrect_lines, 0, fn jl, acc -> acc + jl.debit_cents end)
 
-        entry_attrs = %{
-          date: Date.utc_today(),
-          entry_type: "other",
-          reference: "Withdrawal Account Correction",
-          description: "Correct historical withdrawals: move from Owner's Equity (3000) to Owner's Drawings (3100)"
-        }
+        # Update each line in-place: change account_id from 3000 → 3100
+        Enum.each(incorrect_lines, fn jl ->
+          jl
+          |> Ecto.Changeset.change(%{account_id: owners_drawings.id})
+          |> Repo.update!()
+        end)
 
-        lines = [
-          %{account_id: owners_drawings.id, debit_cents: total_amount, credit_cents: 0,
-            description: "Transfer historical withdrawals to Owner's Drawings"},
-          %{account_id: owners_equity.id, debit_cents: 0, credit_cents: total_amount,
-            description: "Reverse incorrect withdrawal debits from Owner's Equity"}
-        ]
+        # Also clean up any previous correction entries (from the old repair approach)
+        cleanup_results = cleanup_stale_withdrawal_corrections()
 
-        case Accounting.create_journal_entry_with_lines(entry_attrs, lines) do
-          {:ok, entry} ->
-            {:ok, [%{
-              action: "Created correction entry ##{entry.id}",
-              amount: format_currency(total_amount),
-              details: "Dr Owner's Drawings (3100), Cr Owner's Equity (3000)"
-            }]}
-          {:error, changeset} ->
-            {:error, "Failed to create correction entry: #{inspect(changeset.errors)}"}
-        end
+        {:ok, [%{
+          action: "Updated #{length(incorrect_lines)} journal line(s) in-place",
+          amount: format_currency(total_amount),
+          details: "Changed account from Owner's Equity (3000) → Owner's Drawings (3100)"
+        } | cleanup_results]}
       end
+    end
+  end
+
+  # Remove stale "Withdrawal Account Correction" entries created by the old repair approach.
+  # These are no longer needed since we now fix lines in-place.
+  defp cleanup_stale_withdrawal_corrections do
+    stale_corrections =
+      from(je in JournalEntry,
+        where: je.reference == "Withdrawal Account Correction",
+        select: je
+      )
+      |> Repo.all()
+
+    if stale_corrections == [] do
+      []
+    else
+      Enum.map(stale_corrections, fn je ->
+        Repo.delete!(je)
+        %{action: "Deleted stale correction entry ##{je.id}", details: "No longer needed"}
+      end)
     end
   end
 

@@ -799,11 +799,12 @@ defmodule MrMunchMeAccountingApp.Inventory.VerificationTest do
   # ── repair_withdrawal_accounts ─────────────────────────────────────────
 
   describe "repair_withdrawal_accounts/0" do
-    test "creates correction entry for incorrect withdrawals", %{
+    test "fixes incorrect withdrawals in-place and verify passes after", %{
       owners_equity_account: owners_equity_account,
+      owners_drawings_account: _owners_drawings_account,
       cash_account: cash_account
     } do
-      # Create an incorrect withdrawal debiting Owner's Equity
+      # Create an incorrect withdrawal debiting Owner's Equity (3000)
       {:ok, _} =
         Accounting.create_journal_entry(%{
           "date" => Date.utc_today(),
@@ -819,9 +820,13 @@ defmodule MrMunchMeAccountingApp.Inventory.VerificationTest do
       # Verify it's broken
       assert {:error, _} = Verification.verify_withdrawal_accounts()
 
-      # Repair
+      # Repair — should update the line in-place to point to 3100
       assert {:ok, [result]} = Verification.repair_withdrawal_accounts()
-      assert result.action =~ "Created correction entry"
+      assert result.action =~ "Updated 1 journal line"
+      assert result.details =~ "Owner's Drawings (3100)"
+
+      # Verify should now pass
+      assert {:ok, _} = Verification.verify_withdrawal_accounts()
     end
 
     test "returns empty list when all withdrawals are correct", %{
