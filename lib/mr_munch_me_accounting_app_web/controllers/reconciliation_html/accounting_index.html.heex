@@ -10,22 +10,32 @@
           Enter actual account balances and create adjustment journal entries to match the system.
         </p>
 
-        <!-- Date filter -->
-        <.form for={%{}} method="get" action={~p"/reconciliation/accounting"} class="form-grid" :let={_f}>
-          <div class="form-block">
-            <div class="field">
-              <label>As of date</label>
-              <input type="date" name="as_of" value={@as_of} />
+        <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.75rem; margin-bottom: 1rem;">
+          <!-- Date filter -->
+          <.form for={%{}} method="get" action={~p"/reconciliation/accounting"} class="form-grid" style="margin: 0;" :let={_f}>
+            <div class="form-block" style="margin: 0;">
+              <div class="field" style="margin: 0;">
+                <label>As of date</label>
+                <div style="display: flex; gap: 0.5rem; align-items: center;">
+                  <input type="date" name="as_of" value={@as_of} />
+                  <button class="btn" type="submit">Update</button>
+                </div>
+              </div>
             </div>
+          </.form>
 
-            <div class="field">
-              <label>&nbsp;</label>
-              <button class="btn" type="submit">Update</button>
-            </div>
+          <!-- Last reconciled date -->
+          <div style="font-size: 0.85rem; color: #6b7280;">
+            <%= if @last_reconciled_date do %>
+              Last reconciled: <strong style="color: #1e40af;"><%= @last_reconciled_date %></strong>
+            <% else %>
+              Last reconciled: <strong style="color: #9ca3af;">Never</strong>
+            <% end %>
           </div>
-        </.form>
+        </div>
 
-        <div class="table-wrapper" style="margin-top: 1.5rem;">
+        <!-- Individual Adjust forms table -->
+        <div class="table-wrapper" style="margin-top: 1rem;">
           <table class="table">
             <thead>
               <tr>
@@ -38,34 +48,92 @@
               </tr>
             </thead>
             <tbody>
-              <%= for %{account: account, balance_cents: balance_cents, balance_pesos: balance_pesos} <- @accounts do %>
+              <% {assets, liabilities} = Enum.split_with(@accounts, fn %{account: a} -> a.type == "asset" end) %>
+
+              <tr>
+                <td colspan="6" style="background: #f0f7ff; font-weight: 700; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.06em; color: #1e40af; padding: 0.6rem 0.75rem; border-bottom: 2px solid #bfdbfe;">
+                  Assets
+                </td>
+              </tr>
+              <%= for %{account: account, balance_cents: balance_cents, balance_pesos: balance_pesos} <- assets do %>
                 <% formatted_balance = :erlang.float_to_binary(balance_pesos, [{:decimals, 2}]) %>
                 <tr>
                   <td><strong><%= account.code %></strong></td>
                   <td><%= account.name %></td>
                   <td class="numeric"><%= format_currency(balance_cents) %></td>
                   <td>
-                    <.form 
-                      for={%{}} 
-                      method="post" 
-                      action={~p"/reconciliation/accounting/adjust"} 
+                    <.form
+                      for={%{}}
+                      method="post"
+                      action={~p"/reconciliation/accounting/adjust"}
                       class="inline-form"
                       id={"adjust-form-#{account.id}"}
                     >
                       <input type="hidden" name="account_id" value={account.id} />
                       <input type="hidden" name="adjustment_date" value={@as_of} />
                       <div style="display: flex; gap: 0.5rem; align-items: center;">
-                        <input 
-                          type="number" 
-                          name="actual_balance" 
-                          step="0.01" 
+                        <input
+                          type="number"
+                          name="actual_balance"
+                          step="0.01"
                           value={formatted_balance}
                           style="width: 120px;"
                           class="numeric"
+                          data-account-id={account.id}
                         />
-                        <input 
-                          type="text" 
-                          name="description" 
+                        <input
+                          type="text"
+                          name="description"
+                          placeholder="Description (optional)"
+                          style="flex: 1; min-width: 200px;"
+                        />
+                        <button class="btn btn-sm" type="submit">Adjust</button>
+                      </div>
+                    </.form>
+                  </td>
+                  <td class="numeric" id={"diff-#{account.id}"}>
+                    <span style="color: #8b6f5b;">—</span>
+                  </td>
+                  <td>
+                    <span style="color: #8b6f5b; font-size: 0.85rem;">Enter actual balance and click Adjust</span>
+                  </td>
+                </tr>
+              <% end %>
+
+              <tr>
+                <td colspan="6" style="background: #fef3f2; font-weight: 700; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.06em; color: #991b1b; padding: 0.6rem 0.75rem; border-bottom: 2px solid #fecaca;">
+                  Liabilities
+                </td>
+              </tr>
+              <%= for %{account: account, balance_cents: balance_cents, balance_pesos: balance_pesos} <- liabilities do %>
+                <% formatted_balance = :erlang.float_to_binary(balance_pesos, [{:decimals, 2}]) %>
+                <tr>
+                  <td><strong><%= account.code %></strong></td>
+                  <td><%= account.name %></td>
+                  <td class="numeric"><%= format_currency(balance_cents) %></td>
+                  <td>
+                    <.form
+                      for={%{}}
+                      method="post"
+                      action={~p"/reconciliation/accounting/adjust"}
+                      class="inline-form"
+                      id={"adjust-form-#{account.id}"}
+                    >
+                      <input type="hidden" name="account_id" value={account.id} />
+                      <input type="hidden" name="adjustment_date" value={@as_of} />
+                      <div style="display: flex; gap: 0.5rem; align-items: center;">
+                        <input
+                          type="number"
+                          name="actual_balance"
+                          step="0.01"
+                          value={formatted_balance}
+                          style="width: 120px;"
+                          class="numeric"
+                          data-account-id={account.id}
+                        />
+                        <input
+                          type="text"
+                          name="description"
                           placeholder="Description (optional)"
                           style="flex: 1; min-width: 200px;"
                         />
@@ -84,6 +152,30 @@
             </tbody>
           </table>
         </div>
+
+        <!-- Reconcile All button -->
+        <div style="margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid #e5e7eb; display: flex; justify-content: flex-end;">
+          <button
+            type="button"
+            class="btn"
+            id="reconcile-all-btn"
+            style="background: #1e40af; color: white; padding: 0.6rem 1.5rem; font-weight: 600;"
+          >
+            Reconcile All
+          </button>
+        </div>
+
+        <!-- Hidden form for Reconcile All (populated by JS) -->
+        <.form
+          for={%{}}
+          method="post"
+          action={~p"/reconciliation/accounting/reconcile_all"}
+          id="reconcile-all-form"
+          style="display: none;"
+        >
+          <input type="hidden" name="as_of" value={@as_of} />
+          <!-- Account balance inputs will be injected by JS -->
+        </.form>
       </section>
     </div>
   </section>
@@ -103,7 +195,7 @@
       actualBalanceInput.addEventListener('input', function() {
         const actualBalance = parseFloat(this.value) || 0;
         const difference = actualBalance - systemBalancePesos;
-        
+
         if (difference === 0) {
           diffCell.innerHTML = '<span style="color: #10b981;">$0.00</span>';
         } else if (difference > 0) {
@@ -113,6 +205,31 @@
         }
       });
     });
+
+    // Reconcile All button handler
+    const reconcileAllBtn = document.getElementById('reconcile-all-btn');
+    const reconcileAllForm = document.getElementById('reconcile-all-form');
+
+    if (reconcileAllBtn && reconcileAllForm) {
+      reconcileAllBtn.addEventListener('click', function() {
+        // Remove any previously injected hidden inputs (except as_of)
+        reconcileAllForm.querySelectorAll('input[name^="accounts["]').forEach(el => el.remove());
+
+        // Collect all actual balance inputs
+        const balanceInputs = document.querySelectorAll('.inline-form input[name="actual_balance"]');
+        balanceInputs.forEach(input => {
+          const accountId = input.getAttribute('data-account-id');
+          if (accountId && input.value) {
+            const hidden = document.createElement('input');
+            hidden.type = 'hidden';
+            hidden.name = 'accounts[' + accountId + ']';
+            hidden.value = input.value;
+            reconcileAllForm.appendChild(hidden);
+          }
+        });
+
+        reconcileAllForm.submit();
+      });
+    }
   });
 </script>
-

@@ -5,100 +5,180 @@
 
     <div class="content-body">
       <section class="card">
-        <h2 class="card-title">Reconcile Inventory Quantities</h2>
-        <p class="card-subtitle">
-          Enter actual inventory quantities and create adjustment journal entries to match the system.
-        </p>
+        <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 1rem;">
+          <div>
+            <h2 class="card-title" style="margin: 0;">Reconcile Inventory Quantities</h2>
+            <p class="card-subtitle" style="margin: 0.25rem 0 0 0;">
+              Compare system quantities against actual counts and adjust as needed.
+            </p>
+          </div>
+          <div style="font-size: 0.85rem; color: #6b7280;">
+            <%= if @last_reconciled_date do %>
+              Last reconciled: <strong style="color: #1e40af;"><%= @last_reconciled_date %></strong>
+            <% else %>
+              Last reconciled: <strong style="color: #9ca3af;">Never</strong>
+            <% end %>
+          </div>
+        </div>
 
-        <div class="table-wrapper" style="margin-top: 1.5rem;">
-          <table class="table">
+        <% grouped = Enum.group_by(@inventory_items, & &1.ingredient) %>
+
+        <div class="table-wrapper">
+          <table class="table" style="font-size: 0.9rem;">
             <thead>
               <tr>
-                <th>Ingredient</th>
-                <th>Location</th>
-                <th>System Quantity</th>
-                <th>Actual Quantity</th>
-                <th>Difference</th>
-                <th>Value</th>
-                <th>Actions</th>
+                <th style="white-space: nowrap;">Item</th>
+                <th style="white-space: nowrap;">Location</th>
+                <th style="white-space: nowrap; text-align: right;">System Qty</th>
+                <th style="white-space: nowrap; text-align: center;">Actual Qty</th>
+                <th style="white-space: nowrap; text-align: right;">Diff</th>
+                <th style="white-space: nowrap; text-align: right;">Value</th>
               </tr>
             </thead>
             <tbody>
-              <%= for item <- @inventory_items do %>
-                <tr>
-                  <td><strong><%= item.ingredient.code %></strong><br/>
-                    <span style="font-size: 0.85rem; color: #8b6f5b;"><%= item.ingredient.name %></span>
-                  </td>
-                  <td><.location_badge location={ item.location } /></td>
-                  <td class="numeric"><%= item.quantity_on_hand %></td>
-                  <td>
-                    <.form 
-                      for={%{}} 
-                      method="post" 
-                      action={~p"/reconciliation/inventory/adjust"} 
-                      class="inline-form"
-                      id={"adjust-form-#{item.ingredient.id}-#{item.location.id}"}
-                    >
-                      <input type="hidden" name="ingredient_id" value={item.ingredient.id} />
-                      <input type="hidden" name="location_id" value={item.location.id} />
-                      <input type="hidden" name="adjustment_date" value={Date.utc_today()} />
-                      <div style="display: flex; gap: 0.5rem; align-items: center;">
-                        <input 
-                          type="number" 
-                          name="actual_quantity" 
-                          step="1" 
-                          value={item.quantity_on_hand} 
-                          style="width: 100px;"
+              <%= for {ingredient, items} <- Enum.sort_by(grouped, fn {ing, _} -> ing.code end) do %>
+                <% location_count = length(items) %>
+                <%= for {item, idx} <- Enum.with_index(items) do %>
+                  <tr style={if(idx == 0, do: "border-top: 2px solid #e5e7eb;", else: "")}>
+                    <%= if idx == 0 do %>
+                      <td rowspan={location_count} style="white-space: nowrap; vertical-align: top; padding-top: 0.6rem;">
+                        <strong><%= ingredient.code %></strong>
+                        <span style="color: #8b6f5b; margin-left: 0.25rem;"><%= ingredient.name %></span>
+                        <span style="font-size: 0.75rem; color: #9ca3af;">(<%= ingredient.unit %>)</span>
+                        <br/>
+                        <button
+                          type="button"
+                          class="transfer-toggle"
+                          data-ingredient={ingredient.code}
+                          style="font-size: 0.75rem; color: #3b82f6; background: none; border: none; cursor: pointer; padding: 0.15rem 0; text-decoration: underline;"
+                        >
+                          Transfer &rarr;
+                        </button>
+                      </td>
+                    <% end %>
+                    <td><.location_badge location={ item.location } /></td>
+                    <td class="numeric" style="text-align: right; font-variant-numeric: tabular-nums;"><%= item.quantity_on_hand %></td>
+                    <td style="text-align: center;">
+                      <.form
+                        for={%{}}
+                        method="post"
+                        action={~p"/reconciliation/inventory/adjust"}
+                        class="inline-form"
+                        id={"adjust-form-#{item.ingredient.id}-#{item.location.id}"}
+                        style="display: inline-flex; gap: 0.4rem; align-items: center; margin: 0;"
+                      >
+                        <input type="hidden" name="ingredient_id" value={item.ingredient.id} />
+                        <input type="hidden" name="location_id" value={item.location.id} />
+                        <input type="hidden" name="adjustment_date" value={Date.utc_today()} />
+                        <input type="hidden" name="description" value="" />
+                        <input
+                          type="number"
+                          name="actual_quantity"
+                          step="1"
+                          value={item.quantity_on_hand}
+                          style="width: 70px; text-align: right; padding: 0.2rem 0.35rem;"
                           class="numeric"
+                          data-item-key={"#{item.ingredient.id}-#{item.location.id}"}
                         />
-                        <input 
-                          type="text" 
-                          name="description" 
-                          placeholder="Description (optional)"
-                          style="flex: 1; min-width: 200px;"
-                        />
-                        <button class="btn btn-sm" type="submit">Adjust</button>
-                      </div>
+                        <button class="btn btn-sm" type="submit" style="padding: 0.2rem 0.5rem; font-size: 0.8rem;">Adjust</button>
+                      </.form>
+                    </td>
+                    <td class="numeric" style="text-align: right; font-variant-numeric: tabular-nums;" id={"diff-#{item.ingredient.id}-#{item.location.id}"}>
+                      <span style="color: #8b6f5b;">—</span>
+                    </td>
+                    <td style="text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums;">
+                      <%= format_currency(item.total_value_cents) %>
+                      <%= if item.avg_cost_per_unit_cents > 0 do %>
+                        <span style="font-size: 0.75rem; color: #9ca3af;">
+                          (<%= format_currency(item.avg_cost_per_unit_cents) %>/u)
+                        </span>
+                      <% end %>
+                    </td>
+                  </tr>
+                <% end %>
+                <!-- Transfer row (hidden by default) -->
+                <tr class="transfer-row" data-ingredient={ingredient.code} style="display: none; background: #f8fafc;">
+                  <td colspan="6" style="padding: 0.5rem 0.75rem;">
+                    <.form
+                      for={%{}}
+                      method="post"
+                      action={~p"/reconciliation/inventory/quick_transfer"}
+                      style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; margin: 0;"
+                    >
+                      <input type="hidden" name="ingredient_code" value={ingredient.code} />
+                      <span style="font-size: 0.85rem; font-weight: 600; color: #374151;">Move</span>
+                      <input
+                        type="number"
+                        name="quantity"
+                        min="1"
+                        step="1"
+                        value="1"
+                        style="width: 60px; text-align: right; padding: 0.2rem 0.35rem;"
+                      />
+                      <span style="font-size: 0.85rem; color: #6b7280;">from</span>
+                      <select name="from_location_code" style="padding: 0.2rem 0.35rem; font-size: 0.85rem;">
+                        <%= for loc <- @locations do %>
+                          <option value={loc.code}><%= loc.name %></option>
+                        <% end %>
+                      </select>
+                      <span style="font-size: 0.85rem; color: #6b7280;">&rarr;</span>
+                      <select name="to_location_code" style="padding: 0.2rem 0.35rem; font-size: 0.85rem;">
+                        <%= for loc <- Enum.reverse(@locations) do %>
+                          <option value={loc.code}><%= loc.name %></option>
+                        <% end %>
+                      </select>
+                      <button class="btn btn-sm" type="submit" style="padding: 0.2rem 0.6rem; font-size: 0.8rem; background: #3b82f6; color: white;">Transfer</button>
                     </.form>
-                  </td>
-                  <td class="numeric" id={"diff-#{item.ingredient.id}-#{item.location.id}"}>
-                    <span style="color: #8b6f5b;">—</span>
-                  </td>
-                  <td class="numeric">
-                    <%= format_currency(item.total_value_cents) %>
-                    <br/>
-                    <span style="font-size: 0.75rem; color: #8b6f5b;">
-                      @ <%= format_currency(item.avg_cost_per_unit_cents) %>/unit
-                    </span>
-                  </td>
-                  <td>
-                    <span style="color: #8b6f5b; font-size: 0.85rem;">Enter actual quantity and click Adjust</span>
                   </td>
                 </tr>
               <% end %>
             </tbody>
           </table>
         </div>
+
+        <!-- Reconcile All button -->
+        <div style="margin-top: 1rem; padding-top: 0.75rem; border-top: 1px solid #e5e7eb; display: flex; justify-content: flex-end;">
+          <button
+            type="button"
+            class="btn"
+            id="reconcile-all-btn"
+            style="background: #1e40af; color: white; padding: 0.5rem 1.25rem; font-weight: 600;"
+          >
+            Reconcile All
+          </button>
+        </div>
+
+        <!-- Hidden form for Reconcile All (populated by JS) -->
+        <.form
+          for={%{}}
+          method="post"
+          action={~p"/reconciliation/inventory/reconcile_all"}
+          id="reconcile-all-form"
+          style="display: none;"
+        >
+        </.form>
       </section>
     </div>
   </section>
 
 <script>
-  // Calculate and display difference as user types
   document.addEventListener('DOMContentLoaded', function() {
-    const forms = document.querySelectorAll('.inline-form');
-    forms.forEach(form => {
-      const ingredientId = form.querySelector('input[name="ingredient_id"]').value;
-      const locationId = form.querySelector('input[name="location_id"]').value;
-      const systemQtyCell = form.closest('tr').querySelectorAll('.numeric')[0];
-      const systemQty = parseInt(systemQtyCell.textContent.trim()) || 0;
-      const actualQtyInput = form.querySelector('input[name="actual_quantity"]');
-      const diffCell = document.getElementById('diff-' + ingredientId + '-' + locationId);
+    // Live difference calculation
+    var forms = document.querySelectorAll('.inline-form');
+    forms.forEach(function(form) {
+      var ingredientId = form.querySelector('input[name="ingredient_id"]');
+      if (!ingredientId) return;
+      ingredientId = ingredientId.value;
+      var locationId = form.querySelector('input[name="location_id"]').value;
+      var systemQtyCell = form.closest('tr').querySelector('td.numeric');
+      var systemQty = parseInt(systemQtyCell.textContent.trim()) || 0;
+      var actualQtyInput = form.querySelector('input[name="actual_quantity"]');
+      var diffCell = document.getElementById('diff-' + ingredientId + '-' + locationId);
 
       actualQtyInput.addEventListener('input', function() {
-        const actualQty = parseInt(this.value) || 0;
-        const difference = actualQty - systemQty;
-        
+        var actualQty = parseInt(this.value) || 0;
+        var difference = actualQty - systemQty;
+
         if (difference === 0) {
           diffCell.innerHTML = '<span style="color: #10b981;">0</span>';
         } else if (difference > 0) {
@@ -108,6 +188,43 @@
         }
       });
     });
+
+    // Transfer toggle buttons
+    var toggles = document.querySelectorAll('.transfer-toggle');
+    toggles.forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        var code = btn.getAttribute('data-ingredient');
+        var row = document.querySelector('.transfer-row[data-ingredient="' + code + '"]');
+        if (row) {
+          var isHidden = row.style.display === 'none';
+          row.style.display = isHidden ? 'table-row' : 'none';
+          btn.textContent = isHidden ? 'Cancel' : 'Transfer →';
+        }
+      });
+    });
+
+    // Reconcile All handler
+    var reconcileAllBtn = document.getElementById('reconcile-all-btn');
+    var reconcileAllForm = document.getElementById('reconcile-all-form');
+
+    if (reconcileAllBtn && reconcileAllForm) {
+      reconcileAllBtn.addEventListener('click', function() {
+        reconcileAllForm.querySelectorAll('input[name^="items["]').forEach(function(el) { el.remove(); });
+
+        var qtyInputs = document.querySelectorAll('.inline-form input[name="actual_quantity"]');
+        qtyInputs.forEach(function(input) {
+          var itemKey = input.getAttribute('data-item-key');
+          if (itemKey && input.value) {
+            var hidden = document.createElement('input');
+            hidden.type = 'hidden';
+            hidden.name = 'items[' + itemKey + ']';
+            hidden.value = input.value;
+            reconcileAllForm.appendChild(hidden);
+          }
+        });
+
+        reconcileAllForm.submit();
+      });
+    }
   });
 </script>
-

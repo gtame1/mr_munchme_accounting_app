@@ -192,26 +192,41 @@ defmodule MrMunchMeAccountingApp.Reconciliation do
   end
 
   @doc """
-  Get all inventory items with their quantities for reconciliation.
-  Returns a list of maps with ingredient, location, and quantity info.
+  Get all ingredient×location combos with their quantities for reconciliation.
+  Shows every ingredient at every location, even if quantity is 0 (no InventoryItem row).
   """
   def list_inventory_for_reconciliation do
-    from(ii in InventoryItem,
-      join: i in assoc(ii, :ingredient),
-      join: l in assoc(ii, :location),
-      preload: [ingredient: i, location: l],
-      order_by: [i.code, l.code]
-    )
-    |> Repo.all()
-    |> Enum.map(fn item ->
-      %{
-        ingredient: item.ingredient,
-        location: item.location,
-        quantity_on_hand: item.quantity_on_hand,
-        avg_cost_per_unit_cents: item.avg_cost_per_unit_cents || 0,
-        total_value_cents: (item.quantity_on_hand * (item.avg_cost_per_unit_cents || 0))
-      }
-    end)
+    ingredients = Repo.all(from i in Ingredient, order_by: i.code)
+    locations = Repo.all(from l in Location, order_by: l.code)
+
+    # Build a lookup map: {ingredient_id, location_id} => InventoryItem
+    stock_map =
+      from(ii in InventoryItem, preload: [:ingredient, :location])
+      |> Repo.all()
+      |> Map.new(fn ii -> {{ii.ingredient_id, ii.location_id}, ii} end)
+
+    for ingredient <- ingredients, location <- locations do
+      case Map.get(stock_map, {ingredient.id, location.id}) do
+        nil ->
+          %{
+            ingredient: ingredient,
+            location: location,
+            quantity_on_hand: 0,
+            avg_cost_per_unit_cents: 0,
+            total_value_cents: 0
+          }
+
+        item ->
+          avg_cost = item.avg_cost_per_unit_cents || 0
+          %{
+            ingredient: ingredient,
+            location: location,
+            quantity_on_hand: item.quantity_on_hand,
+            avg_cost_per_unit_cents: avg_cost,
+            total_value_cents: item.quantity_on_hand * avg_cost
+          }
+      end
+    end
   end
 
   @doc """

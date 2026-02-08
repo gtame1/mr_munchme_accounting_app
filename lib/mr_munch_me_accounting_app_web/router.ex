@@ -40,8 +40,11 @@ defmodule MrMunchMeAccountingAppWeb.Router do
 
     get "/reconciliation/accounting", ReconciliationController, :accounting_index
     post "/reconciliation/accounting/adjust", ReconciliationController, :accounting_adjust
+    post "/reconciliation/accounting/reconcile_all", ReconciliationController, :accounting_reconcile_all
     get "/reconciliation/inventory", ReconciliationController, :inventory_index
     post "/reconciliation/inventory/adjust", ReconciliationController, :inventory_adjust
+    post "/reconciliation/inventory/reconcile_all", ReconciliationController, :inventory_reconcile_all
+    post "/reconciliation/inventory/quick_transfer", ReconciliationController, :inventory_quick_transfer
 
     get "/reports/diagnostics", ReportController, :diagnostics
     post "/reports/diagnostics", ReportController, :diagnostics

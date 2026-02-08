@@ -4,6 +4,8 @@ defmodule MrMunchMeAccountingAppWeb.ReconciliationController do
 
   alias MrMunchMeAccountingApp.Reconciliation
   alias MrMunchMeAccountingApp.Accounting
+  alias MrMunchMeAccountingApp.Inventory
+  alias MrMunchMeAccountingApp.Settings
 
   # ---------- Accounting Reconciliation ----------
 
@@ -17,9 +19,12 @@ defmodule MrMunchMeAccountingAppWeb.ReconciliationController do
 
     accounts = Reconciliation.list_accounts_for_reconciliation(as_of)
 
+    last_reconciled_date = Settings.get_last_reconciled_date()
+
     render(conn, :accounting_index,
       accounts: accounts,
-      as_of: as_of
+      as_of: as_of,
+      last_reconciled_date: last_reconciled_date
     )
   end
 
@@ -79,13 +84,57 @@ defmodule MrMunchMeAccountingAppWeb.ReconciliationController do
     end
   end
 
+  def accounting_reconcile_all(conn, params) do
+    date_str = params["as_of"]
+    accounts_params = params["accounts"] || %{}
+
+    as_of =
+      case date_str do
+        nil -> Date.utc_today()
+        "" -> Date.utc_today()
+        d -> Date.from_iso8601!(d)
+      end
+
+    adjustment_count =
+      Enum.reduce(accounts_params, 0, fn {account_id, actual_balance_str}, count ->
+        case Float.parse(actual_balance_str) do
+          {actual_balance, _} ->
+            case Reconciliation.create_account_reconciliation(account_id, actual_balance, as_of) do
+              {:ok, _journal_entry} -> count + 1
+              {:error, _reason} -> count
+            end
+
+          :error ->
+            count
+        end
+      end)
+
+    # Always save the reconciled date, even if no adjustments were needed
+    Settings.set_last_reconciled_date(as_of)
+
+    flash_msg =
+      case adjustment_count do
+        0 -> "All accounts reconciled — no adjustments needed."
+        1 -> "Reconciliation complete — 1 adjustment created."
+        n -> "Reconciliation complete — #{n} adjustments created."
+      end
+
+    conn
+    |> put_flash(:info, flash_msg)
+    |> redirect(to: ~p"/reconciliation/accounting?as_of=#{as_of}")
+  end
+
   # ---------- Inventory Reconciliation ----------
 
   def inventory_index(conn, _params) do
     inventory_items = Reconciliation.list_inventory_for_reconciliation()
+    last_reconciled_date = Settings.get_last_inventory_reconciled_date()
+    locations = Inventory.list_locations()
 
     render(conn, :inventory_index,
-      inventory_items: inventory_items
+      inventory_items: inventory_items,
+      last_reconciled_date: last_reconciled_date,
+      locations: locations
     )
   end
 
@@ -150,6 +199,83 @@ defmodule MrMunchMeAccountingAppWeb.ReconciliationController do
           |> put_flash(:error, "Error: #{Exception.message(e)}")
           |> redirect(to: ~p"/reconciliation/inventory")
       end
+    end
+  end
+
+  def inventory_reconcile_all(conn, params) do
+    items_params = params["items"] || %{}
+    today = Date.utc_today()
+
+    adjustment_count =
+      Enum.reduce(items_params, 0, fn {key, actual_quantity_str}, count ->
+        case String.split(key, "-", parts: 2) do
+          [ingredient_id, location_id] ->
+            case Integer.parse(actual_quantity_str) do
+              {actual_quantity, _} ->
+                case Reconciliation.create_inventory_reconciliation(
+                       ingredient_id,
+                       location_id,
+                       actual_quantity,
+                       today
+                     ) do
+                  {:ok, _result} -> count + 1
+                  {:error, _reason} -> count
+                end
+
+              :error ->
+                count
+            end
+
+          _ ->
+            count
+        end
+      end)
+
+    # Always save the reconciled date, even if no adjustments were needed
+    Settings.set_last_inventory_reconciled_date(today)
+
+    flash_msg =
+      case adjustment_count do
+        0 -> "All inventory reconciled — no adjustments needed."
+        1 -> "Reconciliation complete — 1 adjustment created."
+        n -> "Reconciliation complete — #{n} adjustments created."
+      end
+
+    conn
+    |> put_flash(:info, flash_msg)
+    |> redirect(to: ~p"/reconciliation/inventory")
+  end
+
+  def inventory_quick_transfer(conn, params) do
+    ingredient_code = params["ingredient_code"]
+    from_location_code = params["from_location_code"]
+    to_location_code = params["to_location_code"]
+    quantity_str = params["quantity"]
+
+    with {quantity, _} when quantity > 0 <- Integer.parse(quantity_str || ""),
+         true <- from_location_code != to_location_code do
+      case Inventory.transfer(
+             ingredient_code,
+             from_location_code,
+             to_location_code,
+             quantity,
+             Date.utc_today()
+           ) do
+        {:ok, _result} ->
+          conn
+          |> put_flash(:info, "Transferred #{quantity} #{ingredient_code} from #{from_location_code} to #{to_location_code}")
+          |> redirect(to: ~p"/reconciliation/inventory")
+
+        {:error, reason} ->
+          conn
+          |> put_flash(:error, "Transfer failed: #{inspect(reason)}")
+          |> redirect(to: ~p"/reconciliation/inventory")
+      end
+    else
+      _ ->
+        conn
+        |> put_flash(:error, "Invalid transfer — check quantity and locations")
+        |> redirect(to: ~p"/reconciliation/inventory")
     end
   end
 end
