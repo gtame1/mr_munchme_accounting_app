@@ -29,7 +29,12 @@ defmodule MrMunchMeAccountingAppWeb.ProductController do
         |> redirect(to: ~p"/products")
 
       {:error, %Ecto.Changeset{} = changeset} ->
-        changeset = Map.put(changeset, :action, :insert)
+        # Convert price_cents back to pesos for form re-display
+        changeset =
+          changeset
+          |> Map.put(:action, :insert)
+          |> Ecto.Changeset.put_change(:price_cents, MoneyHelper.cents_to_pesos(Ecto.Changeset.get_field(changeset, :price_cents)))
+
         render(conn, :new,
           changeset: changeset,
           action: ~p"/products"
@@ -58,7 +63,12 @@ defmodule MrMunchMeAccountingAppWeb.ProductController do
         |> redirect(to: ~p"/products")
 
       {:error, %Ecto.Changeset{} = changeset} ->
-        changeset = Map.put(changeset, :action, :update)
+        # Convert price_cents back to pesos for form re-display
+        changeset =
+          changeset
+          |> Map.put(:action, :update)
+          |> Ecto.Changeset.put_change(:price_cents, MoneyHelper.cents_to_pesos(Ecto.Changeset.get_field(changeset, :price_cents)))
+
         render(conn, :edit, product: product, changeset: changeset, action: ~p"/products/#{product}")
     end
   end

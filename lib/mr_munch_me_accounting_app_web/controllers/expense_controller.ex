@@ -34,7 +34,11 @@ defmodule MrMunchMeAccountingAppWeb.ExpenseController do
         |> redirect(to: ~p"/expenses/#{expense.id}")
 
       {:error, %Ecto.Changeset{} = changeset} ->
-        changeset = Map.put(changeset, :action, :insert)
+        # Convert amount_cents back to pesos for form re-display
+        changeset =
+          changeset
+          |> Map.put(:action, :insert)
+          |> Ecto.Changeset.put_change(:amount_cents, MoneyHelper.cents_to_pesos(Ecto.Changeset.get_field(changeset, :amount_cents)))
 
         render(conn, :new,
           changeset: changeset,
@@ -83,7 +87,11 @@ defmodule MrMunchMeAccountingAppWeb.ExpenseController do
         |> redirect(to: ~p"/expenses/#{expense.id}")
 
       {:error, %Ecto.Changeset{} = changeset} ->
-        changeset = Map.put(changeset, :action, :update)
+        # Convert amount_cents back to pesos for form re-display
+        changeset =
+          changeset
+          |> Map.put(:action, :update)
+          |> Ecto.Changeset.put_change(:amount_cents, MoneyHelper.cents_to_pesos(Ecto.Changeset.get_field(changeset, :amount_cents)))
 
         render(conn, :edit,
           expense: expense,

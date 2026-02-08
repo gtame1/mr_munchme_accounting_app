@@ -19,11 +19,12 @@ defmodule MrMunchMeAccountingApp.Reporting do
   """
   def dashboard_metrics(start_date, end_date) do
     # --- Operational: orders + revenue (from orders/products) ---
+    # Use actual_delivery_date for delivered orders, fall back to delivery_date for non-delivered
     order_rev_stats =
       from(o in Order,
         where:
-          o.delivery_date >= ^start_date and
-            o.delivery_date <= ^end_date and
+          fragment("COALESCE(?, ?)", o.actual_delivery_date, o.delivery_date) >= ^start_date and
+            fragment("COALESCE(?, ?)", o.actual_delivery_date, o.delivery_date) <= ^end_date and
             o.status != "canceled",
         select: %{
           order_count: count(o.id)
@@ -36,8 +37,8 @@ defmodule MrMunchMeAccountingApp.Reporting do
       from(o in Order,
         join: p in assoc(o, :product),
         where:
-          o.delivery_date >= ^start_date and
-            o.delivery_date <= ^end_date and
+          fragment("COALESCE(?, ?)", o.actual_delivery_date, o.delivery_date) >= ^start_date and
+            fragment("COALESCE(?, ?)", o.actual_delivery_date, o.delivery_date) <= ^end_date and
             o.status != "canceled",
         select: %{
           revenue_cents: coalesce(sum(p.price_cents), 0)
@@ -47,7 +48,8 @@ defmodule MrMunchMeAccountingApp.Reporting do
 
     orders_by_status =
       from(o in Order,
-        where: o.delivery_date >= ^start_date and o.delivery_date <= ^end_date,
+        where: fragment("COALESCE(?, ?)", o.actual_delivery_date, o.delivery_date) >= ^start_date and
+          fragment("COALESCE(?, ?)", o.actual_delivery_date, o.delivery_date) <= ^end_date,
         group_by: o.status,
         select: {o.status, count(o.id)}
       )
@@ -73,8 +75,8 @@ defmodule MrMunchMeAccountingApp.Reporting do
       from(o in Order,
         join: p in assoc(o, :product),
         where:
-          o.delivery_date >= ^start_date and
-            o.delivery_date <= ^end_date and
+          fragment("COALESCE(?, ?)", o.actual_delivery_date, o.delivery_date) >= ^start_date and
+            fragment("COALESCE(?, ?)", o.actual_delivery_date, o.delivery_date) <= ^end_date and
             o.status != "canceled",
         group_by: [p.id, p.name, p.sku],
         select: %{
@@ -101,8 +103,8 @@ defmodule MrMunchMeAccountingApp.Reporting do
       else
         from(o in Order,
           where:
-            o.delivery_date >= ^start_date and
-              o.delivery_date <= ^end_date and
+            fragment("COALESCE(?, ?)", o.actual_delivery_date, o.delivery_date) >= ^start_date and
+              fragment("COALESCE(?, ?)", o.actual_delivery_date, o.delivery_date) <= ^end_date and
               o.status != "canceled" and
               o.product_id in ^product_order_ids,
           select: o.id
@@ -269,8 +271,8 @@ defmodule MrMunchMeAccountingApp.Reporting do
       from(o in Order,
         where:
           o.product_id == ^product_id and
-            o.delivery_date >= ^start_date and
-            o.delivery_date <= ^end_date and
+            fragment("COALESCE(?, ?)", o.actual_delivery_date, o.delivery_date) >= ^start_date and
+            fragment("COALESCE(?, ?)", o.actual_delivery_date, o.delivery_date) <= ^end_date and
             o.status == "delivered",
         preload: [:product]
       )

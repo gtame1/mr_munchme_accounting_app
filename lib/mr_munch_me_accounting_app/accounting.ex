@@ -134,7 +134,7 @@ defmodule MrMunchMeAccountingApp.Accounting do
     wip = get_account_by_code!(@wip_inventory_code)
     samples_gifts = get_account_by_code!(@samples_gifts_code)
     cost_cents = get_order_production_cost(order.id, wip.id) || 0
-    date = order.delivery_date || Date.utc_today()
+    date = order.actual_delivery_date || order.delivery_date || Date.utc_today()
 
     entry_attrs = %{
       date: date,
@@ -193,7 +193,7 @@ defmodule MrMunchMeAccountingApp.Accounting do
     ingredients_cogs = get_account_by_code!(@ingredients_cogs_code)
     # packaging_cogs   = get_account_by_code!(@packaging_cogs_code) # (for future use)
 
-    date = order.delivery_date || Date.utc_today()
+    date = order.actual_delivery_date || order.delivery_date || Date.utc_today()
 
     entry_attrs = %{
       date: date,
@@ -203,8 +203,8 @@ defmodule MrMunchMeAccountingApp.Accounting do
     }
 
     # Calculate total payments received before delivery
-    # We need to check payments that were recorded before the delivery date
-    delivery_date = order.delivery_date || Date.utc_today()
+    # We need to check payments that were recorded before the actual delivery date
+    delivery_date = order.actual_delivery_date || order.delivery_date || Date.utc_today()
 
     # Deposits are payments where is_deposit == true
     # Use customer_amount_cents if set, otherwise use amount_cents
@@ -1723,7 +1723,7 @@ defmodule MrMunchMeAccountingApp.Accounting do
 
     from(o in Order,
       join: p in assoc(o, :product),
-      where: o.delivery_date >= ^start_date and o.delivery_date <= ^end_date and o.status == "delivered",
+      where: fragment("COALESCE(?, ?)", o.actual_delivery_date, o.delivery_date) >= ^start_date and fragment("COALESCE(?, ?)", o.actual_delivery_date, o.delivery_date) <= ^end_date and o.status == "delivered",
       group_by: [p.id, p.name, p.sku],
       select: %{
         product_id: p.id,
@@ -1746,7 +1746,7 @@ defmodule MrMunchMeAccountingApp.Accounting do
     orders =
       from(o in Order,
         join: p in assoc(o, :product),
-        where: o.delivery_date >= ^start_date and o.delivery_date <= ^end_date and o.status == "delivered",
+        where: fragment("COALESCE(?, ?)", o.actual_delivery_date, o.delivery_date) >= ^start_date and fragment("COALESCE(?, ?)", o.actual_delivery_date, o.delivery_date) <= ^end_date and o.status == "delivered",
         select: {o.id, p.id, p.name, p.sku}
       )
       |> Repo.all()

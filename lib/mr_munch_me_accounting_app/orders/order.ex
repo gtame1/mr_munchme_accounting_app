@@ -20,6 +20,7 @@ defmodule MrMunchMeAccountingApp.Orders.Order do
     field :delivery_address, :string
     field :delivery_date, :date
     field :delivery_time, :time
+    field :actual_delivery_date, :date
 
     field :status, :string, default: "new_order"
     field :customer_paid_shipping, :boolean, default: false
@@ -55,7 +56,8 @@ defmodule MrMunchMeAccountingApp.Orders.Order do
       :customer_id,
       :discount_type,
       :discount_value,
-      :is_gift
+      :is_gift,
+      :actual_delivery_date
     ])
     |> validate_required([
       :delivery_type,

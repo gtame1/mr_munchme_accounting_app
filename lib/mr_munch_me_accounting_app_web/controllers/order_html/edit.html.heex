@@ -123,8 +123,15 @@
             </div>
 
             <div class="field">
-              <.input field={f[:delivery_date]} type="date" label="Delivery Date" />
+              <.input field={f[:delivery_date]} type="date" label="Scheduled Delivery Date" />
             </div>
+
+            <%= if @order.status == "delivered" do %>
+              <div class="field">
+                <.input field={f[:actual_delivery_date]} type="date" label="Actual Delivery Date" />
+                <p class="field-help"><i>* Date the order was actually delivered (used for accounting)</i></p>
+              </div>
+            <% end %>
 
             <div class="field">
               <.input field={f[:delivery_time]} type="time" label="Delivery Time" />

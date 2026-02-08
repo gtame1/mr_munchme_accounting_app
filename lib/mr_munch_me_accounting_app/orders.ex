@@ -441,11 +441,18 @@ defmodule MrMunchMeAccountingApp.Orders do
 
 
   def update_order_status(%Order{} = order, new_status) when new_status in @statuses do
+    # Auto-set actual_delivery_date when marking as delivered
+    attrs =
+      if new_status == "delivered" do
+        %{status: new_status, actual_delivery_date: order.actual_delivery_date || Date.utc_today()}
+      else
+        %{status: new_status}
+      end
 
     Repo.transaction(fn ->
       {:ok, updated} =
         order
-        |> Order.changeset(%{status: new_status})
+        |> Order.changeset(attrs)
         |> Repo.update()
 
       Accounting.handle_order_status_change(updated, new_status)

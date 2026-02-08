@@ -106,9 +106,15 @@
         <div style="font-size: 0.9rem;"><%= String.capitalize(@order.delivery_type) %></div>
       </div>
       <div>
-        <span style="font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-muted);">Date</span>
+        <span style="font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-muted);">Scheduled Date</span>
         <div style="font-size: 0.9rem;"><%= @order.delivery_date %></div>
       </div>
+      <%= if @order.actual_delivery_date do %>
+        <div>
+          <span style="font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-muted);">Delivered On</span>
+          <div style="font-size: 0.9rem;"><%= @order.actual_delivery_date %></div>
+        </div>
+      <% end %>
       <%= if @order.delivery_time do %>
         <div>
           <span style="font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-muted);">Time</span>
