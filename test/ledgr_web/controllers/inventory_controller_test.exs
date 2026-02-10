@@ -1,4 +1,4 @@
-defmodule LedgrWeb.InventoryControllerTest do
+defmodule LedgrWeb.Domains.MrMunchMe.InventoryControllerTest do
   use LedgrWeb.ConnCase
 
   import Ecto.Query

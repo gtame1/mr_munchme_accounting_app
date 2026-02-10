@@ -1,4 +1,4 @@
-defmodule LedgrWeb.OrderPaymentController do
+defmodule LedgrWeb.Domains.MrMunchMe.OrderPaymentController do
   use LedgrWeb, :controller
 
   alias Ledgr.Domains.MrMunchMe.Orders
