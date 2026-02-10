@@ -135,7 +135,7 @@
                 </.link>
               </td>
               <td><%= order.customer_name %></td>
-              <td><%= order.product && order.product.name %></td>
+              <td><%= order.product && order.product.name %><%= if (order.quantity || 1) > 1, do: " x#{order.quantity}" %></td>
               <td><%= order.delivery_date %></td>
               <td><%= String.capitalize(order.delivery_type || "") %></td>
 
@@ -171,9 +171,9 @@
                 <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
                   <%!-- Quick Status Update Buttons (same logic as order show page) --%>
                   <%= if order.status == "new_order" do %>
-                    <.form for={%{}} as={:status} action={~p"/orders/#{order.id}/status"} method="post" style="display: inline;">
+                    <.form for={%{}} as={:status} action={~p"/orders/#{order.id}/status"} method="post" style="display: inline;" onsubmit="return confirm('Are you sure you want to move this order to In Prep?\n\nMake sure you have reviewed the ingredients. Inventory will be deducted and ingredients will be locked after this step.');">
                       <input type="hidden" name="status[status]" value="in_prep" />
-                      <button class="btn btn-sm primary" type="submit" style="font-size: 0.75rem; padding: 0.25rem 0.5rem; white-space: nowrap;">Move to In Prep</button>
+                      <button class="btn btn-sm primary" type="submit" style="font-size: 0.75rem; padding: 0.25rem 0.5rem; white-space: nowrap;">Confirm & In Prep</button>
                     </.form>
                   <% end %>
 
@@ -256,7 +256,7 @@
                 </.link>
               </td>
               <td><%= order.customer_name %></td>
-              <td><%= order.product && order.product.name %></td>
+              <td><%= order.product && order.product.name %><%= if (order.quantity || 1) > 1, do: " x#{order.quantity}" %></td>
               <td><%= order.delivery_date %></td>
               <td><%= String.capitalize(order.delivery_type || "") %></td>
 
@@ -334,7 +334,7 @@
                 </.link>
               </td>
               <td><%= order.customer_name %></td>
-              <td><%= order.product && order.product.name %></td>
+              <td><%= order.product && order.product.name %><%= if (order.quantity || 1) > 1, do: " x#{order.quantity}" %></td>
               <td><%= order.delivery_date %></td>
               <td><%= String.capitalize(order.delivery_type || "") %></td>
 

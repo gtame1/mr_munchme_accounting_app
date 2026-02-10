@@ -110,6 +110,8 @@ defmodule MrMunchMeAccountingAppWeb.OrderController do
       changeset: changeset,
       action: ~p"/orders",
       product_options: Orders.product_select_options(),
+      product_prices: product_price_map(),
+      shipping_fee_cents: Accounting.shipping_fee_cents(),
       location_options: Inventory.list_locations() |> Enum.map(&{&1.name, &1.id}),
       customer_options: Customers.customer_select_options()
     )
@@ -129,6 +131,8 @@ defmodule MrMunchMeAccountingAppWeb.OrderController do
           changeset: changeset,
           action: ~p"/orders",
           product_options: Orders.product_select_options(),
+          product_prices: product_price_map(),
+          shipping_fee_cents: Accounting.shipping_fee_cents(),
           location_options: Inventory.list_locations() |> Enum.map(&{&1.name, &1.id}),
           customer_options: Customers.customer_select_options()
         )
@@ -145,6 +149,8 @@ defmodule MrMunchMeAccountingAppWeb.OrderController do
           changeset: changeset,
           action: ~p"/orders",
           product_options: Orders.product_select_options(),
+          product_prices: product_price_map(),
+          shipping_fee_cents: Accounting.shipping_fee_cents(),
           location_options: Inventory.list_locations() |> Enum.map(&{&1.name, &1.id}),
           customer_options: Customers.customer_select_options()
         )
@@ -452,6 +458,11 @@ defmodule MrMunchMeAccountingAppWeb.OrderController do
       today: today
     )
   end
+
+  defp product_price_map do
+    Orders.list_products()
+    |> Map.new(fn p -> {p.id, p.price_cents || 0} end)
+  end
 end
 
 
@@ -476,4 +487,5 @@ defmodule MrMunchMeAccountingAppWeb.OrderHTML do
       %{year: year, month: month + 1}
     end
   end
+
 end

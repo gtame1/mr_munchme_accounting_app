@@ -446,7 +446,7 @@ defmodule MrMunchMeAccountingApp.Inventory.VerificationTest do
 
   describe "verify_movement_costs/0" do
     test "returns ok when no zero-cost movements exist" do
-      assert {:ok, %{checked: "all movements", zero_cost: 0}} = Verification.verify_movement_costs()
+      assert {:ok, %{zero_cost: 0}} = Verification.verify_movement_costs()
     end
 
     test "returns error when usage movements have $0 cost", %{

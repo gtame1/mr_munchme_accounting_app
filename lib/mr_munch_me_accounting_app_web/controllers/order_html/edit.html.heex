@@ -171,6 +171,15 @@
 
             <div class="field">
               <.input
+                field={f[:quantity]}
+                type="number"
+                label="Quantity"
+                min="1"
+              />
+            </div>
+
+            <div class="field">
+              <.input
                 field={f[:prep_location_id]}
                 type="select"
                 label="Preparation Location"

@@ -41,7 +41,7 @@ defmodule MrMunchMeAccountingApp.Reporting do
             fragment("COALESCE(?, ?)", o.actual_delivery_date, o.delivery_date) <= ^end_date and
             o.status != "canceled",
         select: %{
-          revenue_cents: coalesce(sum(p.price_cents), 0)
+          revenue_cents: coalesce(sum(p.price_cents * fragment("COALESCE(?, 1)", o.quantity)), 0)
         }
       )
       |> Repo.one()
@@ -84,7 +84,7 @@ defmodule MrMunchMeAccountingApp.Reporting do
           product_name: p.name,
           product_sku: p.sku,
           order_count: count(o.id),
-          revenue_cents: fragment("SUM(?) + SUM(CASE WHEN ? THEN ? ELSE 0 END)", p.price_cents, o.customer_paid_shipping, ^shipping_fee)
+          revenue_cents: fragment("SUM(? * COALESCE(?, 1)) + SUM(CASE WHEN ? THEN ? ELSE 0 END)", p.price_cents, o.quantity, o.customer_paid_shipping, ^shipping_fee)
         },
         order_by: [desc: count(o.id)]
       )
@@ -281,7 +281,8 @@ defmodule MrMunchMeAccountingApp.Reporting do
     # Calculate revenue from orders
     revenue_cents =
       Enum.reduce(orders, 0, fn order, acc ->
-        base_revenue = order.product.price_cents || 0
+        quantity = order.quantity || 1
+        base_revenue = (order.product.price_cents || 0) * quantity
         shipping_cents = if order.customer_paid_shipping, do: Accounting.shipping_fee_cents(), else: 0
         acc + base_revenue + shipping_cents
       end)

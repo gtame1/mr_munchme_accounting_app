@@ -163,6 +163,16 @@
 
             <div class="field">
               <.input
+                field={f[:quantity]}
+                type="number"
+                label="Quantity"
+                min="1"
+                value={Phoenix.HTML.Form.input_value(f, :quantity) || 1}
+              />
+            </div>
+
+            <div class="field">
+              <.input
                 field={f[:prep_location_id]}
                 type="select"
                 label="Preparation Location"
@@ -208,6 +218,35 @@
                 min="0"
                 placeholder="e.g. 50 for $50 off or 10 for 10%"
               />
+            </div>
+          </div>
+        </div>
+
+        <%!-- Price Preview --%>
+        <div class="form-section" id="price-preview-section" style="display: none;">
+          <h3 class="section-title">Order Total Preview</h3>
+          <div style="background: #f8fafc; border: 1px solid var(--border-subtle); border-radius: 0.5rem; padding: 0.75rem 1rem;">
+            <div style="display: flex; flex-direction: column; gap: 0.3rem; font-size: 0.9rem;">
+              <div id="preview-unit-line" style="display: none; justify-content: space-between; color: var(--text-muted);">
+                <span id="preview-unit-label"></span>
+                <span id="preview-unit-total"></span>
+              </div>
+              <div style="display: flex; justify-content: space-between; color: var(--text-muted);">
+                <span>Product Subtotal</span>
+                <span id="preview-subtotal">$0.00</span>
+              </div>
+              <div id="preview-discount-line" style="display: none; justify-content: space-between; color: #059669;">
+                <span id="preview-discount-label">Discount</span>
+                <span id="preview-discount-value">-$0.00</span>
+              </div>
+              <div id="preview-shipping-line" style="display: none; justify-content: space-between; color: var(--text-muted);">
+                <span>Shipping</span>
+                <span id="preview-shipping-value">$0.00</span>
+              </div>
+              <div style="display: flex; justify-content: space-between; font-weight: 600; padding-top: 0.3rem; border-top: 1px solid var(--border-subtle);">
+                <span>Order Total</span>
+                <span id="preview-total">$0.00</span>
+              </div>
             </div>
           </div>
         </div>
@@ -466,5 +505,112 @@
       isGiftCheckbox.addEventListener("change", toggleGiftMode);
       toggleGiftMode();
     }
+
+    // ── Price Preview ──
+    const productPrices = <%= Phoenix.HTML.raw(Jason.encode!(@product_prices)) %>;
+    const shippingFeeCents = <%= @shipping_fee_cents %>;
+    const productSelect = document.getElementById("product_id_select");
+    const quantityInput = document.querySelector('input[name="order[quantity]"]');
+    const shippingCheckbox = document.querySelector('input[name="order[customer_paid_shipping]"]');
+    const discountTypeSelect = document.querySelector('select[name="order[discount_type]"]');
+    const discountValueInput = document.querySelector('input[name="order[discount_value]"]');
+
+    const previewSection = document.getElementById("price-preview-section");
+    const previewUnitLine = document.getElementById("preview-unit-line");
+    const previewUnitLabel = document.getElementById("preview-unit-label");
+    const previewUnitTotal = document.getElementById("preview-unit-total");
+    const previewSubtotal = document.getElementById("preview-subtotal");
+    const previewDiscountLine = document.getElementById("preview-discount-line");
+    const previewDiscountLabel = document.getElementById("preview-discount-label");
+    const previewDiscountValue = document.getElementById("preview-discount-value");
+    const previewShippingLine = document.getElementById("preview-shipping-line");
+    const previewShippingValue = document.getElementById("preview-shipping-value");
+    const previewTotal = document.getElementById("preview-total");
+
+    function formatMoney(cents) {
+      return "$" + (cents / 100).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    function updatePricePreview() {
+      const isGift = isGiftCheckbox && isGiftCheckbox.checked;
+      const productId = productSelect ? productSelect.value : "";
+
+      if (!productId || isGift) {
+        previewSection.style.display = "none";
+        return;
+      }
+
+      const unitPriceCents = productPrices[productId] || 0;
+      const qty = Math.max(parseInt(quantityInput && quantityInput.value) || 1, 1);
+      const subtotalCents = unitPriceCents * qty;
+
+      // Show unit line only when qty > 1
+      if (qty > 1) {
+        previewUnitLine.style.display = "flex";
+        previewUnitLabel.textContent = formatMoney(unitPriceCents) + " x " + qty;
+        previewUnitTotal.textContent = formatMoney(subtotalCents);
+      } else {
+        previewUnitLine.style.display = "none";
+      }
+
+      previewSubtotal.textContent = formatMoney(subtotalCents);
+
+      // Discount
+      const dType = discountTypeSelect ? discountTypeSelect.value : "";
+      const dVal = parseFloat(discountValueInput && discountValueInput.value) || 0;
+      let discountCents = 0;
+
+      if (dType === "flat" && dVal > 0) {
+        discountCents = Math.round(dVal * 100);
+        previewDiscountLabel.textContent = "Discount (flat)";
+        previewDiscountLine.style.display = "flex";
+      } else if (dType === "percentage" && dVal > 0) {
+        discountCents = Math.round(subtotalCents * dVal / 100);
+        previewDiscountLabel.textContent = "Discount (" + dVal + "%)";
+        previewDiscountLine.style.display = "flex";
+      } else {
+        previewDiscountLine.style.display = "none";
+      }
+
+      previewDiscountValue.textContent = "-" + formatMoney(discountCents);
+
+      const afterDiscount = Math.max(subtotalCents - discountCents, 0);
+
+      // Shipping
+      const hasShipping = shippingCheckbox && shippingCheckbox.checked;
+      const shipCents = hasShipping ? shippingFeeCents : 0;
+      if (hasShipping) {
+        previewShippingLine.style.display = "flex";
+        previewShippingValue.textContent = formatMoney(shipCents);
+      } else {
+        previewShippingLine.style.display = "none";
+      }
+
+      const totalCents = afterDiscount + shipCents;
+      previewTotal.textContent = formatMoney(totalCents);
+
+      previewSection.style.display = "";
+    }
+
+    // Listen to all relevant inputs
+    [productSelect, quantityInput, shippingCheckbox, discountTypeSelect, discountValueInput].forEach(function(el) {
+      if (el) {
+        el.addEventListener("change", updatePricePreview);
+        el.addEventListener("input", updatePricePreview);
+      }
+    });
+
+    // TomSelect fires change on the original select
+    if (productSelect) {
+      productSelect.addEventListener("change", updatePricePreview);
+    }
+
+    // Gift toggle also affects preview
+    if (isGiftCheckbox) {
+      isGiftCheckbox.addEventListener("change", updatePricePreview);
+    }
+
+    // Initial calculation
+    updatePricePreview();
   });
 </script>

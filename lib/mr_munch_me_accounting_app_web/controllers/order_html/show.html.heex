@@ -7,7 +7,9 @@
     <%= if @order.is_gift do %>
       <span style="display: inline-block; padding: 0.15rem 0.5rem; font-size: 0.78rem; font-weight: 600; border-radius: 999px; background: #fef3c7; color: #92400e;">🎁 Gift</span>
     <% end %>
-    <span style="font-size: 0.85rem; color: var(--text-muted);"><%= @order.product.name %></span>
+    <span style="font-size: 0.85rem; color: var(--text-muted);">
+      <%= @order.product.name %><%= if (@order.quantity || 1) > 1, do: " x#{@order.quantity}" %>
+    </span>
     <.location_badge location={@order.prep_location} />
   </div>
   <.link navigate={~p"/orders/#{@order.id}/edit"} class="btn">Edit</.link>
@@ -33,6 +35,12 @@
   <section class="card">
     <h3 style="font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted); margin: 0 0 0.6rem 0;">Payment Summary</h3>
     <div style="display: flex; flex-direction: column; gap: 0.3rem; font-size: 0.9rem;">
+    <%= if (@order.quantity || 1) > 1 do %>
+      <div style="display: flex; justify-content: space-between; color: var(--text-muted);">
+        <span><%= format_currency(@order.product.price_cents) %> x <%= @order.quantity %></span>
+        <span><%= format_currency(@payment_summary.original_price_cents) %></span>
+      </div>
+    <% end %>
     <%= if @payment_summary.discount_cents > 0 do %>
       <div style="display: flex; justify-content: space-between; color: var(--text-muted);">
         <span>Product Price</span>
@@ -123,7 +131,16 @@
       <% end %>
       <div>
         <span style="font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-muted);">Product Price</span>
-        <div style="font-size: 0.9rem;"><%= format_currency(@order.product.price_cents) %></div>
+        <div style="font-size: 0.9rem;">
+          <%= format_currency(@order.product.price_cents) %>
+          <%= if (@order.quantity || 1) > 1 do %>
+            <span style="color: var(--text-muted);"> x <%= @order.quantity %> = <%= format_currency(@order.product.price_cents * @order.quantity) %></span>
+          <% end %>
+        </div>
+      </div>
+      <div>
+        <span style="font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-muted);">Quantity</span>
+        <div style="font-size: 0.9rem;"><%= @order.quantity || 1 %></div>
       </div>
       <div>
         <span style="font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-muted);">Customer Paid Shipping</span>
@@ -182,9 +199,9 @@
 <%!-- ── Actions ── --%>
 <div style="margin-top: 1rem; display: flex; gap: 0.5rem; flex-wrap: wrap;">
   <%= if @order.status == "new_order" do %>
-    <.form for={%{}} as={:status} action={~p"/orders/#{@order.id}/status"} method="post" style="margin: 0;">
+    <.form for={%{}} as={:status} action={~p"/orders/#{@order.id}/status"} method="post" style="margin: 0;" onsubmit="return confirm('Are you sure you want to move this order to In Prep?\n\nMake sure you have reviewed the ingredients. Inventory will be deducted and ingredients will be locked after this step.');">
       <input type="hidden" name="status[status]" value="in_prep" />
-      <button class="btn primary" type="submit">Move to In Prep</button>
+      <button class="btn primary" type="submit">Confirm & Move to In Prep</button>
     </.form>
   <% end %>
   <%= if @order.status == "in_prep" do %>

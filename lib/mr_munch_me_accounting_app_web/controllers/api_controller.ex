@@ -242,6 +242,7 @@ defmodule MrMunchMeAccountingAppWeb.ApiController do
       delivery_time: order.delivery_time,
       status: order.status,
       customer_paid_shipping: order.customer_paid_shipping,
+      quantity: order.quantity || 1,
       product: order.product && serialize_product(order.product),
       customer_id: order.customer_id,
       prep_location_id: order.prep_location_id,

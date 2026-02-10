@@ -72,7 +72,7 @@
                       end
                     }></span>
                     <.link navigate={~p"/orders/#{order.id}"} class="calendar-order-link">
-                      <%= order.customer_name %> - <%= order.product && order.product.name %>
+                      <%= order.customer_name %> - <%= order.product && order.product.name %><%= if (order.quantity || 1) > 1, do: " x#{order.quantity}" %>
                     </.link>
                   </div>
                 <% end %>

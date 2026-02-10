@@ -579,12 +579,15 @@ defmodule MrMunchMeAccountingApp.Orders do
         (p.amount_cents || 0) + acc
       end)
 
-    # Get the original price before discount for display
-    original_price_cents =
+    # Get the original price before discount for display (unit price * quantity)
+    unit_price_cents =
       case order.product do
         %{} -> order.product.price_cents || 0
         _ -> 0
       end
+
+    quantity = order.quantity || 1
+    original_price_cents = unit_price_cents * quantity
 
     discount_cents = calculate_discount_cents(order, original_price_cents)
 
@@ -623,13 +626,16 @@ defmodule MrMunchMeAccountingApp.Orders do
   def order_total_cents(%Order{} = order) do
     order = Repo.preload(order, :product)
 
-    base =
+    unit_price =
       case order.product do
         %{} -> order.product.price_cents || 0
         _ -> 0
       end
 
-    # Apply discount to the base product price
+    quantity = order.quantity || 1
+    base = unit_price * quantity
+
+    # Apply discount to the total base price (unit price * quantity)
     discount_cents = calculate_discount_cents(order, base)
     discounted_base = max(base - discount_cents, 0)
 

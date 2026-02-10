@@ -217,8 +217,6 @@ defmodule MrMunchMeAccountingAppWeb.ReportController do
   end
 
   def diagnostics(conn, params) do
-    results = Verification.run_all_checks()
-
     # Handle repair action (POST request)
     if conn.method == "POST" do
       repair_type = Map.get(params, "repair_type", "inventory_quantities")
@@ -227,22 +225,36 @@ defmodule MrMunchMeAccountingAppWeb.ReportController do
         {:ok, repairs_list} when is_list(repairs_list) ->
           conn
           |> put_session(:repair_results, %{type: repair_type, count: length(repairs_list)})
-          |> redirect(to: ~p"/reports/diagnostics#repair-results")
+          |> redirect(to: ~p"/reports/diagnostics?run=true#repair-results")
 
         {:error, reason} ->
           conn
           |> put_session(:repair_results, %{type: repair_type, error: inspect(reason)})
-          |> redirect(to: ~p"/reports/diagnostics#repair-results")
+          |> redirect(to: ~p"/reports/diagnostics?run=true#repair-results")
       end
     else
-      # GET request - retrieve repair results from session
-      repair_results = get_session(conn, :repair_results)
-      conn = delete_session(conn, :repair_results)
+      # GET request
+      if Map.get(params, "run") == "true" do
+        # Phase 2: Actually run checks and render results
+        results = Verification.run_all_checks()
+        repair_results = get_session(conn, :repair_results)
+        conn = delete_session(conn, :repair_results)
 
-      render(conn, :diagnostics,
-        results: results,
-        repair_results: repair_results
-      )
+        render(conn, :diagnostics,
+          results: results,
+          repair_results: repair_results,
+          loading: false
+        )
+      else
+        # Phase 1: Show loading state immediately, then auto-redirect to run checks
+        repair_results = get_session(conn, :repair_results)
+
+        render(conn, :diagnostics,
+          results: %{},
+          repair_results: repair_results,
+          loading: true
+        )
+      end
     end
   end
 

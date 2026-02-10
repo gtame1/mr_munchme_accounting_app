@@ -28,6 +28,7 @@ defmodule MrMunchMeAccountingApp.Orders.Order do
     field :discount_type, :string
     field :discount_value, :decimal
     field :is_gift, :boolean, default: false
+    field :quantity, :integer, default: 1
 
     belongs_to :product, Product
     belongs_to :prep_location, Location
@@ -57,7 +58,8 @@ defmodule MrMunchMeAccountingApp.Orders.Order do
       :discount_type,
       :discount_value,
       :is_gift,
-      :actual_delivery_date
+      :actual_delivery_date,
+      :quantity
     ])
     |> validate_required([
       :delivery_type,
@@ -70,6 +72,7 @@ defmodule MrMunchMeAccountingApp.Orders.Order do
     |> validate_inclusion(:delivery_type, @delivery_types)
     |> validate_inclusion(:status, @statuses)
     |> validate_discount()
+    |> validate_number(:quantity, greater_than_or_equal_to: 1)
     |> assoc_constraint(:product)
     |> assoc_constraint(:prep_location)
     |> assoc_constraint(:customer)

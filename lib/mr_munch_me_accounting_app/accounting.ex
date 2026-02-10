@@ -25,6 +25,7 @@ defmodule MrMunchMeAccountingApp.Accounting do
   @owners_equity_code "3000"
   @retained_earnings_code "3050"   # Retained Earnings
   @owners_drawings_code "3100"     # Owner's Drawings (contra-equity)
+  @sales_discounts_code "4010"
   @ingredients_cogs_code "5000"
   @packaging_cogs_code "5010"
   @inventory_waste_code "6060"
@@ -167,17 +168,20 @@ defmodule MrMunchMeAccountingApp.Accounting do
   end
 
   defp do_record_sale_order_delivered(order, reference) do
-    base_revenue  = order.product.price_cents || 0
+    quantity = order.quantity || 1
+    gross_product_price = (order.product.price_cents || 0) * quantity
 
-    # If customer_paid_shipping == true, add shipping revenue
-    shipping_cents =
-      if order.customer_paid_shipping do
-        shipping_fee_cents()
-      else
-        0
-      end
+    # Calculate discount using the Orders context helper
+    {discounted_product_price, shipping_cents} =
+      MrMunchMeAccountingApp.Orders.order_total_cents(order)
 
-    revenue_cents = base_revenue + shipping_cents
+    discount_cents = gross_product_price - discounted_product_price
+
+    # Gross revenue = full product price + shipping (before discounts)
+    gross_revenue_cents = gross_product_price + shipping_cents
+
+    # Net revenue = discounted product price + shipping (what the customer actually owes)
+    net_revenue_cents = discounted_product_price + shipping_cents
 
     # Get the production cost from the "order_in_prep" journal entry (WIP debit)
     # This was recorded when the order moved to "in_prep"
@@ -188,10 +192,8 @@ defmodule MrMunchMeAccountingApp.Accounting do
     sales = get_account_by_code!(@sales_code)
     customer_deposits = get_account_by_code!(@customer_deposits_code)
 
-    # For now, ALL COGS → Ingredients Used (5000).
-    # Later we can split into ingredients vs packaging if we have separate numbers.
+    # For now, ALL COGS -> Ingredients Used (5000).
     ingredients_cogs = get_account_by_code!(@ingredients_cogs_code)
-    # packaging_cogs   = get_account_by_code!(@packaging_cogs_code) # (for future use)
 
     date = order.actual_delivery_date || order.delivery_date || Date.utc_today()
 
@@ -203,7 +205,6 @@ defmodule MrMunchMeAccountingApp.Accounting do
     }
 
     # Calculate total payments received before delivery
-    # We need to check payments that were recorded before the actual delivery date
     delivery_date = order.actual_delivery_date || order.delivery_date || Date.utc_today()
 
     # Deposits are payments where is_deposit == true
@@ -234,33 +235,52 @@ defmodule MrMunchMeAccountingApp.Accounting do
         total -> total
       end
 
-    # Net AR to recognize = revenue - deposits - non-deposit payments before delivery
-    # (Deposits will be transferred from Customer Deposits, non-deposit payments already credited AR)
-    net_ar_cents = revenue_cents - deposit_total_cents - non_deposit_payments_before_delivery_cents
+    # Net AR to recognize = net revenue (after discount) - deposits - pre-delivery payments
+    net_ar_cents = net_revenue_cents - deposit_total_cents - non_deposit_payments_before_delivery_cents
 
-    # 1) Revenue: DR AR (net amount), CR Sales (full revenue)
-    # We only debit AR for the net amount (revenue minus payments received before delivery)
+    # 1) Revenue recognition:
+    #    CR Sales (4000) for gross revenue (full product price + shipping)
+    #    DR Sales Discounts (4010) for discount amount (contra-revenue)
+    #    DR AR (1100) for net amount owed by customer
+    #
+    # Accounting best practice: record gross sales and discount separately
+    # so discount impact is visible on P&L. Net Revenue = Sales - Sales Discounts.
     revenue_lines =
-      if revenue_cents > 0 do
-        [
+      if gross_revenue_cents > 0 do
+        base_lines = [
           %{
             account_id: ar.id,
             debit_cents: net_ar_cents,
             credit_cents: 0,
-            description: "Recognize AR for order ##{order.id} (net of pre-delivery payments)"
+            description: "Recognize AR for order ##{order.id} (net of discounts & pre-delivery payments)"
           },
           %{
             account_id: sales.id,
             debit_cents: 0,
-            credit_cents: revenue_cents,
+            credit_cents: gross_revenue_cents,
             description:
               if shipping_cents > 0 do
-                "Sales (product + shipping) for order ##{order.id}"
+                "Gross sales (product + shipping) for order ##{order.id}"
               else
-                "Sales revenue for order ##{order.id}"
+                "Gross sales revenue for order ##{order.id}"
               end
           }
         ]
+
+        # Add contra-revenue discount line if there's a discount
+        if discount_cents > 0 do
+          sales_discounts = get_account_by_code!(@sales_discounts_code)
+          base_lines ++ [
+            %{
+              account_id: sales_discounts.id,
+              debit_cents: discount_cents,
+              credit_cents: 0,
+              description: "Sales discount for order ##{order.id}"
+            }
+          ]
+        else
+          base_lines
+        end
       else
         []
       end
@@ -1729,7 +1749,7 @@ defmodule MrMunchMeAccountingApp.Accounting do
         product_id: p.id,
         product_name: p.name,
         product_sku: p.sku,
-        revenue_cents: fragment("SUM(?) + SUM(CASE WHEN ? THEN ? ELSE 0 END)", p.price_cents, o.customer_paid_shipping, ^shipping_fee)
+        revenue_cents: fragment("SUM(? * COALESCE(?, 1)) + SUM(CASE WHEN ? THEN ? ELSE 0 END)", p.price_cents, o.quantity, o.customer_paid_shipping, ^shipping_fee)
       }
     )
     |> Repo.all()
