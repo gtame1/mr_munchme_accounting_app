@@ -43,26 +43,27 @@
         <.link navigate={~p"/"}>
           <div class="sidebar-header" >
             <span class="app-logo">🍪</span>
-            <span class="app-title">Mr Munch Me</span>
+            <span class="app-title"><%= Ledgr.Domain.current().name() %></span>
           </div>
         </.link>
 
         <nav class="nav">
-          <div class="nav-dropdown" data-default-open="true">
-            <button type="button" class="nav-dropdown-toggle" onclick="toggleDropdown(this)">
-              <span>Main Menu</span>
-              <.icon name="hero-chevron-down" class="dropdown-icon" />
-            </button>
-            <div class="nav-dropdown-menu">
-              <.link navigate={~p"/"} class="nav-link">Dashboard</.link>
-              <.link navigate={~p"/orders"} class="nav-link">All Orders</.link>
-              <.link navigate={~p"/orders/calendar"} class="nav-link">Order Calendar</.link>
-              <.link navigate={~p"/inventory"} class="nav-link">Inventory</.link>
-              <.link navigate={~p"/inventory/requirements"} class="nav-link">Shopping List</.link>
-              <.link navigate={~p"/expenses"} class="nav-link">Expenses</.link>
+          <!-- Domain-specific menu groups -->
+          <%= for group <- Ledgr.Domain.current().menu_items() do %>
+            <div class="nav-dropdown" data-default-open={if group.group == "Main Menu", do: "true"}>
+              <button type="button" class="nav-dropdown-toggle" onclick="toggleDropdown(this)">
+                <span><%= group.group %></span>
+                <.icon name="hero-chevron-down" class="dropdown-icon" />
+              </button>
+              <div class="nav-dropdown-menu">
+                <%= for item <- group.items do %>
+                  <.link navigate={item.path} class="nav-link"><%= item.label %></.link>
+                <% end %>
+              </div>
             </div>
-          </div> 
+          <% end %>
 
+          <!-- Core menu groups (shared across all domains) -->
           <div class="nav-dropdown" data-default-open="true">
             <button type="button" class="nav-dropdown-toggle" onclick="toggleDropdown(this)">
               <span>Reports</span>
@@ -74,18 +75,6 @@
               <.link navigate={~p"/reports/unit_economics_list"} class="nav-link">Unit Economics</.link>
               <.link navigate={~p"/reports/cash_flow"} class="nav-link">Cash Flow</.link>
               <.link navigate={~p"/account-transactions"} class="nav-link">Account Transactions</.link>
-            </div>
-          </div>
-
-          <div class="nav-dropdown">
-            <button type="button" class="nav-dropdown-toggle" onclick="toggleDropdown(this)">
-              <span>Materials</span>
-              <.icon name="hero-chevron-down" class="dropdown-icon" />
-            </button>
-            <div class="nav-dropdown-menu">
-              <.link navigate={~p"/products"} class="nav-link">Product List</.link>
-              <.link navigate={~p"/ingredients"} class="nav-link">Ingredient List</.link>
-              <.link navigate={~p"/recipes"} class="nav-link">Recepies</.link>
             </div>
           </div>
 

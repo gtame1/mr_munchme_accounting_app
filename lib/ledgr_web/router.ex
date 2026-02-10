@@ -14,29 +14,23 @@ defmodule LedgrWeb.Router do
     plug :accepts, ["json"]
   end
 
+  # ── Core routes (always present) ──────────────────────────────────────
   scope "/", LedgrWeb do
     pipe_through :browser
 
+    get "/", ReportController, :dashboard
 
     resources "/transactions", TransactionController, only: [:index, :new, :create, :show]
     get "/account-transactions", AccountTransactionController, :index
 
-    get "/orders/calendar", Domains.MrMunchMe.OrderController, :calendar
-    resources "/orders", Domains.MrMunchMe.OrderController, only: [:index, :show, :new, :create, :edit, :update]
-    post "/orders/:id/status", Domains.MrMunchMe.OrderController, :update_status
-    post "/orders/:id/ingredients", Domains.MrMunchMe.OrderController, :update_ingredients
-    get "/orders/:id/payments/new", Domains.MrMunchMe.OrderController, :new_payment
-    post "/orders/:id/payments", Domains.MrMunchMe.OrderController, :create_payment
-
-    resources "/order_payments", Domains.MrMunchMe.OrderPaymentController, only: [:index, :show, :edit, :update, :delete]
-
-    get "/", ReportController, :dashboard
     get "/reports/pnl", ReportController, :pnl
     get "/reports/balance_sheet", ReportController, :balance_sheet
     post "/reports/year_end_close", ReportController, :year_end_close
     get "/reports/unit_economics", ReportController, :unit_economics
     get "/reports/unit_economics_list", ReportController, :unit_economics_list
     get "/reports/cash_flow", ReportController, :cash_flow
+    get "/reports/diagnostics", ReportController, :diagnostics
+    post "/reports/diagnostics", ReportController, :diagnostics
 
     get "/reconciliation/accounting", ReconciliationController, :accounting_index
     post "/reconciliation/accounting/adjust", ReconciliationController, :accounting_adjust
@@ -46,28 +40,7 @@ defmodule LedgrWeb.Router do
     post "/reconciliation/inventory/reconcile_all", ReconciliationController, :inventory_reconcile_all
     post "/reconciliation/inventory/quick_transfer", ReconciliationController, :inventory_quick_transfer
 
-    get "/reports/diagnostics", ReportController, :diagnostics
-    post "/reports/diagnostics", ReportController, :diagnostics
-
-    get "/inventory", Domains.MrMunchMe.InventoryController, :index
-    get  "/inventory/purchases/new", Domains.MrMunchMe.InventoryController, :new_purchase
-    post "/inventory/purchases",     Domains.MrMunchMe.InventoryController, :create_purchase
-    get  "/inventory/purchases/:id/edit", Domains.MrMunchMe.InventoryController, :edit_purchase
-    put  "/inventory/purchases/:id", Domains.MrMunchMe.InventoryController, :update_purchase
-    delete "/inventory/purchases/:id", Domains.MrMunchMe.InventoryController, :delete_purchase
-    post "/inventory/purchases/:id/return", Domains.MrMunchMe.InventoryController, :return_purchase
-    get  "/inventory/movements/new", Domains.MrMunchMe.InventoryController, :new_movement
-    post "/inventory/movements",     Domains.MrMunchMe.InventoryController, :create_movement
-    get  "/inventory/movements/:id/edit", Domains.MrMunchMe.InventoryController, :edit_movement
-    put  "/inventory/movements/:id", Domains.MrMunchMe.InventoryController, :update_movement
-    delete "/inventory/movements/:id", Domains.MrMunchMe.InventoryController, :delete_movement
-    get "/inventory/requirements", Domains.MrMunchMe.InventoryController, :requirements
-
-    resources "/products", Domains.MrMunchMe.ProductController, only: [:index, :new, :create, :edit, :update, :delete]
     resources "/customers", CustomerController
-    resources "/ingredients", Domains.MrMunchMe.IngredientController, only: [:index, :new, :create, :edit, :update, :delete]
-    resources "/recipes", Domains.MrMunchMe.RecipeController, only: [:index, :new, :create, :show, :edit, :delete]
-    post "/recipes/new_version/:id", Domains.MrMunchMe.RecipeController, :create_new_version
 
     get  "/investments",        InvestmentController, :index
     get  "/investments/new",    InvestmentController, :new
@@ -80,7 +53,42 @@ defmodule LedgrWeb.Router do
     resources "/expenses", ExpenseController, only: [:index, :new, :create, :show, :edit, :update, :delete]
   end
 
-  # API endpoints
+  # ── MrMunchMe domain routes ──────────────────────────────────────────
+  if Application.compile_env(:ledgr, :domain) == Ledgr.Domains.MrMunchMe do
+    scope "/", LedgrWeb do
+      pipe_through :browser
+
+      get "/orders/calendar", Domains.MrMunchMe.OrderController, :calendar
+      resources "/orders", Domains.MrMunchMe.OrderController, only: [:index, :show, :new, :create, :edit, :update]
+      post "/orders/:id/status", Domains.MrMunchMe.OrderController, :update_status
+      post "/orders/:id/ingredients", Domains.MrMunchMe.OrderController, :update_ingredients
+      get "/orders/:id/payments/new", Domains.MrMunchMe.OrderController, :new_payment
+      post "/orders/:id/payments", Domains.MrMunchMe.OrderController, :create_payment
+
+      resources "/order_payments", Domains.MrMunchMe.OrderPaymentController, only: [:index, :show, :edit, :update, :delete]
+
+      get "/inventory", Domains.MrMunchMe.InventoryController, :index
+      get  "/inventory/purchases/new", Domains.MrMunchMe.InventoryController, :new_purchase
+      post "/inventory/purchases",     Domains.MrMunchMe.InventoryController, :create_purchase
+      get  "/inventory/purchases/:id/edit", Domains.MrMunchMe.InventoryController, :edit_purchase
+      put  "/inventory/purchases/:id", Domains.MrMunchMe.InventoryController, :update_purchase
+      delete "/inventory/purchases/:id", Domains.MrMunchMe.InventoryController, :delete_purchase
+      post "/inventory/purchases/:id/return", Domains.MrMunchMe.InventoryController, :return_purchase
+      get  "/inventory/movements/new", Domains.MrMunchMe.InventoryController, :new_movement
+      post "/inventory/movements",     Domains.MrMunchMe.InventoryController, :create_movement
+      get  "/inventory/movements/:id/edit", Domains.MrMunchMe.InventoryController, :edit_movement
+      put  "/inventory/movements/:id", Domains.MrMunchMe.InventoryController, :update_movement
+      delete "/inventory/movements/:id", Domains.MrMunchMe.InventoryController, :delete_movement
+      get "/inventory/requirements", Domains.MrMunchMe.InventoryController, :requirements
+
+      resources "/products", Domains.MrMunchMe.ProductController, only: [:index, :new, :create, :edit, :update, :delete]
+      resources "/ingredients", Domains.MrMunchMe.IngredientController, only: [:index, :new, :create, :edit, :update, :delete]
+      resources "/recipes", Domains.MrMunchMe.RecipeController, only: [:index, :new, :create, :show, :edit, :delete]
+      post "/recipes/new_version/:id", Domains.MrMunchMe.RecipeController, :create_new_version
+    end
+  end
+
+  # ── API endpoints ────────────────────────────────────────────────────
   scope "/api", LedgrWeb do
     pipe_through :api
 
