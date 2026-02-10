@@ -1,9 +1,9 @@
-defmodule MrMunchMeAccountingApp.AccountingFixtures do
+defmodule Ledgr.AccountingFixtures do
   @moduledoc """
   Test helpers for creating accounting entities.
   """
 
-  alias MrMunchMeAccountingApp.Accounting
+  alias Ledgr.Accounting
 
   @doc """
   Create all the standard accounts needed for order processing.

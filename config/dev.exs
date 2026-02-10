@@ -1,11 +1,11 @@
 import Config
 
 # Configure your database
-config :mr_munch_me_accounting_app, MrMunchMeAccountingApp.Repo,
+config :ledgr, Ledgr.Repo,
   username: "postgres",
   password: "postgres",
   hostname: "localhost",
-  database: "mr_munch_me_accounting_app_dev",
+  database: "ledgr_dev",
   stacktrace: true,
   show_sensitive_data_on_connection_error: true,
   pool_size: 10
@@ -16,7 +16,7 @@ config :mr_munch_me_accounting_app, MrMunchMeAccountingApp.Repo,
 # The watchers configuration can be used to run external
 # watchers to your application. For example, we can use it
 # to bundle .js and .css sources.
-config :mr_munch_me_accounting_app, MrMunchMeAccountingAppWeb.Endpoint,
+config :ledgr, LedgrWeb.Endpoint,
   # Binding to loopback ipv4 address prevents access from other machines.
   # Change to `ip: {0, 0, 0, 0}` to allow access from other machines.
   http: [ip: {127, 0, 0, 1}, port: String.to_integer(System.get_env("PORT") || "4000")],
@@ -26,8 +26,8 @@ config :mr_munch_me_accounting_app, MrMunchMeAccountingAppWeb.Endpoint,
   secret_key_base: "ByMeRIHNLQ3/aXlSPaJMGjooT9XPLGes39Tqnbyy4WO2j8aHR2PPXsFQA8R5Eocj",
   watchers: [
     esbuild:
-      {Esbuild, :install_and_run, [:mr_munch_me_accounting_app, ~w(--sourcemap=inline --watch)]},
-    tailwind: {Tailwind, :install_and_run, [:mr_munch_me_accounting_app, ~w(--watch)]}
+      {Esbuild, :install_and_run, [:ledgr, ~w(--sourcemap=inline --watch)]},
+    tailwind: {Tailwind, :install_and_run, [:ledgr, ~w(--watch)]}
   ]
 
 # ## SSL Support
@@ -54,18 +54,18 @@ config :mr_munch_me_accounting_app, MrMunchMeAccountingAppWeb.Endpoint,
 # different ports.
 
 # Watch static and templates for browser reloading.
-config :mr_munch_me_accounting_app, MrMunchMeAccountingAppWeb.Endpoint,
+config :ledgr, LedgrWeb.Endpoint,
   live_reload: [
     web_console_logger: true,
     patterns: [
       ~r"priv/static/(?!uploads/).*(js|css|png|jpeg|jpg|gif|svg)$",
       ~r"priv/gettext/.*(po)$",
-      ~r"lib/mr_munch_me_accounting_app_web/(?:controllers|live|components|router)/?.*\.(ex|heex)$"
+      ~r"lib/ledgr_web/(?:controllers|live|components|router)/?.*\.(ex|heex)$"
     ]
   ]
 
 # Enable dev routes for dashboard and mailbox
-config :mr_munch_me_accounting_app, dev_routes: true
+config :ledgr, dev_routes: true
 
 # Do not include metadata nor timestamps in development logs
 config :logger, :default_formatter, format: "[$level] $message\n"

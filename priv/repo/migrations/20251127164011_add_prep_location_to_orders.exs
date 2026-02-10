@@ -1,4 +1,4 @@
-defmodule MrMunchMeAccountingApp.Repo.Migrations.AddPrepLocationToOrders do
+defmodule Ledgr.Repo.Migrations.AddPrepLocationToOrders do
   use Ecto.Migration
 
   def change do

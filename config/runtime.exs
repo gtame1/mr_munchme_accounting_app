@@ -5,7 +5,7 @@ import Config
 if database_url = System.get_env("DATABASE_URL") do
   db_uri = URI.parse(database_url)
 
-  config :mr_munch_me_accounting_app, MrMunchMeAccountingApp.Repo,
+  config :ledgr, Ledgr.Repo,
     url: database_url,
     ssl: [
       verify: :verify_none,
@@ -16,7 +16,7 @@ end
 
 # Only configure server when running the app (not when building)
 if System.get_env("PHX_SERVER") do
-  config :mr_munch_me_accounting_app, MrMunchMeAccountingAppWeb.Endpoint, server: true
+  config :ledgr, LedgrWeb.Endpoint, server: true
 end
 
 if config_env() == :prod do
@@ -27,7 +27,7 @@ if config_env() == :prod do
   host = System.get_env("PHX_HOST") || "example.com"
   port = String.to_integer(System.get_env("PORT") || "4000")
 
-  config :mr_munch_me_accounting_app, MrMunchMeAccountingAppWeb.Endpoint,
+  config :ledgr, LedgrWeb.Endpoint,
     url: [host: host, scheme: "https", port: 443],
     http: [ip: {0,0,0,0,0,0,0,0}, port: port],
     secret_key_base: secret_key_base

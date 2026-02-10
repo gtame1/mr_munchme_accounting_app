@@ -1,4 +1,4 @@
-defmodule MrMunchMeAccountingApp.Repo.Migrations.AddCashAccountToContributions do
+defmodule Ledgr.Repo.Migrations.AddCashAccountToContributions do
   use Ecto.Migration
 
   def change do

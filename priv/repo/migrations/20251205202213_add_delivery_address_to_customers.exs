@@ -1,4 +1,4 @@
-defmodule MrMunchMeAccountingApp.Repo.Migrations.AddDeliveryAddressToCustomers do
+defmodule Ledgr.Repo.Migrations.AddDeliveryAddressToCustomers do
   use Ecto.Migration
 
   def change do

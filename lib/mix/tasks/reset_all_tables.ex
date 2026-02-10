@@ -1,12 +1,12 @@
 defmodule Mix.Tasks.ResetAllTables do
   use Mix.Task
 
-  alias MrMunchMeAccountingApp.Repo
-  alias MrMunchMeAccountingApp.Accounting.{Account, JournalEntry, JournalLine, MoneyTransfer}
-  alias MrMunchMeAccountingApp.Inventory.{InventoryItem, InventoryMovement, Ingredient, Location, Recipe, RecipeLine}
-  alias MrMunchMeAccountingApp.Orders.{Order, Product, OrderPayment}
-  alias MrMunchMeAccountingApp.Partners.{Partner, CapitalContribution}
-  alias MrMunchMeAccountingApp.Expenses.Expense
+  alias Ledgr.Repo
+  alias Ledgr.Accounting.{Account, JournalEntry, JournalLine, MoneyTransfer}
+  alias Ledgr.Inventory.{InventoryItem, InventoryMovement, Ingredient, Location, Recipe, RecipeLine}
+  alias Ledgr.Orders.{Order, Product, OrderPayment}
+  alias Ledgr.Partners.{Partner, CapitalContribution}
+  alias Ledgr.Expenses.Expense
 
   @shortdoc "Deletes data from all main tables"
 

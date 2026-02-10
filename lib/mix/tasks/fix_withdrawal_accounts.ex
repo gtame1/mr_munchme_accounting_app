@@ -15,9 +15,9 @@ defmodule Mix.Tasks.FixWithdrawalAccounts do
   use Mix.Task
   import Ecto.Query
 
-  alias MrMunchMeAccountingApp.Repo
-  alias MrMunchMeAccountingApp.Accounting
-  alias MrMunchMeAccountingApp.Accounting.{JournalLine, Account}
+  alias Ledgr.Repo
+  alias Ledgr.Accounting
+  alias Ledgr.Accounting.{JournalLine, Account}
 
   @shortdoc "Fix historical withdrawal entries that debited Owner's Equity instead of Owner's Drawings"
 
@@ -32,8 +32,8 @@ defmodule Mix.Tasks.FixWithdrawalAccounts do
       case System.get_env("DATABASE_URL") do
         nil ->
           # Dev: load app config first
-          Application.load(:mr_munch_me_accounting_app)
-          Application.get_env(:mr_munch_me_accounting_app, MrMunchMeAccountingApp.Repo) || []
+          Application.load(:ledgr)
+          Application.get_env(:ledgr, Ledgr.Repo) || []
 
         url ->
           # Prod: use DATABASE_URL with SSL for Render
@@ -45,7 +45,7 @@ defmodule Mix.Tasks.FixWithdrawalAccounts do
           ]
       end
 
-    {:ok, _} = MrMunchMeAccountingApp.Repo.start_link(repo_config)
+    {:ok, _} = Ledgr.Repo.start_link(repo_config)
 
     fix_mode = "--fix" in args
 

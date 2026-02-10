@@ -1,7 +1,7 @@
-defmodule MrMunchMeAccountingApp.CustomersFixtures do
+defmodule Ledgr.CustomersFixtures do
   @moduledoc """
   This module defines test helpers for creating
-  entities via the `MrMunchMeAccountingApp.Customers` context.
+  entities via the `Ledgr.Customers` context.
   """
 
   @doc """
@@ -15,7 +15,7 @@ defmodule MrMunchMeAccountingApp.CustomersFixtures do
         name: "some name",
         phone: "some phone"
       })
-      |> MrMunchMeAccountingApp.Customers.create_customer()
+      |> Ledgr.Customers.create_customer()
 
     customer
   end

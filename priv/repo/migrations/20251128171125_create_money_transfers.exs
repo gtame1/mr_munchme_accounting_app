@@ -1,4 +1,4 @@
-defmodule MrMunchMeAccountingApp.Repo.Migrations.CreateMoneyTransfers do
+defmodule Ledgr.Repo.Migrations.CreateMoneyTransfers do
   use Ecto.Migration
 
   def change do

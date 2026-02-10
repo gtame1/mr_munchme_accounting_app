@@ -1,4 +1,4 @@
-defmodule MrMunchMeAccountingApp.DataCase do
+defmodule Ledgr.DataCase do
   @moduledoc """
   This module defines the setup for tests requiring
   access to the application's data layer.
@@ -10,7 +10,7 @@ defmodule MrMunchMeAccountingApp.DataCase do
   we enable the SQL sandbox, so changes done to the database
   are reverted at the end of every test. If you are using
   PostgreSQL, you can even run database tests asynchronously
-  by setting `use MrMunchMeAccountingApp.DataCase, async: true`, although
+  by setting `use Ledgr.DataCase, async: true`, although
   this option is not recommended for other databases.
   """
 
@@ -18,17 +18,17 @@ defmodule MrMunchMeAccountingApp.DataCase do
 
   using do
     quote do
-      alias MrMunchMeAccountingApp.Repo
+      alias Ledgr.Repo
 
       import Ecto
       import Ecto.Changeset
       import Ecto.Query
-      import MrMunchMeAccountingApp.DataCase
+      import Ledgr.DataCase
     end
   end
 
   setup tags do
-    MrMunchMeAccountingApp.DataCase.setup_sandbox(tags)
+    Ledgr.DataCase.setup_sandbox(tags)
     :ok
   end
 
@@ -36,7 +36,7 @@ defmodule MrMunchMeAccountingApp.DataCase do
   Sets up the sandbox based on the test tags.
   """
   def setup_sandbox(tags) do
-    pid = Ecto.Adapters.SQL.Sandbox.start_owner!(MrMunchMeAccountingApp.Repo, shared: not tags[:async])
+    pid = Ecto.Adapters.SQL.Sandbox.start_owner!(Ledgr.Repo, shared: not tags[:async])
     on_exit(fn -> Ecto.Adapters.SQL.Sandbox.stop_owner(pid) end)
   end
 

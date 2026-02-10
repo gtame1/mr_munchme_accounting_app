@@ -1,4 +1,4 @@
-defmodule MrMunchMeAccountingApp.Repo.Migrations.AddPerformanceIndexes do
+defmodule Ledgr.Repo.Migrations.AddPerformanceIndexes do
   use Ecto.Migration
 
   def change do

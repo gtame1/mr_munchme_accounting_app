@@ -1,9 +1,9 @@
-alias MrMunchMeAccountingApp.Repo
-alias MrMunchMeAccountingApp.Accounting.Account
-alias MrMunchMeAccountingApp.Orders.Product
+alias Ledgr.Repo
+alias Ledgr.Accounting.Account
+alias Ledgr.Orders.Product
 
-alias MrMunchMeAccountingApp.Inventory.{Ingredient, Location, Recipe, RecipeLine}
-alias MrMunchMeAccountingApp.Partners.Partner
+alias Ledgr.Inventory.{Ingredient, Location, Recipe, RecipeLine}
+alias Ledgr.Partners.Partner
 
 
 defmodule SeedHelper do

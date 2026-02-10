@@ -1,4 +1,4 @@
-defmodule MrMunchMeAccountingApp.Repo.Migrations.AddPaidFromAccountToInventoryMovements do
+defmodule Ledgr.Repo.Migrations.AddPaidFromAccountToInventoryMovements do
   use Ecto.Migration
 
   def change do

@@ -1,4 +1,4 @@
-defmodule MrMunchMeAccountingApp.Repo.Migrations.AddSamplesGiftsAccount do
+defmodule Ledgr.Repo.Migrations.AddSamplesGiftsAccount do
   use Ecto.Migration
 
   def up do

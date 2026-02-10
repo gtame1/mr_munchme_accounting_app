@@ -1,4 +1,4 @@
-defmodule MrMunchMeAccountingApp.Repo.Migrations.CreateJournalEntries do
+defmodule Ledgr.Repo.Migrations.CreateJournalEntries do
   use Ecto.Migration
 
   def change do

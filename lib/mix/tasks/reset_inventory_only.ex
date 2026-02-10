@@ -1,8 +1,8 @@
 defmodule Mix.Tasks.ResetInventoryOnly do
   use Mix.Task
 
-  alias MrMunchMeAccountingApp.Repo
-  alias MrMunchMeAccountingApp.Inventory.{InventoryMovement, InventoryItem}
+  alias Ledgr.Repo
+  alias Ledgr.Inventory.{InventoryMovement, InventoryItem}
 
   @shortdoc "Deletes ALL inventory movements & stock levels (keeps ingredients & locations)"
 

@@ -1,4 +1,4 @@
-defmodule MrMunchMeAccountingApp.Repo.Migrations.AddActualDeliveryDateToOrders do
+defmodule Ledgr.Repo.Migrations.AddActualDeliveryDateToOrders do
   use Ecto.Migration
 
   def change do

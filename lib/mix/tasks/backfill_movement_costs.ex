@@ -12,7 +12,7 @@ defmodule Mix.Tasks.BackfillMovementCosts do
   def run(_args) do
     Mix.Task.run("app.start")
 
-    alias MrMunchMeAccountingApp.Inventory
+    alias Ledgr.Inventory
 
     IO.puts("🔍 Finding movements with $0 cost...")
 

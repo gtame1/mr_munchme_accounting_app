@@ -1,4 +1,4 @@
-defmodule MrMunchMeAccountingApp.Repo.Migrations.AddMovementDateToInventoryMovements do
+defmodule Ledgr.Repo.Migrations.AddMovementDateToInventoryMovements do
   use Ecto.Migration
 
   def change do

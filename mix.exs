@@ -1,9 +1,9 @@
-defmodule MrMunchMeAccountingApp.MixProject do
+defmodule Ledgr.MixProject do
   use Mix.Project
 
   def project do
     [
-      app: :mr_munch_me_accounting_app,
+      app: :ledgr,
       version: "0.1.0",
       elixir: "~> 1.15",
       elixirc_paths: elixirc_paths(Mix.env()),
@@ -19,7 +19,7 @@ defmodule MrMunchMeAccountingApp.MixProject do
         "coveralls.html": :test
       ],
       releases: [
-        mr_munch_me_accounting_app: [
+        ledgr: [
           include_executables_for: [:unix],
           applications: [runtime_tools: :permanent],
           commands: [
@@ -35,7 +35,7 @@ defmodule MrMunchMeAccountingApp.MixProject do
   # Type `mix help compile.app` for more information.
   def application do
     [
-      mod: {MrMunchMeAccountingApp.Application, []},
+      mod: {Ledgr.Application, []},
       extra_applications: [:logger, :runtime_tools]
     ]
   end
@@ -98,10 +98,10 @@ defmodule MrMunchMeAccountingApp.MixProject do
       "ecto.reset": ["ecto.drop", "ecto.setup"],
       test: ["ecto.create --quiet", "ecto.migrate --quiet", "test"],
       "assets.setup": ["tailwind.install --if-missing", "esbuild.install --if-missing"],
-      "assets.build": ["compile", "tailwind mr_munch_me_accounting_app", "esbuild mr_munch_me_accounting_app"],
+      "assets.build": ["compile", "tailwind ledgr", "esbuild ledgr"],
       "assets.deploy": [
-        "tailwind mr_munch_me_accounting_app --minify",
-        "esbuild mr_munch_me_accounting_app --minify",
+        "tailwind ledgr --minify",
+        "esbuild ledgr --minify",
         "phx.digest"
       ],
       precommit: ["compile --warning-as-errors", "deps.unlock --unused", "format", "test"]

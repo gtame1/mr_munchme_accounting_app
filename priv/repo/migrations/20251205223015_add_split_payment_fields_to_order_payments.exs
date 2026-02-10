@@ -1,4 +1,4 @@
-defmodule MrMunchMeAccountingApp.Repo.Migrations.AddSplitPaymentFieldsToOrderPayments do
+defmodule Ledgr.Repo.Migrations.AddSplitPaymentFieldsToOrderPayments do
   use Ecto.Migration
 
   def change do

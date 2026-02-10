@@ -1,11 +1,11 @@
-defmodule MrMunchMeAccountingApp.OrdersFixtures do
+defmodule Ledgr.OrdersFixtures do
   @moduledoc """
-  Test helpers for creating entities via the `MrMunchMeAccountingApp.Orders` context.
+  Test helpers for creating entities via the `Ledgr.Orders` context.
   """
 
-  alias MrMunchMeAccountingApp.{Orders, Repo}
-  alias MrMunchMeAccountingApp.Orders.{Product, Order}
-  alias MrMunchMeAccountingApp.Inventory.Location
+  alias Ledgr.{Orders, Repo}
+  alias Ledgr.Orders.{Product, Order}
+  alias Ledgr.Inventory.Location
 
   @doc """
   Generate a product.

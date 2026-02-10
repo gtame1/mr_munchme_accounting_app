@@ -13,11 +13,11 @@ defmodule Mix.Tasks.DiagnoseCogs do
   use Mix.Task
 
   import Ecto.Query
-  alias MrMunchMeAccountingApp.Repo
-  alias MrMunchMeAccountingApp.Orders.{Order, Product}
-  alias MrMunchMeAccountingApp.Accounting.JournalEntry
-  alias MrMunchMeAccountingApp.Inventory
-  alias MrMunchMeAccountingApp.Inventory.Recepies
+  alias Ledgr.Repo
+  alias Ledgr.Orders.{Order, Product}
+  alias Ledgr.Accounting.JournalEntry
+  alias Ledgr.Inventory
+  alias Ledgr.Inventory.Recepies
 
   @shortdoc "Diagnose COGS calculation issues"
 
@@ -32,8 +32,8 @@ defmodule Mix.Tasks.DiagnoseCogs do
       case System.get_env("DATABASE_URL") do
         nil ->
           # Dev: load app config first
-          Application.load(:mr_munch_me_accounting_app)
-          Application.get_env(:mr_munch_me_accounting_app, MrMunchMeAccountingApp.Repo) || []
+          Application.load(:ledgr)
+          Application.get_env(:ledgr, Ledgr.Repo) || []
 
         url ->
           # Prod: use DATABASE_URL with SSL for Render
@@ -45,7 +45,7 @@ defmodule Mix.Tasks.DiagnoseCogs do
           ]
       end
 
-    {:ok, _} = MrMunchMeAccountingApp.Repo.start_link(repo_config)
+    {:ok, _} = Ledgr.Repo.start_link(repo_config)
 
     {opts, _, _} = OptionParser.parse(args, switches: [product: :string, fix: :boolean, yes: :boolean])
 

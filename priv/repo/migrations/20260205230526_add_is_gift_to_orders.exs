@@ -1,4 +1,4 @@
-defmodule MrMunchMeAccountingApp.Repo.Migrations.AddIsGiftToOrders do
+defmodule Ledgr.Repo.Migrations.AddIsGiftToOrders do
   use Ecto.Migration
 
   def change do

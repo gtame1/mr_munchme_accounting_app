@@ -1,4 +1,4 @@
-defmodule MrMunchMeAccountingApp.Repo.Migrations.AddRetainedEarningsAndClose2025 do
+defmodule Ledgr.Repo.Migrations.AddRetainedEarningsAndClose2025 do
   use Ecto.Migration
   import Ecto.Query
 
@@ -32,7 +32,7 @@ defmodule MrMunchMeAccountingApp.Repo.Migrations.AddRetainedEarningsAndClose2025
   end
 
   defp insert_account_if_not_exists(code, name, type, normal_balance) do
-    existing = MrMunchMeAccountingApp.Repo.one(
+    existing = Ledgr.Repo.one(
       from a in "accounts",
       where: a.code == ^code,
       select: %{id: a.id}
@@ -43,7 +43,7 @@ defmodule MrMunchMeAccountingApp.Repo.Migrations.AddRetainedEarningsAndClose2025
     else
       now = NaiveDateTime.utc_now() |> NaiveDateTime.truncate(:second)
 
-      {1, [account]} = MrMunchMeAccountingApp.Repo.insert_all(
+      {1, [account]} = Ledgr.Repo.insert_all(
         "accounts",
         [
           %{
@@ -65,7 +65,7 @@ defmodule MrMunchMeAccountingApp.Repo.Migrations.AddRetainedEarningsAndClose2025
 
   defp create_closing_entry(retained_earnings_account_id, owners_drawings_account) do
     # Check if closing entry already exists
-    existing_close = MrMunchMeAccountingApp.Repo.one(
+    existing_close = Ledgr.Repo.one(
       from je in "journal_entries",
       where: je.entry_type == "year_end_close" and je.reference == "Year-End Close 2025",
       select: je.id
@@ -109,7 +109,7 @@ defmodule MrMunchMeAccountingApp.Repo.Migrations.AddRetainedEarningsAndClose2025
       where: a.type == "revenue" and je.date <= ^end_date,
       select: coalesce(sum(jl.credit_cents), 0) - coalesce(sum(jl.debit_cents), 0)
 
-    revenue_cents = MrMunchMeAccountingApp.Repo.one(revenue_query) || 0
+    revenue_cents = Ledgr.Repo.one(revenue_query) || 0
 
     # Sum all expenses (debits - credits for debit-normal accounts)
     expense_query = from je in "journal_entries",
@@ -118,7 +118,7 @@ defmodule MrMunchMeAccountingApp.Repo.Migrations.AddRetainedEarningsAndClose2025
       where: a.type == "expense" and je.date <= ^end_date,
       select: coalesce(sum(jl.debit_cents), 0) - coalesce(sum(jl.credit_cents), 0)
 
-    expense_cents = MrMunchMeAccountingApp.Repo.one(expense_query) || 0
+    expense_cents = Ledgr.Repo.one(expense_query) || 0
 
     # Net income = Revenue - Expenses
     revenue_cents - expense_cents
@@ -132,7 +132,7 @@ defmodule MrMunchMeAccountingApp.Repo.Migrations.AddRetainedEarningsAndClose2025
       where: jl.account_id == ^owners_drawings_account_id and je.date <= ^end_date,
       select: coalesce(sum(jl.debit_cents), 0) - coalesce(sum(jl.credit_cents), 0)
 
-    MrMunchMeAccountingApp.Repo.one(query) || 0
+    Ledgr.Repo.one(query) || 0
   end
 
   defp create_closing_journal_entry(
@@ -145,7 +145,7 @@ defmodule MrMunchMeAccountingApp.Repo.Migrations.AddRetainedEarningsAndClose2025
     now = NaiveDateTime.utc_now() |> NaiveDateTime.truncate(:second)
 
     # Create the journal entry
-    {1, [journal_entry]} = MrMunchMeAccountingApp.Repo.insert_all(
+    {1, [journal_entry]} = Ledgr.Repo.insert_all(
       "journal_entries",
       [
         %{
@@ -207,7 +207,7 @@ defmodule MrMunchMeAccountingApp.Repo.Migrations.AddRetainedEarningsAndClose2025
     end
 
     if length(lines) > 0 do
-      MrMunchMeAccountingApp.Repo.insert_all("journal_lines", lines)
+      Ledgr.Repo.insert_all("journal_lines", lines)
     end
 
     :ok

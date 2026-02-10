@@ -7,22 +7,22 @@
 # General application configuration
 import Config
 
-config :mr_munch_me_accounting_app,
-  ecto_repos: [MrMunchMeAccountingApp.Repo],
+config :ledgr,
+  ecto_repos: [Ledgr.Repo],
   generators: [timestamp_type: :utc_datetime]
 
 # Configures the endpoint
-config :mr_munch_me_accounting_app, MrMunchMeAccountingAppWeb.Endpoint,
+config :ledgr, LedgrWeb.Endpoint,
   url: [host: "localhost"],
   adapter: Bandit.PhoenixAdapter,
   render_errors: [
     formats: [
-      html: MrMunchMeAccountingAppWeb.ErrorHTML,
-      json: MrMunchMeAccountingAppWeb.ErrorJSON
+      html: LedgrWeb.ErrorHTML,
+      json: LedgrWeb.ErrorJSON
     ],
     layout: false
   ],
-  pubsub_server: MrMunchMeAccountingApp.PubSub,
+  pubsub_server: Ledgr.PubSub,
   live_view: [signing_salt: "iPVanD6o"]
 
 # Configures the mailer
@@ -32,12 +32,12 @@ config :mr_munch_me_accounting_app, MrMunchMeAccountingAppWeb.Endpoint,
 #
 # For production it's recommended to configure a different adapter
 # at the `config/runtime.exs`.
-config :mr_munch_me_accounting_app, MrMunchMeAccountingApp.Mailer, adapter: Swoosh.Adapters.Local
+config :ledgr, Ledgr.Mailer, adapter: Swoosh.Adapters.Local
 
 # Configure esbuild (the version is required)
 config :esbuild,
   version: "0.25.4",
-  mr_munch_me_accounting_app: [
+  ledgr: [
     args:
       ~w(js/app.js --bundle --target=es2022 --outdir=../priv/static/assets/js --external:/fonts/* --external:/images/* --alias:@=.),
     cd: Path.expand("../assets", __DIR__),
@@ -47,7 +47,7 @@ config :esbuild,
 # Configure tailwind (the version is required)
 config :tailwind,
   version: "4.1.7",
-  mr_munch_me_accounting_app: [
+  ledgr: [
     args: ~w(
       --input=assets/css/app.css
       --output=priv/static/assets/css/app.css

@@ -6,7 +6,7 @@ defmodule Mix.Tasks.VerifyInventoryAccounting do
   """
   use Mix.Task
 
-  alias MrMunchMeAccountingApp.Inventory.Verification
+  alias Ledgr.Inventory.Verification
 
   @shortdoc "Verifies inventory accounting integrity"
 

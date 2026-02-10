@@ -1,4 +1,4 @@
-defmodule MrMunchMeAccountingApp.Repo.Migrations.AddCommentsToRecipeLines do
+defmodule Ledgr.Repo.Migrations.AddCommentsToRecipeLines do
   use Ecto.Migration
 
   def change do

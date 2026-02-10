@@ -1,4 +1,4 @@
-defmodule MrMunchMeAccountingApp.Repo.Migrations.AddUniqueIndexToCustomerPhone do
+defmodule Ledgr.Repo.Migrations.AddUniqueIndexToCustomerPhone do
   use Ecto.Migration
 
   def change do

@@ -1,4 +1,4 @@
-defmodule MrMunchMeAccountingApp.Repo.Migrations.CreateProductsAndOrders do
+defmodule Ledgr.Repo.Migrations.CreateProductsAndOrders do
   use Ecto.Migration
 
   def change do

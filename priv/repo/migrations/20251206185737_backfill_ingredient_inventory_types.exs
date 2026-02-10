@@ -1,4 +1,4 @@
-defmodule MrMunchMeAccountingApp.Repo.Migrations.BackfillIngredientInventoryTypes do
+defmodule Ledgr.Repo.Migrations.BackfillIngredientInventoryTypes do
   use Ecto.Migration
 
   def up do
