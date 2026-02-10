@@ -53,8 +53,8 @@
 
       <div class="dashboard-metrics">
         <div class="metric-card">
-          <div class="metric-label">Total Orders</div>
-          <div class="metric-value"><%= m.total_orders %></div>
+          <div class="metric-label">Units Sold</div>
+          <div class="metric-value"><%= m.total_units %></div>
         </div>
 
         <div class="metric-card">
@@ -91,9 +91,9 @@
 
     <!-- Orders per Product -->
     <section class="card">
-      <h2 class="card-title">Orders per Product</h2>
+      <h2 class="card-title">Sales per Product</h2>
       <p class="card-subtitle">
-        Number of orders (non-canceled) for each product in this period.
+        Units sold (non-canceled) for each product in this period.
       </p>
 
       <%= if m.orders_by_product && m.orders_by_product != [] do %>
@@ -102,7 +102,7 @@
             <thead>
               <tr>
                 <th>Product</th>
-                <th class="numeric">Orders</th>
+                <th class="numeric">Units</th>
                 <th class="numeric">Revenue</th>
                 <th class="numeric">COGS</th>
                 <th class="numeric">Gross Profit</th>
@@ -117,7 +117,7 @@
                       <span style="color: #6b7280; font-size: 0.875rem;">(<%= product.product_sku %>)</span>
                     <% end %>
                   </td>
-                  <td class="numeric"><%= product.order_count %></td>
+                  <td class="numeric"><%= product.unit_count %></td>
                   <td class="numeric"><%= format_currency(product.revenue_cents || 0) %></td>
                   <td class="numeric"><%= format_currency(product.cogs_cents || 0) %></td>
                   <td class="numeric">

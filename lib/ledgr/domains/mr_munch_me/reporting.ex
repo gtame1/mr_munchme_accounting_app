@@ -28,7 +28,8 @@ defmodule Ledgr.Domains.MrMunchMe.Reporting do
             fragment("COALESCE(?, ?)", o.actual_delivery_date, o.delivery_date) <= ^end_date and
             o.status != "canceled",
         select: %{
-          order_count: count(o.id)
+          order_count: count(o.id),
+          unit_count: sum(fragment("COALESCE(?, 1)", o.quantity))
         }
       )
       |> Repo.one()
@@ -58,6 +59,7 @@ defmodule Ledgr.Domains.MrMunchMe.Reporting do
       |> Enum.into(%{})
 
     total_orders = order_rev_stats.order_count || 0
+    total_units = order_rev_stats.unit_count || 0
     revenue_cents = revenue_stats.revenue_cents || 0
 
     avg_order_value_cents =
@@ -85,6 +87,7 @@ defmodule Ledgr.Domains.MrMunchMe.Reporting do
           product_name: p.name,
           product_sku: p.sku,
           order_count: count(o.id),
+          unit_count: sum(fragment("COALESCE(?, 1)", o.quantity)),
           revenue_cents: fragment("SUM(? * COALESCE(?, 1)) + SUM(CASE WHEN ? THEN ? ELSE 0 END)", p.price_cents, o.quantity, o.customer_paid_shipping, ^shipping_fee)
         },
         order_by: [desc: count(o.id)]
@@ -203,6 +206,7 @@ defmodule Ledgr.Domains.MrMunchMe.Reporting do
 
     %{
       total_orders: total_orders,
+      total_units: total_units,
       delivered_orders: delivered_orders,
       orders_by_status: orders_by_status,
       orders_by_product: orders_by_product,
@@ -354,8 +358,8 @@ defmodule Ledgr.Domains.MrMunchMe.Reporting do
         total -> total
       end
 
-    # Calculate number of units sold
-    units_sold = length(orders)
+    # Calculate number of units sold (sum quantities, not order count)
+    units_sold = Enum.reduce(orders, 0, fn order, acc -> acc + (order.quantity || 1) end)
 
     # Calculate per-unit metrics
     revenue_per_unit_cents = if units_sold > 0, do: div(revenue_cents, units_sold), else: 0
