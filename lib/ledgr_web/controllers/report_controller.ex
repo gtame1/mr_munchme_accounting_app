@@ -3,6 +3,7 @@ defmodule LedgrWeb.ReportController do
 
   alias Ledgr.Core.Accounting
   alias Ledgr.Core.Reporting
+  alias Ledgr.Domains.MrMunchMe.Reporting, as: DomainReporting
   alias Ledgr.Domains.MrMunchMe.Orders
   alias Ledgr.Domains.MrMunchMe.Inventory
   alias Ledgr.Domains.MrMunchMe.Inventory.Verification
@@ -11,7 +12,7 @@ defmodule LedgrWeb.ReportController do
     {start_date, end_date} = resolve_period(params)
     {earliest_date, latest_date} = Inventory.movement_date_range()
 
-    metrics = Reporting.dashboard_metrics(start_date, end_date)
+    metrics = DomainReporting.dashboard_metrics(start_date, end_date)
 
     render(conn, :dashboard,
       metrics: metrics,
@@ -114,7 +115,7 @@ defmodule LedgrWeb.ReportController do
     unit_economics_data =
       if product_id do
         try do
-          Reporting.unit_economics(product_id, start_date, end_date)
+          DomainReporting.unit_economics(product_id, start_date, end_date)
         rescue
           Ecto.NoResultsError ->
             # Product doesn't exist - return nil
@@ -156,7 +157,7 @@ defmodule LedgrWeb.ReportController do
     {start_date, end_date} = resolve_period(params)
     {earliest_date, latest_date} = Inventory.movement_date_range()
 
-    all_unit_economics = Reporting.all_unit_economics(start_date, end_date)
+    all_unit_economics = DomainReporting.all_unit_economics(start_date, end_date)
 
     # Calculate totals across all products
     totals = calculate_totals(all_unit_economics)

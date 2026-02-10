@@ -2,6 +2,7 @@ defmodule Ledgr.Core.ReportingTest do
   use Ledgr.DataCase, async: true
 
   alias Ledgr.Core.Reporting
+  alias Ledgr.Domains.MrMunchMe.Reporting, as: DomainReporting
   alias Ledgr.Repo
   alias Ledgr.Domains.MrMunchMe.Orders.Order
 
@@ -19,7 +20,7 @@ defmodule Ledgr.Core.ReportingTest do
 
     test "returns metrics for product with no orders", %{product: product} do
       today = Date.utc_today()
-      result = Reporting.unit_economics(product.id, today, today)
+      result = DomainReporting.unit_economics(product.id, today, today)
 
       assert result.product.id == product.id
       assert result.units_sold == 0
@@ -33,7 +34,7 @@ defmodule Ledgr.Core.ReportingTest do
       # Create a delivered order
       _order = order_fixture(%{product: product, location: location, status: "delivered"})
 
-      result = Reporting.unit_economics(product.id, today, today)
+      result = DomainReporting.unit_economics(product.id, today, today)
 
       assert result.units_sold == 1
       assert result.revenue_cents == product.price_cents
@@ -61,7 +62,7 @@ defmodule Ledgr.Core.ReportingTest do
         })
         |> Repo.insert()
 
-      result = Reporting.unit_economics(product.id, today, today)
+      result = DomainReporting.unit_economics(product.id, today, today)
 
       assert result.units_sold == 1
       # Revenue should be product + shipping
@@ -77,7 +78,7 @@ defmodule Ledgr.Core.ReportingTest do
       _delivered = order_fixture(%{product: product, location: location, status: "delivered"})
       _canceled = order_fixture(%{product: product, location: location, status: "canceled"})
 
-      result = Reporting.unit_economics(product.id, today, today)
+      result = DomainReporting.unit_economics(product.id, today, today)
 
       # Only the delivered order should count
       assert result.units_sold == 1
@@ -93,11 +94,11 @@ defmodule Ledgr.Core.ReportingTest do
       _today_order = order_fixture(%{product: product, location: location, status: "delivered", delivery_date: today})
 
       # Query only today
-      result = Reporting.unit_economics(product.id, today, today)
+      result = DomainReporting.unit_economics(product.id, today, today)
       assert result.units_sold == 1
 
       # Query both days
-      result_both = Reporting.unit_economics(product.id, yesterday, today)
+      result_both = DomainReporting.unit_economics(product.id, yesterday, today)
       assert result_both.units_sold == 2
     end
 
@@ -106,7 +107,7 @@ defmodule Ledgr.Core.ReportingTest do
 
       _order = order_fixture(%{product: product, location: location, status: "delivered"})
 
-      result = Reporting.unit_economics(product.id, today, today)
+      result = DomainReporting.unit_economics(product.id, today, today)
 
       # With no COGS recorded, gross margin should equal revenue
       assert result.gross_margin_cents == result.revenue_cents - result.cogs_cents
@@ -116,7 +117,7 @@ defmodule Ledgr.Core.ReportingTest do
       # Create an order with today's date
       _order = order_fixture(%{product: product, location: location, status: "delivered"})
 
-      result = Reporting.unit_economics(product.id, nil, nil)
+      result = DomainReporting.unit_economics(product.id, nil, nil)
 
       assert result.units_sold == 1
       assert result.period.start_date == ~D[2000-01-01]
@@ -164,7 +165,7 @@ defmodule Ledgr.Core.ReportingTest do
       _order1 = order_fixture(%{product: product, location: location, status: "new_order"})
       _order2 = order_fixture(%{product: product, location: location, status: "delivered"})
 
-      result = Reporting.dashboard_metrics(today, today)
+      result = DomainReporting.dashboard_metrics(today, today)
 
       assert result.total_orders == 2
       assert result.delivered_orders == 1
@@ -176,7 +177,7 @@ defmodule Ledgr.Core.ReportingTest do
       _order1 = order_fixture(%{product: product, location: location, status: "delivered"})
       _order2 = order_fixture(%{product: product, location: location, status: "new_order"})
 
-      result = Reporting.dashboard_metrics(today, today)
+      result = DomainReporting.dashboard_metrics(today, today)
 
       # Both orders count for revenue (all non-canceled)
       assert result.revenue_cents == product.price_cents * 2
@@ -192,7 +193,7 @@ defmodule Ledgr.Core.ReportingTest do
       _order2 = order_fixture(%{product: product1, location: location, status: "delivered"})
       _order3 = order_fixture(%{product: product2, location: location, status: "delivered"})
 
-      result = Reporting.dashboard_metrics(today, today)
+      result = DomainReporting.dashboard_metrics(today, today)
 
       assert length(result.orders_by_product) == 2
 
@@ -213,12 +214,12 @@ defmodule Ledgr.Core.ReportingTest do
       _today_order = order_fixture(%{product: product, location: location, status: "delivered", delivery_date: today})
 
       # Query only today
-      result = Reporting.dashboard_metrics(today, today)
+      result = DomainReporting.dashboard_metrics(today, today)
       assert result.total_orders == 1
       assert result.delivered_orders == 1
 
       # Query both days
-      result_both = Reporting.dashboard_metrics(yesterday, today)
+      result_both = DomainReporting.dashboard_metrics(yesterday, today)
       assert result_both.total_orders == 2
     end
 
@@ -228,7 +229,7 @@ defmodule Ledgr.Core.ReportingTest do
       _order1 = order_fixture(%{product: product, location: location, status: "delivered"})
       _order2 = order_fixture(%{product: product, location: location, status: "delivered"})
 
-      result = Reporting.dashboard_metrics(today, today)
+      result = DomainReporting.dashboard_metrics(today, today)
 
       assert result.delivered_orders == 2
       assert result.avg_order_value_cents == product.price_cents
@@ -239,7 +240,7 @@ defmodule Ledgr.Core.ReportingTest do
 
       _order = order_fixture(%{product: product, location: location, status: "new_order"})
 
-      result = Reporting.dashboard_metrics(today, today)
+      result = DomainReporting.dashboard_metrics(today, today)
 
       # avg_order_value is based on all non-canceled orders
       assert result.delivered_orders == 0

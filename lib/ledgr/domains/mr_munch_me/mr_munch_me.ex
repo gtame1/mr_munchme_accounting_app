@@ -99,6 +99,6 @@ defmodule Ledgr.Domains.MrMunchMe do
 
   @impl Ledgr.Domain.DashboardProvider
   def dashboard_metrics(start_date, end_date) do
-    Ledgr.Core.Reporting.dashboard_metrics(start_date, end_date)
+    Ledgr.Domains.MrMunchMe.Reporting.dashboard_metrics(start_date, end_date)
   end
 end
