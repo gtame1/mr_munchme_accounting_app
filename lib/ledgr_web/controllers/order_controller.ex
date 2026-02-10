@@ -5,7 +5,8 @@ defmodule LedgrWeb.OrderController do
 
   alias Ledgr.Orders
   alias Ledgr.Orders.{Order, OrderPayment}
-  alias Ledgr.{Inventory, Accounting, Repo, Customers, Partners}
+  alias Ledgr.Core.{Accounting, Customers, Partners}
+  alias Ledgr.{Inventory, Repo}
   alias LedgrWeb.Helpers.MoneyHelper
 
   def index(conn, params) do

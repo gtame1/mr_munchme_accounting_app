@@ -1,9 +1,9 @@
-defmodule Ledgr.AccountingFixtures do
+defmodule Ledgr.Core.AccountingFixtures do
   @moduledoc """
   Test helpers for creating accounting entities.
   """
 
-  alias Ledgr.Accounting
+  alias Ledgr.Core.Accounting
 
   @doc """
   Create all the standard accounts needed for order processing.

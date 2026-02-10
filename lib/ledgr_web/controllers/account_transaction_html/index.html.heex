@@ -77,7 +77,7 @@
           <div style="display: inline-block; padding: 0.75rem 1.25rem; background: var(--primary-soft); border-radius: var(--radius-md);">
             <div style="font-size: 0.875rem; color: var(--text-muted); margin-bottom: 0.25rem;">Current Balance</div>
             <div style="font-size: 1.5rem; font-weight: 600; color: var(--primary);">
-              <%= Ledgr.Accounting.format_cents(@running_balance) %>
+              <%= Ledgr.Core.Accounting.format_cents(@running_balance) %>
             </div>
           </div>
         </div>
@@ -120,20 +120,20 @@
                   <td><%= transaction.line.description || transaction.line.journal_entry.description %></td>
                   <td class="numeric">
                     <%= if transaction.line.debit_cents > 0 do %>
-                      <%= Ledgr.Accounting.format_cents(transaction.line.debit_cents) %>
+                      <%= Ledgr.Core.Accounting.format_cents(transaction.line.debit_cents) %>
                     <% else %>
                       -
                     <% end %>
                   </td>
                   <td class="numeric">
                     <%= if transaction.line.credit_cents > 0 do %>
-                      <%= Ledgr.Accounting.format_cents(transaction.line.credit_cents) %>
+                      <%= Ledgr.Core.Accounting.format_cents(transaction.line.credit_cents) %>
                     <% else %>
                       -
                     <% end %>
                   </td>
                   <td class="numeric" style="font-weight: 600;">
-                    <%= Ledgr.Accounting.format_cents(transaction.balance) %>
+                    <%= Ledgr.Core.Accounting.format_cents(transaction.balance) %>
                   </td>
                   <td>
                     <.link navigate={~p"/transactions/#{transaction.line.journal_entry.id}"} class="btn btn-sm">

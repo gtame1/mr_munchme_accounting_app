@@ -1,4 +1,4 @@
-defmodule Ledgr.Accounting.Account do
+defmodule Ledgr.Core.Accounting.Account do
   use Ecto.Schema
   import Ecto.Changeset
 
@@ -9,7 +9,7 @@ defmodule Ledgr.Accounting.Account do
     field :normal_balance, :string
     field :is_cash, :boolean, default: false
 
-    has_many :journal_lines, Ledgr.Accounting.JournalLine
+    has_many :journal_lines, Ledgr.Core.Accounting.JournalLine
 
     timestamps()
   end

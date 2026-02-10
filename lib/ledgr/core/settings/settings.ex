@@ -1,11 +1,11 @@
-defmodule Ledgr.Settings do
+defmodule Ledgr.Core.Settings do
   @moduledoc """
   Context for application-wide settings stored as key-value pairs.
   """
 
   import Ecto.Query
   alias Ledgr.Repo
-  alias Ledgr.Settings.AppSetting
+  alias Ledgr.Core.Settings.AppSetting
 
   @doc """
   Gets the value for a given key. Returns nil if not found.

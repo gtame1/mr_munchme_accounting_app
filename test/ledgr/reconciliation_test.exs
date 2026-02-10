@@ -1,10 +1,11 @@
-defmodule Ledgr.ReconciliationTest do
+defmodule Ledgr.Core.ReconciliationTest do
   use Ledgr.DataCase, async: true
 
-  alias Ledgr.{Reconciliation, Accounting, Inventory, Repo}
+  alias Ledgr.Core.{Reconciliation, Accounting}
+  alias Ledgr.{Inventory, Repo}
   alias Ledgr.Inventory.{Ingredient, Location}
 
-  import Ledgr.AccountingFixtures
+  import Ledgr.Core.AccountingFixtures
 
   describe "get_account_balance/2" do
     setup do

@@ -4,7 +4,8 @@ defmodule LedgrWeb.ApiController do
   """
   use LedgrWeb, :controller
 
-  alias Ledgr.{Accounting, Customers, Inventory, Orders}
+  alias Ledgr.Core.{Accounting, Customers}
+  alias Ledgr.{Inventory, Orders}
 
   # ---------- Products ----------
 

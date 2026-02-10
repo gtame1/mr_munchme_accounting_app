@@ -1,9 +1,9 @@
-defmodule Ledgr.Partners.CapitalContribution do
+defmodule Ledgr.Core.Partners.CapitalContribution do
   use Ecto.Schema
   import Ecto.Changeset
 
-  alias Ledgr.Partners.Partner
-  alias Ledgr.Accounting.Account
+  alias Ledgr.Core.Partners.Partner
+  alias Ledgr.Core.Accounting.Account
 
   schema "capital_contributions" do
     field :date, :date

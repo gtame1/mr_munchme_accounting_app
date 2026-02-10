@@ -16,8 +16,8 @@ defmodule Mix.Tasks.FixWithdrawalAccounts do
   import Ecto.Query
 
   alias Ledgr.Repo
-  alias Ledgr.Accounting
-  alias Ledgr.Accounting.{JournalLine, Account}
+  alias Ledgr.Core.Accounting
+  alias Ledgr.Core.Accounting.{JournalLine, Account}
 
   @shortdoc "Fix historical withdrawal entries that debited Owner's Equity instead of Owner's Drawings"
 

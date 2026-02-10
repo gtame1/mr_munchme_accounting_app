@@ -3,7 +3,7 @@ defmodule Ledgr.Inventory.InventoryMovement do
   import Ecto.Changeset
 
   alias Ledgr.Inventory.{Ingredient, Location}
-  alias Ledgr.Accounting.Account
+  alias Ledgr.Core.Accounting.Account
 
   schema "inventory_movements" do
     field :quantity, :integer

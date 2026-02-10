@@ -2,10 +2,10 @@ defmodule LedgrWeb.ReconciliationController do
   use LedgrWeb, :controller
   require Logger
 
-  alias Ledgr.Reconciliation
-  alias Ledgr.Accounting
+  alias Ledgr.Core.Reconciliation
+  alias Ledgr.Core.Accounting
   alias Ledgr.Inventory
-  alias Ledgr.Settings
+  alias Ledgr.Core.Settings
 
   # ---------- Accounting Reconciliation ----------
 

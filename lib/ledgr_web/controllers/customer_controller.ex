@@ -1,8 +1,8 @@
 defmodule LedgrWeb.CustomerController do
   use LedgrWeb, :controller
 
-  alias Ledgr.Customers
-  alias Ledgr.Customers.Customer
+  alias Ledgr.Core.Customers
+  alias Ledgr.Core.Customers.Customer
 
   def index(conn, _params) do
     customers = Customers.list_customers()

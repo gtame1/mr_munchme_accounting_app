@@ -1,7 +1,7 @@
-defmodule Ledgr.Accounting.JournalEntryTest do
+defmodule Ledgr.Core.Accounting.JournalEntryTest do
   use Ledgr.DataCase, async: true
 
-  alias Ledgr.Accounting
+  alias Ledgr.Core.Accounting
 
   setup do
     # Create minimal accounts needed for tests

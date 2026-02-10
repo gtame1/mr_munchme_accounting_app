@@ -1,7 +1,8 @@
 defmodule Ledgr.Inventory.VerificationTest do
   use Ledgr.DataCase, async: true
 
-  alias Ledgr.{Accounting, Inventory, Repo}
+  alias Ledgr.Core.Accounting
+  alias Ledgr.{Inventory, Repo}
   alias Ledgr.Inventory.{Ingredient, Location, InventoryItem, InventoryMovement, Verification}
   alias Ledgr.Orders.{Order, OrderPayment}
 

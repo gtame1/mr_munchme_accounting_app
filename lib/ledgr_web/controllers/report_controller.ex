@@ -1,8 +1,8 @@
 defmodule LedgrWeb.ReportController do
   use LedgrWeb, :controller
 
-  alias Ledgr.Accounting
-  alias Ledgr.Reporting
+  alias Ledgr.Core.Accounting
+  alias Ledgr.Core.Reporting
   alias Ledgr.Orders
   alias Ledgr.Inventory
   alias Ledgr.Inventory.Verification

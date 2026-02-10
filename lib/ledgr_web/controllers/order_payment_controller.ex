@@ -2,7 +2,7 @@ defmodule LedgrWeb.OrderPaymentController do
   use LedgrWeb, :controller
 
   alias Ledgr.Orders
-  alias Ledgr.{Accounting, Partners}
+  alias Ledgr.Core.{Accounting, Partners}
   alias LedgrWeb.Helpers.MoneyHelper
 
   def index(conn, _params) do

@@ -2,7 +2,7 @@ defmodule LedgrWeb.InventoryController do
   use LedgrWeb, :controller
 
   alias Ledgr.Inventory
-  alias Ledgr.Accounting
+  alias Ledgr.Core.Accounting
 
   def index(conn, _params) do
     # Batch-load all inventory values in 4 queries instead of 4 × N

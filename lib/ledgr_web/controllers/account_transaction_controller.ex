@@ -1,7 +1,7 @@
 defmodule LedgrWeb.AccountTransactionController do
   use LedgrWeb, :controller
 
-  alias Ledgr.Accounting
+  alias Ledgr.Core.Accounting
 
   def index(conn, params) do
     # Get all accounts

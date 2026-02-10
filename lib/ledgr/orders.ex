@@ -3,8 +3,8 @@ defmodule Ledgr.Orders do
   alias Ledgr.Repo
 
   alias Ledgr.Orders.{Order, Product, OrderPayment, OrderIngredient}
-  alias Ledgr.Accounting
-  alias Ledgr.Customers
+  alias Ledgr.Core.Accounting
+  alias Ledgr.Core.Customers
   alias Ledgr.Repo
 
 
@@ -539,7 +539,7 @@ defmodule Ledgr.Orders do
       reference = "Order ##{payment.order_id} payment ##{payment.id}"
 
       journal_entry =
-        from(je in Ledgr.Accounting.JournalEntry, where: je.reference == ^reference)
+        from(je in Ledgr.Core.Accounting.JournalEntry, where: je.reference == ^reference)
         |> Repo.one()
 
       if journal_entry do
@@ -641,7 +641,7 @@ defmodule Ledgr.Orders do
 
     shipping_cents =
       if order.customer_paid_shipping do
-        Ledgr.Accounting.shipping_fee_cents()
+        Ledgr.Core.Accounting.shipping_fee_cents()
       else
         0
       end

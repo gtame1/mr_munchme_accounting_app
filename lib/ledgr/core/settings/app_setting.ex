@@ -1,4 +1,4 @@
-defmodule Ledgr.Settings.AppSetting do
+defmodule Ledgr.Core.Settings.AppSetting do
   use Ecto.Schema
   import Ecto.Changeset
 

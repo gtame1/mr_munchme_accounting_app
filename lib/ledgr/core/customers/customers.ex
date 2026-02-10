@@ -1,4 +1,4 @@
-defmodule Ledgr.Customers do
+defmodule Ledgr.Core.Customers do
   @moduledoc """
   The Customers context.
   """
@@ -6,7 +6,7 @@ defmodule Ledgr.Customers do
   import Ecto.Query, warn: false
   alias Ledgr.Repo
 
-  alias Ledgr.Customers.Customer
+  alias Ledgr.Core.Customers.Customer
 
   @doc """
   Returns the list of customers.

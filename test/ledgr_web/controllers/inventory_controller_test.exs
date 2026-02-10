@@ -3,7 +3,8 @@ defmodule LedgrWeb.InventoryControllerTest do
 
   import Ecto.Query
 
-  alias Ledgr.{Inventory, Accounting, Repo}
+  alias Ledgr.Core.Accounting
+  alias Ledgr.{Inventory, Repo}
   alias Ledgr.Inventory.{Ingredient, Location, InventoryMovement}
 
   setup do

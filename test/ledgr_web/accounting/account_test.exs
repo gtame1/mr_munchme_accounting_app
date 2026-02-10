@@ -1,8 +1,8 @@
-defmodule Ledgr.Accounting.AccountTest do
+defmodule Ledgr.Core.Accounting.AccountTest do
   use Ledgr.DataCase, async: true
 
-  alias Ledgr.Accounting
-  alias Ledgr.Accounting.Account
+  alias Ledgr.Core.Accounting
+  alias Ledgr.Core.Accounting.Account
 
   test "creates a valid account" do
     attrs = %{

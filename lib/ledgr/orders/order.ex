@@ -4,7 +4,7 @@ defmodule Ledgr.Orders.Order do
 
   alias Ledgr.Orders.Product
   alias Ledgr.Inventory.Location
-  alias Ledgr.Customers.Customer
+  alias Ledgr.Core.Customers.Customer
 
 
   @statuses ~w(new_order in_prep ready delivered canceled)

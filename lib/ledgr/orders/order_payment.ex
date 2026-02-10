@@ -3,8 +3,8 @@ defmodule Ledgr.Orders.OrderPayment do
   import Ecto.Changeset
 
   alias Ledgr.Orders.Order
-  alias Ledgr.Accounting.Account
-  alias Ledgr.Partners.Partner
+  alias Ledgr.Core.Accounting.Account
+  alias Ledgr.Core.Partners.Partner
 
   schema "order_payments" do
     field :payment_date, :date

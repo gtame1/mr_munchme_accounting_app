@@ -1,4 +1,4 @@
-defmodule Ledgr.Partners do
+defmodule Ledgr.Core.Partners do
   @moduledoc """
   Partners and capital contributions (investments).
   """
@@ -7,7 +7,7 @@ defmodule Ledgr.Partners do
   alias Ledgr.Repo
 
   alias __MODULE__.{Partner, CapitalContribution}
-  alias Ledgr.Accounting
+  alias Ledgr.Core.Accounting
 
 
   # ---------- Form changeset for UI (amount in pesos) ----------

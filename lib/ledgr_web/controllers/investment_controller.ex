@@ -1,8 +1,8 @@
 defmodule LedgrWeb.InvestmentController do
   use LedgrWeb, :controller
 
-  alias Ledgr.Partners
-  alias Ledgr.Accounting
+  alias Ledgr.Core.Partners
+  alias Ledgr.Core.Accounting
 
   def index(conn, _params) do
     partner_totals = Partners.list_partners_with_totals()

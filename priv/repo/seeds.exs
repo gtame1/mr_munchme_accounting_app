@@ -1,9 +1,9 @@
 alias Ledgr.Repo
-alias Ledgr.Accounting.Account
+alias Ledgr.Core.Accounting.Account
 alias Ledgr.Orders.Product
 
 alias Ledgr.Inventory.{Ingredient, Location, Recipe, RecipeLine}
-alias Ledgr.Partners.Partner
+alias Ledgr.Core.Partners.Partner
 
 
 defmodule SeedHelper do

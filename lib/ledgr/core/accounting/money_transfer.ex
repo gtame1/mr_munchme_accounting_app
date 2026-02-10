@@ -1,8 +1,8 @@
-defmodule Ledgr.Accounting.MoneyTransfer do
+defmodule Ledgr.Core.Accounting.MoneyTransfer do
   use Ecto.Schema
   import Ecto.Changeset
 
-  alias Ledgr.Accounting.Account
+  alias Ledgr.Core.Accounting.Account
 
   schema "money_transfers" do
     field :date, :date

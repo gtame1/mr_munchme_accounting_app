@@ -5,8 +5,8 @@ defmodule Ledgr.OrdersTest do
   alias Ledgr.Orders.{Order, Product}
 
   import Ledgr.OrdersFixtures
-  import Ledgr.AccountingFixtures
-  import Ledgr.CustomersFixtures
+  import Ledgr.Core.AccountingFixtures
+  import Ledgr.Core.CustomersFixtures
 
   describe "products" do
     test "list_products/0 returns only active products" do

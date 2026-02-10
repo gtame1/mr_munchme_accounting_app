@@ -3,9 +3,10 @@ defmodule Ledgr.InventoryTest do
 
   import Ecto.Query
 
-  alias Ledgr.{Inventory, Accounting, Repo}
+  alias Ledgr.Core.Accounting
+  alias Ledgr.{Inventory, Repo}
   alias Ledgr.Inventory.{Ingredient, Location, InventoryItem, InventoryMovement}
-  alias Ledgr.Accounting.JournalEntry
+  alias Ledgr.Core.Accounting.JournalEntry
 
   setup do
     # Create accounts

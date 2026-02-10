@@ -1,7 +1,7 @@
 defmodule LedgrWeb.TransferController do
   use LedgrWeb, :controller
 
-  alias Ledgr.Accounting
+  alias Ledgr.Core.Accounting
 
   def index(conn, _params) do
     transfers = Accounting.list_money_transfers()

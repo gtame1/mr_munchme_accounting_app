@@ -1,4 +1,4 @@
-defmodule Ledgr.Reporting do
+defmodule Ledgr.Core.Reporting do
   @moduledoc """
   High-level reporting queries for dashboards (combining Orders + Accounting).
   """
@@ -7,8 +7,8 @@ defmodule Ledgr.Reporting do
   alias Ledgr.Repo
 
   alias Ledgr.Orders.{Order, Product}
-  alias Ledgr.Accounting
-  alias Ledgr.Accounting.JournalEntry
+  alias Ledgr.Core.Accounting
+  alias Ledgr.Core.Accounting.JournalEntry
   alias Ledgr.Inventory
 
   @doc """

@@ -1,11 +1,12 @@
-defmodule Ledgr.AccountingTest do
+defmodule Ledgr.Core.AccountingTest do
   use Ledgr.DataCase, async: true
 
-  alias Ledgr.{Accounting, Repo}
-  alias Ledgr.Accounting.{Account, JournalEntry, MoneyTransfer}
+  alias Ledgr.Core.Accounting
+  alias Ledgr.Repo
+  alias Ledgr.Core.Accounting.{Account, JournalEntry, MoneyTransfer}
   alias Ledgr.Orders.{OrderPayment}
 
-  import Ledgr.AccountingFixtures
+  import Ledgr.Core.AccountingFixtures
   import Ledgr.OrdersFixtures
 
   describe "accounts" do

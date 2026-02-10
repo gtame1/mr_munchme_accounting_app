@@ -1,4 +1,4 @@
-defmodule Ledgr.Accounting.JournalLine do
+defmodule Ledgr.Core.Accounting.JournalLine do
   use Ecto.Schema
   import Ecto.Changeset
 
@@ -7,8 +7,8 @@ defmodule Ledgr.Accounting.JournalLine do
     field :debit_cents, :integer, default: 0
     field :credit_cents, :integer, default: 0
 
-    belongs_to :journal_entry, Ledgr.Accounting.JournalEntry
-    belongs_to :account, Ledgr.Accounting.Account
+    belongs_to :journal_entry, Ledgr.Core.Accounting.JournalEntry
+    belongs_to :account, Ledgr.Core.Accounting.Account
 
     timestamps()
   end

@@ -1,8 +1,8 @@
-defmodule Ledgr.Partners.Partner do
+defmodule Ledgr.Core.Partners.Partner do
   use Ecto.Schema
   import Ecto.Changeset
 
-  alias Ledgr.Partners.CapitalContribution
+  alias Ledgr.Core.Partners.CapitalContribution
 
   schema "partners" do
     field :name, :string

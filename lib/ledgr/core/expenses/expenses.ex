@@ -1,4 +1,4 @@
-defmodule Ledgr.Expenses do
+defmodule Ledgr.Core.Expenses do
   @moduledoc """
   Manages business expenses (OPEX, generic costs).
   """
@@ -6,9 +6,9 @@ defmodule Ledgr.Expenses do
   import Ecto.Query, warn: false
   alias Ledgr.Repo
 
-  alias Ledgr.Expenses.Expense
-  alias Ledgr.Accounting
-  alias Ledgr.Accounting.JournalEntry
+  alias Ledgr.Core.Expenses.Expense
+  alias Ledgr.Core.Accounting
+  alias Ledgr.Core.Accounting.JournalEntry
 
   # ---------- PUBLIC API ----------
 

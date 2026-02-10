@@ -1,12 +1,12 @@
-defmodule Ledgr.Reconciliation do
+defmodule Ledgr.Core.Reconciliation do
   @moduledoc """
   Reconciliation context for inventory and accounting reconciliation.
   """
   require Logger
   import Ecto.Query, warn: false
   alias Ledgr.Repo
-  alias Ledgr.Accounting
-  alias Ledgr.Accounting.{Account, JournalLine}
+  alias Ledgr.Core.Accounting
+  alias Ledgr.Core.Accounting.{Account, JournalLine}
   alias Ledgr.Inventory
   alias Ledgr.Inventory.{Ingredient, Location, InventoryItem}
 

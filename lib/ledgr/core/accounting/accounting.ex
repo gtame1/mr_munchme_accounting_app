@@ -1,4 +1,4 @@
-defmodule Ledgr.Accounting do
+defmodule Ledgr.Core.Accounting do
   @moduledoc """
   Accounting context: chart of accounts and double-entry journal.
   """
@@ -8,9 +8,9 @@ defmodule Ledgr.Accounting do
   alias Ledgr.Repo
   alias Ledgr.Orders.{Order, OrderPayment, Product}
   alias Ledgr.Inventory
-  alias Ledgr.Accounting.{Account, JournalEntry, JournalLine, MoneyTransfer}
-  alias Ledgr.Expenses.Expense
-  alias Ledgr.Partners.CapitalContribution
+  alias Ledgr.Core.Accounting.{Account, JournalEntry, JournalLine, MoneyTransfer}
+  alias Ledgr.Core.Expenses.Expense
+  alias Ledgr.Core.Partners.CapitalContribution
 
 
 
@@ -544,7 +544,7 @@ defmodule Ledgr.Accounting do
                 i
             end
 
-          Repo.get!(Ledgr.Accounting.Account, id)
+          Repo.get!(Ledgr.Core.Accounting.Account, id)
 
         # passed an account code like "1010"
         code = Keyword.get(opts, :paid_from_account_code) -> get_account_by_code!(code)
@@ -620,7 +620,7 @@ defmodule Ledgr.Accounting do
                 i
             end
 
-          Repo.get!(Ledgr.Accounting.Account, id)
+          Repo.get!(Ledgr.Core.Accounting.Account, id)
 
         # passed an account code like "1010"
         code = Keyword.get(opts, :paid_from_account_code) -> get_account_by_code!(code)

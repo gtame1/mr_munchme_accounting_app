@@ -2,11 +2,11 @@ defmodule Mix.Tasks.ResetAllTables do
   use Mix.Task
 
   alias Ledgr.Repo
-  alias Ledgr.Accounting.{Account, JournalEntry, JournalLine, MoneyTransfer}
+  alias Ledgr.Core.Accounting.{Account, JournalEntry, JournalLine, MoneyTransfer}
   alias Ledgr.Inventory.{InventoryItem, InventoryMovement, Ingredient, Location, Recipe, RecipeLine}
   alias Ledgr.Orders.{Order, Product, OrderPayment}
-  alias Ledgr.Partners.{Partner, CapitalContribution}
-  alias Ledgr.Expenses.Expense
+  alias Ledgr.Core.Partners.{Partner, CapitalContribution}
+  alias Ledgr.Core.Expenses.Expense
 
   @shortdoc "Deletes data from all main tables"
 

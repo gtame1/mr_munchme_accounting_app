@@ -1,8 +1,8 @@
-defmodule Ledgr.Expenses.Expense do
+defmodule Ledgr.Core.Expenses.Expense do
   use Ecto.Schema
   import Ecto.Changeset
 
-  alias Ledgr.Accounting.Account
+  alias Ledgr.Core.Accounting.Account
 
   schema "expenses" do
     field :date, :date

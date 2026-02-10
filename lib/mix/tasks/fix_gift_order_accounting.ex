@@ -20,8 +20,8 @@ defmodule Mix.Tasks.FixGiftOrderAccounting do
   import Ecto.Query
 
   alias Ledgr.Repo
-  alias Ledgr.Accounting
-  alias Ledgr.Accounting.{JournalEntry, JournalLine, Account}
+  alias Ledgr.Core.Accounting
+  alias Ledgr.Core.Accounting.{JournalEntry, JournalLine, Account}
   alias Ledgr.Orders.Order
 
   @shortdoc "Fix accounting for delivered orders retroactively marked as gifts"

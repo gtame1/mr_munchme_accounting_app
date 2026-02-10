@@ -1,8 +1,8 @@
 defmodule LedgrWeb.TransactionController do
   use LedgrWeb, :controller
 
-  alias Ledgr.Accounting
-  alias Ledgr.Accounting.JournalEntry
+  alias Ledgr.Core.Accounting
+  alias Ledgr.Core.Accounting.JournalEntry
   alias LedgrWeb.Helpers.MoneyHelper
 
 

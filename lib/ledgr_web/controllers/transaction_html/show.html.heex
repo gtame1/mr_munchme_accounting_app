@@ -35,10 +35,10 @@
             <td><%= line.account.name %></td>
             <td><%= line.description %></td>
             <td class="numeric">
-              <%= if line.debit_cents > 0, do: Ledgr.Accounting.format_cents(line.debit_cents) %>
+              <%= if line.debit_cents > 0, do: Ledgr.Core.Accounting.format_cents(line.debit_cents) %>
             </td>
             <td class="numeric">
-              <%= if line.credit_cents > 0, do: Ledgr.Accounting.format_cents(line.credit_cents) %>
+              <%= if line.credit_cents > 0, do: Ledgr.Core.Accounting.format_cents(line.credit_cents) %>
             </td>
           </tr>
         <% end %>

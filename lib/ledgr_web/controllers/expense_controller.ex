@@ -1,9 +1,9 @@
 defmodule LedgrWeb.ExpenseController do
   use LedgrWeb, :controller
 
-  alias Ledgr.Expenses
-  alias Ledgr.Expenses.Expense
-  alias Ledgr.Accounting
+  alias Ledgr.Core.Expenses
+  alias Ledgr.Core.Expenses.Expense
+  alias Ledgr.Core.Accounting
   alias LedgrWeb.Helpers.MoneyHelper
 
   def index(conn, _params) do

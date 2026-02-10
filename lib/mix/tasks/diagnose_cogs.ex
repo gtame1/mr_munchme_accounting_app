@@ -15,7 +15,7 @@ defmodule Mix.Tasks.DiagnoseCogs do
   import Ecto.Query
   alias Ledgr.Repo
   alias Ledgr.Orders.{Order, Product}
-  alias Ledgr.Accounting.JournalEntry
+  alias Ledgr.Core.Accounting.JournalEntry
   alias Ledgr.Inventory
   alias Ledgr.Inventory.Recepies
 

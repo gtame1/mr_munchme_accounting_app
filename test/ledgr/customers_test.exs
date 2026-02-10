@@ -1,12 +1,12 @@
-defmodule Ledgr.CustomersTest do
+defmodule Ledgr.Core.CustomersTest do
   use Ledgr.DataCase
 
-  alias Ledgr.Customers
+  alias Ledgr.Core.Customers
 
   describe "customers" do
-    alias Ledgr.Customers.Customer
+    alias Ledgr.Core.Customers.Customer
 
-    import Ledgr.CustomersFixtures
+    import Ledgr.Core.CustomersFixtures
 
     @invalid_attrs %{name: nil, email: nil, phone: nil}
 

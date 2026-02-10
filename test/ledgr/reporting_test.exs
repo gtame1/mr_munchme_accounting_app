@@ -1,11 +1,12 @@
-defmodule Ledgr.ReportingTest do
+defmodule Ledgr.Core.ReportingTest do
   use Ledgr.DataCase, async: true
 
-  alias Ledgr.{Reporting, Repo}
+  alias Ledgr.Core.Reporting
+  alias Ledgr.Repo
   alias Ledgr.Orders.Order
 
   import Ledgr.OrdersFixtures
-  import Ledgr.AccountingFixtures
+  import Ledgr.Core.AccountingFixtures
 
   describe "unit_economics/3" do
     setup do

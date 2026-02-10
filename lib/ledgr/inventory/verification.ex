@@ -4,8 +4,10 @@ defmodule Ledgr.Inventory.Verification do
   """
   require Logger
   import Ecto.Query
-  alias Ledgr.{Repo, Accounting, Inventory}
-  alias Ledgr.Accounting.{Account, JournalEntry, JournalLine}
+  alias Ledgr.Repo
+  alias Ledgr.Core.Accounting
+  alias Ledgr.Inventory
+  alias Ledgr.Core.Accounting.{Account, JournalEntry, JournalLine}
   alias Ledgr.Inventory.{Ingredient, InventoryItem, InventoryMovement}
   alias Ledgr.Orders.{Order, OrderPayment}
 

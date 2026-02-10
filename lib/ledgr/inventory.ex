@@ -6,8 +6,8 @@ defmodule Ledgr.Inventory do
   require Logger
   import Ecto.Query
   alias Ledgr.Repo
-  alias Ledgr.Accounting
-  alias Ledgr.Accounting.JournalEntry
+  alias Ledgr.Core.Accounting
+  alias Ledgr.Core.Accounting.JournalEntry
   alias Ledgr.Orders
   alias Ledgr.Orders.Order
   alias __MODULE__.{Ingredient, Location, InventoryItem, InventoryMovement, PurchaseForm, PurchaseListForm, MovementForm, MovementListForm, Recepies, PurchaseItemForm, MovementItemForm}

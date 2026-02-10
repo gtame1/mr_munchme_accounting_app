@@ -1,7 +1,7 @@
-defmodule Ledgr.CustomersFixtures do
+defmodule Ledgr.Core.CustomersFixtures do
   @moduledoc """
   This module defines test helpers for creating
-  entities via the `Ledgr.Customers` context.
+  entities via the `Ledgr.Core.Customers` context.
   """
 
   @doc """
@@ -15,7 +15,7 @@ defmodule Ledgr.CustomersFixtures do
         name: "some name",
         phone: "some phone"
       })
-      |> Ledgr.Customers.create_customer()
+      |> Ledgr.Core.Customers.create_customer()
 
     customer
   end

@@ -1,8 +1,8 @@
-defmodule Ledgr.Accounting.JournalEntry do
+defmodule Ledgr.Core.Accounting.JournalEntry do
   use Ecto.Schema
   import Ecto.Changeset
 
-  alias Ledgr.Accounting.JournalLine
+  alias Ledgr.Core.Accounting.JournalLine
 
   schema "journal_entries" do
     field :date, :date

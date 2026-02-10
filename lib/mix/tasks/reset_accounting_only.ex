@@ -2,7 +2,7 @@ defmodule Mix.Tasks.ResetAccountingOnly do
   use Mix.Task
 
   alias Ledgr.Repo
-  alias Ledgr.Accounting.{JournalLine, JournalEntry}
+  alias Ledgr.Core.Accounting.{JournalLine, JournalEntry}
 
   @shortdoc "Deletes ALL journal entries and lines (accounting movements only)"
 

@@ -1,10 +1,11 @@
-defmodule Ledgr.Accounting.InventoryMovementAccountingTest do
+defmodule Ledgr.Core.Accounting.InventoryMovementAccountingTest do
   use Ledgr.DataCase, async: true
 
   import Ecto.Query
 
-  alias Ledgr.{Accounting, Inventory, Repo}
-  alias Ledgr.Accounting.{Account, JournalEntry, JournalLine}
+  alias Ledgr.Core.Accounting
+  alias Ledgr.{Inventory, Repo}
+  alias Ledgr.Core.Accounting.{Account, JournalEntry, JournalLine}
   alias Ledgr.Inventory.{Ingredient, Location, InventoryMovement, Recipe, RecipeLine}
   alias Ledgr.Orders.{Order, Product}
 

@@ -1,4 +1,4 @@
-defmodule Ledgr.Customers.Customer do
+defmodule Ledgr.Core.Customers.Customer do
   use Ecto.Schema
   import Ecto.Changeset
 
