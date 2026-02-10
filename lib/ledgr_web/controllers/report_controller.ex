@@ -10,7 +10,7 @@ defmodule LedgrWeb.ReportController do
 
   def dashboard(conn, params) do
     {start_date, end_date} = resolve_period(params)
-    {earliest_date, latest_date} = Inventory.movement_date_range()
+    {earliest_date, latest_date} = data_date_range()
 
     metrics = DomainReporting.dashboard_metrics(start_date, end_date)
 
@@ -26,7 +26,7 @@ defmodule LedgrWeb.ReportController do
   # P&L for a period (default: current month)
   def pnl(conn, params) do
     {start_date, end_date} = resolve_period(params)
-    {earliest_date, latest_date} = Inventory.movement_date_range()
+    {earliest_date, latest_date} = data_date_range()
 
     summary  = Accounting.profit_and_loss(start_date, end_date)
     monthly  = Accounting.profit_and_loss_monthly(5)  # last 6 months including current
@@ -125,7 +125,7 @@ defmodule LedgrWeb.ReportController do
         nil
       end
 
-    {earliest_date, latest_date} = Inventory.movement_date_range()
+    {earliest_date, latest_date} = data_date_range()
 
     render(conn, :unit_economics,
       unit_economics: unit_economics_data,
@@ -140,7 +140,7 @@ defmodule LedgrWeb.ReportController do
 
   def cash_flow(conn, params) do
     {start_date, end_date} = resolve_period(params)
-    {earliest_date, latest_date} = Inventory.movement_date_range()
+    {earliest_date, latest_date} = data_date_range()
 
     cash_flow_data = Reporting.cash_flow(start_date, end_date)
 
@@ -155,7 +155,7 @@ defmodule LedgrWeb.ReportController do
 
   def unit_economics_list(conn, params) do
     {start_date, end_date} = resolve_period(params)
-    {earliest_date, latest_date} = Inventory.movement_date_range()
+    {earliest_date, latest_date} = data_date_range()
 
     all_unit_economics = DomainReporting.all_unit_economics(start_date, end_date)
 
@@ -261,6 +261,19 @@ defmodule LedgrWeb.ReportController do
 
   # Helpers
 
+  # Returns the broadest date range across all data sources (inventory movements + journal entries)
+  defp data_date_range do
+    {inv_earliest, inv_latest} = Inventory.movement_date_range()
+    {je_earliest, je_latest} = Accounting.journal_entry_date_range()
+
+    dates = [inv_earliest, inv_latest, je_earliest, je_latest] |> Enum.reject(&is_nil/1)
+
+    case dates do
+      [] -> {nil, nil}
+      _ -> {Enum.min(dates, Date), Enum.max(dates, Date)}
+    end
+  end
+
   defp resolve_period(%{"period" => "last_7_days"}) do
     today = Date.utc_today()
     {Date.add(today, -6), today}
@@ -278,16 +291,19 @@ defmodule LedgrWeb.ReportController do
   end
 
   defp resolve_period(%{"all_dates" => "true"}) do
-    {earliest_date, latest_date} = Inventory.movement_date_range()
+    {earliest, latest} = data_date_range()
 
-    case {earliest_date, latest_date} do
+    case {earliest, latest} do
       {nil, nil} ->
-        # No movements exist, default to current month
+        # No data at all, default to current month
         today = Date.utc_today()
         start_of_month = %Date{today | day: 1}
         {start_of_month, today}
       {earliest, latest} ->
-        {earliest, Enum.max([latest, Date.utc_today()], Date)}
+        # Start from the 1st of the earliest month
+        start_date = %Date{earliest | day: 1}
+        end_date = Enum.max([latest, Date.utc_today()], Date)
+        {start_date, end_date}
     end
   end
 
