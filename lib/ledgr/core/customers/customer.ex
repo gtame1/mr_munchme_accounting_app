@@ -2,7 +2,7 @@ defmodule Ledgr.Core.Customers.Customer do
   use Ecto.Schema
   import Ecto.Changeset
 
-  alias Ledgr.Orders.Order
+  alias Ledgr.Domains.MrMunchMe.Orders.Order
 
   schema "customers" do
     field :name, :string

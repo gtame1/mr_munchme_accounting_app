@@ -1,10 +1,11 @@
-defmodule Ledgr.OrdersTest do
+defmodule Ledgr.Domains.MrMunchMe.OrdersTest do
   use Ledgr.DataCase, async: true
 
-  alias Ledgr.{Orders, Repo}
-  alias Ledgr.Orders.{Order, Product}
+  alias Ledgr.Domains.MrMunchMe.Orders
+  alias Ledgr.Repo
+  alias Ledgr.Domains.MrMunchMe.Orders.{Order, Product}
 
-  import Ledgr.OrdersFixtures
+  import Ledgr.Domains.MrMunchMe.OrdersFixtures
   import Ledgr.Core.AccountingFixtures
   import Ledgr.Core.CustomersFixtures
 

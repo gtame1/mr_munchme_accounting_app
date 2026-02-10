@@ -1,8 +1,8 @@
 defmodule LedgrWeb.ProductController do
   use LedgrWeb, :controller
 
-  alias Ledgr.Orders
-  alias Ledgr.Orders.Product
+  alias Ledgr.Domains.MrMunchMe.Orders
+  alias Ledgr.Domains.MrMunchMe.Orders.Product
   alias LedgrWeb.Helpers.MoneyHelper
 
   def index(conn, _params) do

@@ -1,10 +1,11 @@
-defmodule Ledgr.Inventory.VerificationTest do
+defmodule Ledgr.Domains.MrMunchMe.Inventory.VerificationTest do
   use Ledgr.DataCase, async: true
 
   alias Ledgr.Core.Accounting
-  alias Ledgr.{Inventory, Repo}
-  alias Ledgr.Inventory.{Ingredient, Location, InventoryItem, InventoryMovement, Verification}
-  alias Ledgr.Orders.{Order, OrderPayment}
+  alias Ledgr.Domains.MrMunchMe.Inventory
+  alias Ledgr.Repo
+  alias Ledgr.Domains.MrMunchMe.Inventory.{Ingredient, Location, InventoryItem, InventoryMovement, Verification}
+  alias Ledgr.Domains.MrMunchMe.Orders.{Order, OrderPayment}
 
   # Get or create an account, handling the case where it already exists
   # (can happen with async tests sharing the database)
@@ -1431,7 +1432,7 @@ defmodule Ledgr.Inventory.VerificationTest do
   # ── Private helpers ────────────────────────────────────────────────────
 
   defp create_product do
-    alias Ledgr.Orders.Product
+    alias Ledgr.Domains.MrMunchMe.Orders.Product
 
     {:ok, product} =
       %Product{}

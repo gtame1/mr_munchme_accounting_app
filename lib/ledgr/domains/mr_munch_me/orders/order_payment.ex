@@ -1,8 +1,8 @@
-defmodule Ledgr.Orders.OrderPayment do
+defmodule Ledgr.Domains.MrMunchMe.Orders.OrderPayment do
   use Ecto.Schema
   import Ecto.Changeset
 
-  alias Ledgr.Orders.Order
+  alias Ledgr.Domains.MrMunchMe.Orders.Order
   alias Ledgr.Core.Accounting.Account
   alias Ledgr.Core.Partners.Partner
 

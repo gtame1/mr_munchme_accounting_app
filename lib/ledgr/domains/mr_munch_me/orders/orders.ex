@@ -1,8 +1,8 @@
-defmodule Ledgr.Orders do
+defmodule Ledgr.Domains.MrMunchMe.Orders do
   import Ecto.Query, warn: false
   alias Ledgr.Repo
 
-  alias Ledgr.Orders.{Order, Product, OrderPayment, OrderIngredient}
+  alias Ledgr.Domains.MrMunchMe.Orders.{Order, Product, OrderPayment, OrderIngredient}
   alias Ledgr.Core.Accounting
   alias Ledgr.Core.Customers
   alias Ledgr.Repo

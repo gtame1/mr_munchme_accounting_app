@@ -4,10 +4,11 @@ defmodule Ledgr.Core.Accounting.InventoryMovementAccountingTest do
   import Ecto.Query
 
   alias Ledgr.Core.Accounting
-  alias Ledgr.{Inventory, Repo}
+  alias Ledgr.Domains.MrMunchMe.Inventory
+  alias Ledgr.Repo
   alias Ledgr.Core.Accounting.{Account, JournalEntry, JournalLine}
-  alias Ledgr.Inventory.{Ingredient, Location, InventoryMovement, Recipe, RecipeLine}
-  alias Ledgr.Orders.{Order, Product}
+  alias Ledgr.Domains.MrMunchMe.Inventory.{Ingredient, Location, InventoryMovement, Recipe, RecipeLine}
+  alias Ledgr.Domains.MrMunchMe.Orders.{Order, Product}
 
   setup do
     # Create accounts

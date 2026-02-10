@@ -1,8 +1,8 @@
-defmodule Ledgr.Inventory.PurchaseListForm do
+defmodule Ledgr.Domains.MrMunchMe.Inventory.PurchaseListForm do
   use Ecto.Schema
   import Ecto.Changeset
 
-  alias Ledgr.Inventory.PurchaseItemForm
+  alias Ledgr.Domains.MrMunchMe.Inventory.PurchaseItemForm
 
   @primary_key false
   embedded_schema do

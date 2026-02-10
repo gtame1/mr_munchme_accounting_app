@@ -6,7 +6,7 @@ defmodule Mix.Tasks.RepairInventoryQuantities do
   """
   use Mix.Task
 
-  alias Ledgr.Inventory.Verification
+  alias Ledgr.Domains.MrMunchMe.Inventory.Verification
 
   @shortdoc "Repairs inventory quantities by recalculating from movements"
 

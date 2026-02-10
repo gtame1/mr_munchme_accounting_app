@@ -3,10 +3,11 @@ defmodule LedgrWeb.OrderController do
 
   require Logger
 
-  alias Ledgr.Orders
-  alias Ledgr.Orders.{Order, OrderPayment}
+  alias Ledgr.Domains.MrMunchMe.Orders
+  alias Ledgr.Domains.MrMunchMe.Orders.{Order, OrderPayment}
   alias Ledgr.Core.{Accounting, Customers, Partners}
-  alias Ledgr.{Inventory, Repo}
+  alias Ledgr.Domains.MrMunchMe.Inventory
+  alias Ledgr.Repo
   alias LedgrWeb.Helpers.MoneyHelper
 
   def index(conn, params) do

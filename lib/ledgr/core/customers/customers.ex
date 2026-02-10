@@ -94,7 +94,7 @@ defmodule Ledgr.Core.Customers do
   """
   def delete_customer(%Customer{} = customer) do
     # Check if customer has active orders (not canceled, and not delivered+paid)
-    alias Ledgr.Orders.Order
+    alias Ledgr.Domains.MrMunchMe.Orders.Order
 
     active_orders =
       from o in Order,
@@ -114,7 +114,7 @@ defmodule Ledgr.Core.Customers do
   Active orders are those that are not canceled.
   """
   def count_active_orders(%Customer{} = customer) do
-    alias Ledgr.Orders.Order
+    alias Ledgr.Domains.MrMunchMe.Orders.Order
 
     from(o in Order,
       where: o.customer_id == ^customer.id,

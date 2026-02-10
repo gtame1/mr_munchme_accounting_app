@@ -1,7 +1,7 @@
 defmodule LedgrWeb.InventoryController do
   use LedgrWeb, :controller
 
-  alias Ledgr.Inventory
+  alias Ledgr.Domains.MrMunchMe.Inventory
   alias Ledgr.Core.Accounting
 
   def index(conn, _params) do

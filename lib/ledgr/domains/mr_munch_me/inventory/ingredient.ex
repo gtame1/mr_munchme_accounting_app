@@ -1,4 +1,4 @@
-defmodule Ledgr.Inventory.Ingredient do
+defmodule Ledgr.Domains.MrMunchMe.Inventory.Ingredient do
   use Ecto.Schema
   import Ecto.Changeset
 
@@ -10,8 +10,8 @@ defmodule Ledgr.Inventory.Ingredient do
     field :cost_per_unit_pesos, :string, virtual: true
     field :inventory_type, :string, default: "ingredients"
 
-    has_many :inventories, Ledgr.Inventory.InventoryItem
-    has_many :inventory_movements, Ledgr.Inventory.InventoryMovement
+    has_many :inventories, Ledgr.Domains.MrMunchMe.Inventory.InventoryItem
+    has_many :inventory_movements, Ledgr.Domains.MrMunchMe.Inventory.InventoryMovement
 
     timestamps()
   end

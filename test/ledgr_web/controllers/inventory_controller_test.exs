@@ -4,8 +4,9 @@ defmodule LedgrWeb.InventoryControllerTest do
   import Ecto.Query
 
   alias Ledgr.Core.Accounting
-  alias Ledgr.{Inventory, Repo}
-  alias Ledgr.Inventory.{Ingredient, Location, InventoryMovement}
+  alias Ledgr.Domains.MrMunchMe.Inventory
+  alias Ledgr.Repo
+  alias Ledgr.Domains.MrMunchMe.Inventory.{Ingredient, Location, InventoryMovement}
 
   setup do
     # Create accounts

@@ -22,7 +22,7 @@ defmodule Mix.Tasks.FixGiftOrderAccounting do
   alias Ledgr.Repo
   alias Ledgr.Core.Accounting
   alias Ledgr.Core.Accounting.{JournalEntry, JournalLine, Account}
-  alias Ledgr.Orders.Order
+  alias Ledgr.Domains.MrMunchMe.Orders.Order
 
   @shortdoc "Fix accounting for delivered orders retroactively marked as gifts"
 

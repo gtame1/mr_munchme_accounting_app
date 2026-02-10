@@ -1,4 +1,4 @@
-defmodule Ledgr.Inventory.Location do
+defmodule Ledgr.Domains.MrMunchMe.Inventory.Location do
   use Ecto.Schema
   import Ecto.Changeset
 
@@ -7,7 +7,7 @@ defmodule Ledgr.Inventory.Location do
     field :name, :string
     field :description, :string
 
-    has_many :inventories, Ledgr.Inventory.InventoryItem
+    has_many :inventories, Ledgr.Domains.MrMunchMe.Inventory.InventoryItem
 
     timestamps()
   end

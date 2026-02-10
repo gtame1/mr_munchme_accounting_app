@@ -1,4 +1,4 @@
-defmodule Ledgr.Orders.Product do
+defmodule Ledgr.Domains.MrMunchMe.Orders.Product do
   use Ecto.Schema
   import Ecto.Changeset
 
@@ -8,7 +8,7 @@ defmodule Ledgr.Orders.Product do
     field :price_cents, :integer
     field :active, :boolean, default: true
 
-    has_many :orders, Ledgr.Orders.Order
+    has_many :orders, Ledgr.Domains.MrMunchMe.Orders.Order
 
     timestamps()
   end

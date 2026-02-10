@@ -1,8 +1,8 @@
-defmodule Ledgr.Inventory.MovementListForm do
+defmodule Ledgr.Domains.MrMunchMe.Inventory.MovementListForm do
   use Ecto.Schema
   import Ecto.Changeset
 
-  alias Ledgr.Inventory.MovementItemForm
+  alias Ledgr.Domains.MrMunchMe.Inventory.MovementItemForm
 
   @primary_key false
   embedded_schema do

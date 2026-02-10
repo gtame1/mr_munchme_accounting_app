@@ -1,8 +1,8 @@
 alias Ledgr.Repo
 alias Ledgr.Core.Accounting.Account
-alias Ledgr.Orders.Product
+alias Ledgr.Domains.MrMunchMe.Orders.Product
 
-alias Ledgr.Inventory.{Ingredient, Location, Recipe, RecipeLine}
+alias Ledgr.Domains.MrMunchMe.Inventory.{Ingredient, Location, Recipe, RecipeLine}
 alias Ledgr.Core.Partners.Partner
 
 

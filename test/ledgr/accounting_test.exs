@@ -4,10 +4,10 @@ defmodule Ledgr.Core.AccountingTest do
   alias Ledgr.Core.Accounting
   alias Ledgr.Repo
   alias Ledgr.Core.Accounting.{Account, JournalEntry, MoneyTransfer}
-  alias Ledgr.Orders.{OrderPayment}
+  alias Ledgr.Domains.MrMunchMe.Orders.{OrderPayment}
 
   import Ledgr.Core.AccountingFixtures
-  import Ledgr.OrdersFixtures
+  import Ledgr.Domains.MrMunchMe.OrdersFixtures
 
   describe "accounts" do
     test "list_accounts/0 returns all accounts ordered by code" do

@@ -1,4 +1,4 @@
-defmodule Ledgr.Orders.OrderIngredient do
+defmodule Ledgr.Domains.MrMunchMe.Orders.OrderIngredient do
   use Ecto.Schema
   import Ecto.Changeset
 
@@ -6,7 +6,7 @@ defmodule Ledgr.Orders.OrderIngredient do
     field :ingredient_code, :string
     field :quantity, :decimal
     field :location_code, :string
-    belongs_to :order, Ledgr.Orders.Order, on_replace: :delete
+    belongs_to :order, Ledgr.Domains.MrMunchMe.Orders.Order, on_replace: :delete
 
     timestamps(type: :utc_datetime)
   end

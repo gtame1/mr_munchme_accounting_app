@@ -1,8 +1,8 @@
 defmodule LedgrWeb.IngredientController do
   use LedgrWeb, :controller
 
-  alias Ledgr.Inventory
-  alias Ledgr.Inventory.Ingredient
+  alias Ledgr.Domains.MrMunchMe.Inventory
+  alias Ledgr.Domains.MrMunchMe.Inventory.Ingredient
 
   def index(conn, _params) do
     ingredients = Inventory.list_ingredients()

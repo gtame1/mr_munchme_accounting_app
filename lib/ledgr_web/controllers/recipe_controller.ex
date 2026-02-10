@@ -1,9 +1,9 @@
 defmodule LedgrWeb.RecipeController do
   use LedgrWeb, :controller
 
-  alias Ledgr.Inventory.Recepies
-  alias Ledgr.Inventory.Recipe
-  alias Ledgr.Orders
+  alias Ledgr.Domains.MrMunchMe.Inventory.Recepies
+  alias Ledgr.Domains.MrMunchMe.Inventory.Recipe
+  alias Ledgr.Domains.MrMunchMe.Orders
 
   def index(conn, _params) do
     recipes = Recepies.list_recipes()
@@ -41,7 +41,7 @@ defmodule LedgrWeb.RecipeController do
     changeset = Recepies.change_recipe(%Recipe{}, attrs)
     form = Phoenix.Component.to_form(changeset)
 
-    ingredient_options = Ledgr.Inventory.ingredient_select_options()
+    ingredient_options = Ledgr.Domains.MrMunchMe.Inventory.ingredient_select_options()
     ingredient_options_json = Jason.encode!(Enum.map(ingredient_options, fn {name, code} -> [name, code] end))
 
     render(conn, :new,
@@ -65,7 +65,7 @@ defmodule LedgrWeb.RecipeController do
         changeset = Map.put(changeset, :action, :insert)
         form = Phoenix.Component.to_form(changeset)
 
-        ingredient_options = Ledgr.Inventory.ingredient_select_options()
+        ingredient_options = Ledgr.Domains.MrMunchMe.Inventory.ingredient_select_options()
         ingredient_options_json = Jason.encode!(Enum.map(ingredient_options, fn {name, code} -> [name, code] end))
 
         render(conn, :new,
@@ -124,7 +124,7 @@ defmodule LedgrWeb.RecipeController do
     changeset = Recepies.change_recipe(%Recipe{}, attrs)
     form = Phoenix.Component.to_form(changeset)
 
-    ingredient_options = Ledgr.Inventory.ingredient_select_options()
+    ingredient_options = Ledgr.Domains.MrMunchMe.Inventory.ingredient_select_options()
     ingredient_options_json = Jason.encode!(Enum.map(ingredient_options, fn {name, code} -> [name, code] end))
 
     render(conn, :edit,
@@ -159,7 +159,7 @@ defmodule LedgrWeb.RecipeController do
         changeset = Map.put(changeset, :action, :insert)
         form = Phoenix.Component.to_form(changeset)
 
-        ingredient_options = Ledgr.Inventory.ingredient_select_options()
+        ingredient_options = Ledgr.Domains.MrMunchMe.Inventory.ingredient_select_options()
         ingredient_options_json = Jason.encode!(Enum.map(ingredient_options, fn {name, code} -> [name, code] end))
 
         conn

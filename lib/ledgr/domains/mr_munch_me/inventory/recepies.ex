@@ -1,12 +1,12 @@
-defmodule Ledgr.Inventory.Recepies do
+defmodule Ledgr.Domains.MrMunchMe.Inventory.Recepies do
   @moduledoc """
   Recepies context: recipes for products.
   """
   import Ecto.Query
   alias Ledgr.Repo
-  alias Ledgr.Orders.Product
-  alias Ledgr.Inventory.{Recipe}
-  alias Ledgr.Inventory
+  alias Ledgr.Domains.MrMunchMe.Orders.Product
+  alias Ledgr.Domains.MrMunchMe.Inventory.{Recipe}
+  alias Ledgr.Domains.MrMunchMe.Inventory
 
   @packaging_codes ~w(
     PACKING_PLASTICO

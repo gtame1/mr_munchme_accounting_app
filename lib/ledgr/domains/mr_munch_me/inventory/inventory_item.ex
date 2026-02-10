@@ -1,8 +1,8 @@
-defmodule Ledgr.Inventory.InventoryItem do
+defmodule Ledgr.Domains.MrMunchMe.Inventory.InventoryItem do
   use Ecto.Schema
   import Ecto.Changeset
 
-  alias Ledgr.Inventory.{Ingredient, Location}
+  alias Ledgr.Domains.MrMunchMe.Inventory.{Ingredient, Location}
 
   schema "inventories" do
     field :quantity_on_hand, :integer, default: 0

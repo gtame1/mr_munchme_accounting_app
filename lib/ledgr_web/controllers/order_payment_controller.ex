@@ -1,7 +1,7 @@
 defmodule LedgrWeb.OrderPaymentController do
   use LedgrWeb, :controller
 
-  alias Ledgr.Orders
+  alias Ledgr.Domains.MrMunchMe.Orders
   alias Ledgr.Core.{Accounting, Partners}
   alias LedgrWeb.Helpers.MoneyHelper
 

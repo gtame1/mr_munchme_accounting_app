@@ -137,7 +137,7 @@
               <%= if result do %>
                 <%
                   is_ok = match?({:ok, _}, result)
-                  is_repairable = !is_ok and Ledgr.Inventory.Verification.repairable?(check_name)
+                  is_repairable = !is_ok and Ledgr.Domains.MrMunchMe.Inventory.Verification.repairable?(check_name)
                 %>
                 <div style={"border-bottom: 1px solid var(--border-subtle); padding: 0.75rem 1.25rem;#{unless is_ok, do: " background: #fffbfb;", else: ""}"}>
                   <div style="display: flex; align-items: center; gap: 0.75rem;">

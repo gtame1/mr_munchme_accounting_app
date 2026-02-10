@@ -1,4 +1,4 @@
-defmodule Ledgr.Inventory.PurchaseItemForm do
+defmodule Ledgr.Domains.MrMunchMe.Inventory.PurchaseItemForm do
   use Ecto.Schema
   import Ecto.Changeset
 

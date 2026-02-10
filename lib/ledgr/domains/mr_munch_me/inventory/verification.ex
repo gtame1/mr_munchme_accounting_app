@@ -1,4 +1,4 @@
-defmodule Ledgr.Inventory.Verification do
+defmodule Ledgr.Domains.MrMunchMe.Inventory.Verification do
   @moduledoc """
   Verification functions to ensure inventory accounting integrity.
   """
@@ -6,10 +6,10 @@ defmodule Ledgr.Inventory.Verification do
   import Ecto.Query
   alias Ledgr.Repo
   alias Ledgr.Core.Accounting
-  alias Ledgr.Inventory
+  alias Ledgr.Domains.MrMunchMe.Inventory
   alias Ledgr.Core.Accounting.{Account, JournalEntry, JournalLine}
-  alias Ledgr.Inventory.{Ingredient, InventoryItem, InventoryMovement}
-  alias Ledgr.Orders.{Order, OrderPayment}
+  alias Ledgr.Domains.MrMunchMe.Inventory.{Ingredient, InventoryItem, InventoryMovement}
+  alias Ledgr.Domains.MrMunchMe.Orders.{Order, OrderPayment}
 
   @ingredients_account_code "1200"
   @packing_account_code "1210"
@@ -755,7 +755,7 @@ defmodule Ledgr.Inventory.Verification do
 
         issues =
           Enum.reduce(orders, [], fn order, acc ->
-            {product_total, shipping} = Ledgr.Orders.order_total_cents(order)
+            {product_total, shipping} = Ledgr.Domains.MrMunchMe.Orders.order_total_cents(order)
             order_total = product_total + shipping
 
             # Use customer_amount_cents for split payments — the partner portion
@@ -813,7 +813,7 @@ defmodule Ledgr.Inventory.Verification do
 
       results =
         Enum.reduce(orders, [], fn order, acc ->
-          {product_total, shipping} = Ledgr.Orders.order_total_cents(order)
+          {product_total, shipping} = Ledgr.Domains.MrMunchMe.Orders.order_total_cents(order)
           order_total = product_total + shipping
 
           # Use customer_amount_cents for split payments — the partner portion

@@ -3,8 +3,8 @@ defmodule Mix.Tasks.ResetAllTables do
 
   alias Ledgr.Repo
   alias Ledgr.Core.Accounting.{Account, JournalEntry, JournalLine, MoneyTransfer}
-  alias Ledgr.Inventory.{InventoryItem, InventoryMovement, Ingredient, Location, Recipe, RecipeLine}
-  alias Ledgr.Orders.{Order, Product, OrderPayment}
+  alias Ledgr.Domains.MrMunchMe.Inventory.{InventoryItem, InventoryMovement, Ingredient, Location, Recipe, RecipeLine}
+  alias Ledgr.Domains.MrMunchMe.Orders.{Order, Product, OrderPayment}
   alias Ledgr.Core.Partners.{Partner, CapitalContribution}
   alias Ledgr.Core.Expenses.Expense
 

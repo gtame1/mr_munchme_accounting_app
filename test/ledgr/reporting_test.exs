@@ -3,9 +3,9 @@ defmodule Ledgr.Core.ReportingTest do
 
   alias Ledgr.Core.Reporting
   alias Ledgr.Repo
-  alias Ledgr.Orders.Order
+  alias Ledgr.Domains.MrMunchMe.Orders.Order
 
-  import Ledgr.OrdersFixtures
+  import Ledgr.Domains.MrMunchMe.OrdersFixtures
   import Ledgr.Core.AccountingFixtures
 
   describe "unit_economics/3" do

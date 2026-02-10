@@ -6,10 +6,10 @@ defmodule Ledgr.Core.Reporting do
   import Ecto.Query, warn: false
   alias Ledgr.Repo
 
-  alias Ledgr.Orders.{Order, Product}
+  alias Ledgr.Domains.MrMunchMe.Orders.{Order, Product}
   alias Ledgr.Core.Accounting
   alias Ledgr.Core.Accounting.JournalEntry
-  alias Ledgr.Inventory
+  alias Ledgr.Domains.MrMunchMe.Inventory
 
   @doc """
   Returns metrics for the dashboard for a date range.

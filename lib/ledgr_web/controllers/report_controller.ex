@@ -3,9 +3,9 @@ defmodule LedgrWeb.ReportController do
 
   alias Ledgr.Core.Accounting
   alias Ledgr.Core.Reporting
-  alias Ledgr.Orders
-  alias Ledgr.Inventory
-  alias Ledgr.Inventory.Verification
+  alias Ledgr.Domains.MrMunchMe.Orders
+  alias Ledgr.Domains.MrMunchMe.Inventory
+  alias Ledgr.Domains.MrMunchMe.Inventory.Verification
 
   def dashboard(conn, params) do
     {start_date, end_date} = resolve_period(params)

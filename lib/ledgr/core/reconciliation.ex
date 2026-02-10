@@ -7,8 +7,8 @@ defmodule Ledgr.Core.Reconciliation do
   alias Ledgr.Repo
   alias Ledgr.Core.Accounting
   alias Ledgr.Core.Accounting.{Account, JournalLine}
-  alias Ledgr.Inventory
-  alias Ledgr.Inventory.{Ingredient, Location, InventoryItem}
+  alias Ledgr.Domains.MrMunchMe.Inventory
+  alias Ledgr.Domains.MrMunchMe.Inventory.{Ingredient, Location, InventoryItem}
 
   # ---------- Account Reconciliation ----------
 

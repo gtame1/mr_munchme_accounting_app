@@ -1,10 +1,10 @@
-defmodule Ledgr.Inventory.Recipe do
+defmodule Ledgr.Domains.MrMunchMe.Inventory.Recipe do
   use Ecto.Schema
   import Ecto.Changeset
   import Ecto.Query
 
-  alias Ledgr.Orders.Product
-  alias Ledgr.Inventory.RecipeLine
+  alias Ledgr.Domains.MrMunchMe.Orders.Product
+  alias Ledgr.Domains.MrMunchMe.Inventory.RecipeLine
   alias Ledgr.Repo
 
   schema "recipes" do

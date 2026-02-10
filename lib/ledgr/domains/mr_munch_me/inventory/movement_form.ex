@@ -1,4 +1,4 @@
-defmodule Ledgr.Inventory.MovementForm do
+defmodule Ledgr.Domains.MrMunchMe.Inventory.MovementForm do
   use Ecto.Schema
   import Ecto.Changeset
 

@@ -4,7 +4,7 @@ defmodule LedgrWeb.ReconciliationController do
 
   alias Ledgr.Core.Reconciliation
   alias Ledgr.Core.Accounting
-  alias Ledgr.Inventory
+  alias Ledgr.Domains.MrMunchMe.Inventory
   alias Ledgr.Core.Settings
 
   # ---------- Accounting Reconciliation ----------

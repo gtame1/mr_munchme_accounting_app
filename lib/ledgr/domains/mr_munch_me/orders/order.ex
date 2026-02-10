@@ -1,9 +1,9 @@
-defmodule Ledgr.Orders.Order do
+defmodule Ledgr.Domains.MrMunchMe.Orders.Order do
   use Ecto.Schema
   import Ecto.Changeset
 
-  alias Ledgr.Orders.Product
-  alias Ledgr.Inventory.Location
+  alias Ledgr.Domains.MrMunchMe.Orders.Product
+  alias Ledgr.Domains.MrMunchMe.Inventory.Location
   alias Ledgr.Core.Customers.Customer
 
 
@@ -34,8 +34,8 @@ defmodule Ledgr.Orders.Order do
     belongs_to :prep_location, Location
     belongs_to :customer, Customer
 
-    has_many :order_ingredients, Ledgr.Orders.OrderIngredient, on_replace: :delete
-    has_many :order_payments, Ledgr.Orders.OrderPayment
+    has_many :order_ingredients, Ledgr.Domains.MrMunchMe.Orders.OrderIngredient, on_replace: :delete
+    has_many :order_payments, Ledgr.Domains.MrMunchMe.Orders.OrderPayment
 
     timestamps()
   end

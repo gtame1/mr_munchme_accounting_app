@@ -6,8 +6,8 @@ defmodule Ledgr.Core.Accounting do
   import Ecto.Changeset   # ⬅️ add this
 
   alias Ledgr.Repo
-  alias Ledgr.Orders.{Order, OrderPayment, Product}
-  alias Ledgr.Inventory
+  alias Ledgr.Domains.MrMunchMe.Orders.{Order, OrderPayment, Product}
+  alias Ledgr.Domains.MrMunchMe.Inventory
   alias Ledgr.Core.Accounting.{Account, JournalEntry, JournalLine, MoneyTransfer}
   alias Ledgr.Core.Expenses.Expense
   alias Ledgr.Core.Partners.CapitalContribution
@@ -191,7 +191,7 @@ defmodule Ledgr.Core.Accounting do
 
     # Calculate discount using the Orders context helper
     {discounted_product_price, shipping_cents} =
-      Ledgr.Orders.order_total_cents(order)
+      Ledgr.Domains.MrMunchMe.Orders.order_total_cents(order)
 
     discount_cents = gross_product_price - discounted_product_price
 

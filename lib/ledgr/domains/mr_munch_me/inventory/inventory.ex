@@ -1,4 +1,4 @@
-defmodule Ledgr.Inventory do
+defmodule Ledgr.Domains.MrMunchMe.Inventory do
   @moduledoc """
   Inventory logic: ingredients, locations, stock levels (per location),
   and movements with dynamic moving-average costing.
@@ -8,8 +8,8 @@ defmodule Ledgr.Inventory do
   alias Ledgr.Repo
   alias Ledgr.Core.Accounting
   alias Ledgr.Core.Accounting.JournalEntry
-  alias Ledgr.Orders
-  alias Ledgr.Orders.Order
+  alias Ledgr.Domains.MrMunchMe.Orders
+  alias Ledgr.Domains.MrMunchMe.Orders.Order
   alias __MODULE__.{Ingredient, Location, InventoryItem, InventoryMovement, PurchaseForm, PurchaseListForm, MovementForm, MovementListForm, Recepies, PurchaseItemForm, MovementItemForm}
 
 

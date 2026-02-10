@@ -1,11 +1,12 @@
-defmodule Ledgr.InventoryTest do
+defmodule Ledgr.Domains.MrMunchMe.InventoryTest do
   use Ledgr.DataCase, async: true
 
   import Ecto.Query
 
   alias Ledgr.Core.Accounting
-  alias Ledgr.{Inventory, Repo}
-  alias Ledgr.Inventory.{Ingredient, Location, InventoryItem, InventoryMovement}
+  alias Ledgr.Domains.MrMunchMe.Inventory
+  alias Ledgr.Repo
+  alias Ledgr.Domains.MrMunchMe.Inventory.{Ingredient, Location, InventoryItem, InventoryMovement}
   alias Ledgr.Core.Accounting.JournalEntry
 
   setup do

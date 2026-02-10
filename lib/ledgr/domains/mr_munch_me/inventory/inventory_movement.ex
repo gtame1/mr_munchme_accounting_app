@@ -1,8 +1,8 @@
-defmodule Ledgr.Inventory.InventoryMovement do
+defmodule Ledgr.Domains.MrMunchMe.Inventory.InventoryMovement do
   use Ecto.Schema
   import Ecto.Changeset
 
-  alias Ledgr.Inventory.{Ingredient, Location}
+  alias Ledgr.Domains.MrMunchMe.Inventory.{Ingredient, Location}
   alias Ledgr.Core.Accounting.Account
 
   schema "inventory_movements" do

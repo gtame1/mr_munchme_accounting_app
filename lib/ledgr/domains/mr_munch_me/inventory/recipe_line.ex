@@ -1,8 +1,8 @@
-defmodule Ledgr.Inventory.RecipeLine do
+defmodule Ledgr.Domains.MrMunchMe.Inventory.RecipeLine do
   use Ecto.Schema
   import Ecto.Changeset
 
-  alias Ledgr.Inventory.Recipe
+  alias Ledgr.Domains.MrMunchMe.Inventory.Recipe
 
   schema "recipe_lines" do
     belongs_to :recipe, Recipe

@@ -2,8 +2,9 @@ defmodule Ledgr.Core.ReconciliationTest do
   use Ledgr.DataCase, async: true
 
   alias Ledgr.Core.{Reconciliation, Accounting}
-  alias Ledgr.{Inventory, Repo}
-  alias Ledgr.Inventory.{Ingredient, Location}
+  alias Ledgr.Domains.MrMunchMe.Inventory
+  alias Ledgr.Repo
+  alias Ledgr.Domains.MrMunchMe.Inventory.{Ingredient, Location}
 
   import Ledgr.Core.AccountingFixtures
 

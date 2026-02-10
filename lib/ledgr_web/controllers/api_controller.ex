@@ -5,7 +5,7 @@ defmodule LedgrWeb.ApiController do
   use LedgrWeb, :controller
 
   alias Ledgr.Core.{Accounting, Customers}
-  alias Ledgr.{Inventory, Orders}
+  alias Ledgr.Domains.MrMunchMe.{Inventory, Orders}
 
   # ---------- Products ----------
 
