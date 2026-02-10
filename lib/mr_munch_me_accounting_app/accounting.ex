@@ -40,8 +40,8 @@ defmodule MrMunchMeAccountingApp.Accounting do
   def handle_order_status_change(%Order{} = order, new_status) do
     case new_status do
       "in_prep" ->
-        total_cost_cents = Inventory.consume_for_order(order)
-        record_order_in_prep(order, total_cost_cents)
+        cost_breakdown = Inventory.consume_for_order(order)
+        record_order_in_prep(order, cost_breakdown)
       "delivered" -> record_order_delivered(order)
       "new_order" -> record_order_created(order)
       "canceled" -> record_order_canceled(order)
@@ -58,10 +58,14 @@ defmodule MrMunchMeAccountingApp.Accounting do
   @doc """
   When an order moves to in_prep, move the ingredient cost into WIP:
 
-    Dr WIP Inventory (1210)
-    Cr Ingredients Inventory (1200)
+    Dr WIP Inventory (1220)
+    Cr Ingredients Inventory (1200)  — for ingredient costs
+    Cr Packing Inventory (1210)      — for packing costs
+    Cr Kitchen Equipment (1300)      — for kitchen costs
+
+  `cost_breakdown` is a map: %{ingredients: cents, packing: cents, kitchen: cents, total: cents}
   """
-  def record_order_in_prep(%Order{} = order, total_cost_cents) do
+  def record_order_in_prep(%Order{} = order, cost_breakdown) do
     reference = "Order ##{order.id}"
 
     # Check if already recorded to prevent duplicates
@@ -74,8 +78,9 @@ defmodule MrMunchMeAccountingApp.Accounting do
     if existing do
       {:ok, existing}
     else
-      wip        = get_account_by_code!(@wip_inventory_code)
-      ingredients = get_account_by_code!(@ingredients_inventory_code)
+      total_cost_cents = cost_breakdown.total
+
+      wip = get_account_by_code!(@wip_inventory_code)
 
       entry_attrs = %{
         date: order.delivery_date || Date.utc_today(),
@@ -84,22 +89,35 @@ defmodule MrMunchMeAccountingApp.Accounting do
         description: "Move ingredients to WIP for order ##{order.id}"
       }
 
-      lines = [
-        %{
-          account_id: wip.id,
-          debit_cents: total_cost_cents,
-          credit_cents: 0,
-          description: "WIP for order ##{order.id}"
-        },
-        %{
-          account_id: ingredients.id,
-          debit_cents: 0,
-          credit_cents: total_cost_cents,
-          description: "Ingredients used for order ##{order.id}"
-        }
+      # Debit WIP with total cost
+      debit_line = %{
+        account_id: wip.id,
+        debit_cents: total_cost_cents,
+        credit_cents: 0,
+        description: "WIP for order ##{order.id}"
+      }
+
+      # Credit each inventory account for its portion
+      account_map = [
+        {cost_breakdown.ingredients, @ingredients_inventory_code, "Ingredients"},
+        {cost_breakdown.packing, @packing_inventory_code, "Packing"},
+        {cost_breakdown.kitchen, @kitchen_inventory_code, "Kitchen"}
       ]
 
-      create_journal_entry_with_lines(entry_attrs, lines)
+      credit_lines =
+        account_map
+        |> Enum.filter(fn {cents, _code, _label} -> cents > 0 end)
+        |> Enum.map(fn {cents, account_code, label} ->
+          account = get_account_by_code!(account_code)
+          %{
+            account_id: account.id,
+            debit_cents: 0,
+            credit_cents: cents,
+            description: "#{label} used for order ##{order.id}"
+          }
+        end)
+
+      create_journal_entry_with_lines(entry_attrs, [debit_line | credit_lines])
     end
   end
 

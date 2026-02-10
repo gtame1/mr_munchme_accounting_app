@@ -296,7 +296,8 @@ defmodule MrMunchMeAccountingApp.Inventory do
   @doc """
   Consumes ingredient inventory for an order based on its recipe.
 
-  Returns total cost in cents of all ingredients used.
+  Returns a map with cost breakdown by inventory type:
+    %{ingredients: cents, packing: cents, kitchen: cents, total: cents}
 
   Assumes the order has product preloaded (or preloads it).
   """
@@ -310,46 +311,54 @@ defmodule MrMunchMeAccountingApp.Inventory do
         _ -> @production_location_code #default fallback
       end
 
+    # Order quantity (how many units of the product)
+    order_qty = order.quantity || 1
+
+    initial_costs = %{ingredients: 0, packing: 0, kitchen: 0, total: 0}
+
     # Check if order has custom ingredient quantities
     if order.order_ingredients != [] do
-      # Use custom quantities from order_ingredients
-      Enum.reduce(order.order_ingredients, 0, fn order_ingredient, acc ->
+      # Use custom quantities from order_ingredients, multiplied by order quantity
+      Enum.reduce(order.order_ingredients, initial_costs, fn order_ingredient, acc ->
         code = order_ingredient.ingredient_code
         qty = Decimal.to_float(order_ingredient.quantity)
-        qty_int = round(qty)
+        qty_int = round(qty * order_qty)
         custom_location = order_ingredient.location_code || location_code
 
-        case record_usage(code, custom_location, qty_int, order.delivery_date, "order", order.id) do
-          {:ok, {:ok, result}} ->
-            acc + result.movement.total_cost_cents
+        cost_cents =
+          case record_usage(code, custom_location, qty_int, order.delivery_date, "order", order.id) do
+            {:ok, {:ok, result}} -> result.movement.total_cost_cents
+            {:ok, movement} -> movement.total_cost_cents
+            {:error, reason} ->
+              raise "Failed to record usage for ingredient #{code} in order #{order.id}: #{inspect(reason)}"
+          end
 
-          {:ok, movement} ->
-            acc + movement.total_cost_cents
-
-          {:error, reason} ->
-            raise "Failed to record usage for ingredient #{code} in order #{order.id}: #{inspect(reason)}"
-        end
+        inv_type = inventory_type(code)
+        acc
+        |> Map.update!(inv_type, &(&1 + cost_cents))
+        |> Map.update!(:total, &(&1 + cost_cents))
       end)
     else
-      # Use recipe quantities (default behavior)
+      # Use recipe quantities (default behavior), multiplied by order quantity
       recipe_date = order.delivery_date || Date.utc_today()
       recipe_lines = Recepies.recipe_for_product(order.product, recipe_date)
 
-      Enum.reduce(recipe_lines, 0, fn %{ingredient_code: code, quantity: qty}, acc ->
-        # Convert float quantity to integer (round to nearest)
-        qty_int = round(qty)
+      Enum.reduce(recipe_lines, initial_costs, fn %{ingredient_code: code, quantity: qty}, acc ->
+        # Convert float quantity to integer (round to nearest), multiplied by order quantity
+        qty_int = round(qty * order_qty)
 
-        case record_usage(code, location_code, qty_int, order.delivery_date, "order", order.id) do
-          {:ok, {:ok, result}} ->
-            acc + result.movement.total_cost_cents
+        cost_cents =
+          case record_usage(code, location_code, qty_int, order.delivery_date, "order", order.id) do
+            {:ok, {:ok, result}} -> result.movement.total_cost_cents
+            {:ok, movement} -> movement.total_cost_cents
+            {:error, reason} ->
+              raise "Failed to record usage for ingredient #{code} in order #{order.id}: #{inspect(reason)}"
+          end
 
-          {:ok, movement} -> #safeguard
-            acc + movement.total_cost_cents
-
-          {:error, reason} ->
-            # For now we can either raise/rollback or ignore. Safer to raise:
-            raise "Failed to record usage for ingredient #{code} in order #{order.id}: #{inspect(reason)}"
-        end
+        inv_type = inventory_type(code)
+        acc
+        |> Map.update!(inv_type, &(&1 + cost_cents))
+        |> Map.update!(:total, &(&1 + cost_cents))
       end)
     end
   end
@@ -391,6 +400,7 @@ defmodule MrMunchMeAccountingApp.Inventory do
         recipe = Recepies.recipe_for_product(order.product, recipe_date)
 
         prep_location_id = order.prep_location_id || @production_location_code
+        order_qty = order.quantity || 1
 
         Enum.map(recipe, fn line ->
           code = Map.get(line, :ingredient_code) || Map.get(line, "ingredient_code")
@@ -398,7 +408,7 @@ defmodule MrMunchMeAccountingApp.Inventory do
 
           %{
             ingredient_code: code,
-            quantity: qty,
+            quantity: qty * order_qty,
             location_id: prep_location_id,
             delivery_date: order.delivery_date
           }
