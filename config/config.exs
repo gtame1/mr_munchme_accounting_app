@@ -9,7 +9,8 @@ import Config
 
 config :ledgr,
   ecto_repos: [Ledgr.Repo],
-  generators: [timestamp_type: :utc_datetime]
+  generators: [timestamp_type: :utc_datetime],
+  domain: Ledgr.Domains.MrMunchMe
 
 # Configures the endpoint
 config :ledgr, LedgrWeb.Endpoint,

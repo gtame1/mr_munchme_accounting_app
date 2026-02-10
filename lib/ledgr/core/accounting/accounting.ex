@@ -1756,7 +1756,7 @@ defmodule Ledgr.Core.Accounting do
   defp pad2(int) when is_integer(int), do: Integer.to_string(int)
 
   # Get revenue breakdown by product
-  defp revenue_by_product(start_date, end_date) do
+  def revenue_by_product(start_date, end_date) do
     shipping_fee = shipping_fee_cents()
 
     from(o in Order,
@@ -1779,7 +1779,7 @@ defmodule Ledgr.Core.Accounting do
   end
 
   # Get COGS breakdown by product
-  defp cogs_by_product(start_date, end_date) do
+  def cogs_by_product(start_date, end_date) do
     # Get all delivered orders in the period with their products
     orders =
       from(o in Order,

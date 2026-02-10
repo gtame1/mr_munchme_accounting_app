@@ -15,42 +15,44 @@ defmodule Ledgr.Core.Accounting.JournalEntry do
     timestamps()
   end
 
-  @types ~w(
+  @core_types ~w(
     sale
     expense
     investment
     withdrawal
-    order_created
-    order_in_prep
-    order_delivered
     inventory_purchase
-    order_payment
     internal_transfer
     reconciliation
     year_end_close
     other
   )
-  @entry_types [
+
+  @core_entry_types [
     {"Sale", "sale"},
     {"Expense", "expense"},
     {"Investment (Owner In)", "investment"},
     {"Withdrawal (Owner Out)", "withdrawal"},
-    {"Order Created", "order_created"},
-    {"Order in Prep", "order_in_prep"},
-    {"Order Delivered", "order_delivered"},
     {"Inventory Purchase", "inventory_purchase"},
-    {"Order Payment", "order_payment"},
     {"Internal Transfer", "internal_transfer"},
     {"Reconciliation", "reconciliation"},
     {"Year-End Close", "year_end_close"},
     {"Other", "other"}
   ]
 
+  def types do
+    domain = Ledgr.Domain.current()
+
+    domain_types =
+      if domain, do: domain.journal_entry_types() |> Enum.map(&elem(&1, 1)), else: []
+
+    @core_types ++ domain_types
+  end
+
   def changeset(entry, attrs) do
     entry
     |> cast(attrs, [:date, :description, :reference, :entry_type])
     |> validate_required([:date, :description, :entry_type])
-    |> validate_inclusion(:entry_type, @types)
+    |> validate_inclusion(:entry_type, types())
     |> cast_assoc(:journal_lines, with: &JournalLine.changeset/2)
     |> validate_lines_valid()
     |> validate_balanced()
@@ -59,7 +61,14 @@ defmodule Ledgr.Core.Accounting.JournalEntry do
 
 
    # ----- ACCESOR FUNCTIONS -----
-  def entry_types, do: @entry_types
+  def entry_types do
+    domain = Ledgr.Domain.current()
+
+    domain_entry_types =
+      if domain, do: domain.journal_entry_types(), else: []
+
+    @core_entry_types ++ domain_entry_types
+  end
 
 
 
