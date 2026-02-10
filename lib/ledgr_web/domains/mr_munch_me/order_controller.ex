@@ -468,7 +468,7 @@ defmodule LedgrWeb.Domains.MrMunchMe.OrderController do
 end
 
 
-defmodule LedgrWeb.OrderHTML do
+defmodule LedgrWeb.Domains.MrMunchMe.OrderHTML do
   use LedgrWeb, :html
   import LedgrWeb.CoreComponents
 

@@ -98,7 +98,7 @@ defmodule LedgrWeb.Domains.MrMunchMe.OrderPaymentController do
 end
 
 
-defmodule LedgrWeb.OrderPaymentHTML do
+defmodule LedgrWeb.Domains.MrMunchMe.OrderPaymentHTML do
   use LedgrWeb, :html
   import LedgrWeb.CoreComponents
 

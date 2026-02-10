@@ -506,7 +506,7 @@ defmodule LedgrWeb.Domains.MrMunchMe.InventoryController do
 end
 
 
-defmodule LedgrWeb.InventoryHTML do
+defmodule LedgrWeb.Domains.MrMunchMe.InventoryHTML do
   use LedgrWeb, :html
   import LedgrWeb.CoreComponents
 

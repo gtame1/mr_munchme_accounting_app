@@ -84,7 +84,7 @@ defmodule LedgrWeb.Domains.MrMunchMe.ProductController do
   end
 end
 
-defmodule LedgrWeb.ProductHTML do
+defmodule LedgrWeb.Domains.MrMunchMe.ProductHTML do
   use LedgrWeb, :html
   import LedgrWeb.CoreComponents
   import Phoenix.Naming

@@ -186,7 +186,7 @@ defmodule LedgrWeb.Domains.MrMunchMe.RecipeController do
   end
 end
 
-defmodule LedgrWeb.RecipeHTML do
+defmodule LedgrWeb.Domains.MrMunchMe.RecipeHTML do
   use LedgrWeb, :html
   import LedgrWeb.CoreComponents
   import Phoenix.Naming
