@@ -15,7 +15,7 @@ if mr_munch_me_url = System.get_env("MR_MUNCH_ME_DATABASE_URL") || System.get_en
     priv: "priv/repos/mr_munch_me"
 end
 
-if viaxe_url = System.get_env("VIAXE_DATABASE_URL") do
+if viaxe_url = System.get_env("VIAXE_DATABASE_URL") || System.get_env("DATABASE_URL") do
   db_uri = URI.parse(viaxe_url)
 
   config :ledgr, Ledgr.Repos.Viaxe,

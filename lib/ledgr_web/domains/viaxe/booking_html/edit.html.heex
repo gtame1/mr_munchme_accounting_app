@@ -3,42 +3,42 @@
     <h2 class="card-title">Edit Booking #<%= @booking.id %></h2>
   </div>
 
-  <.form for={@changeset} action={@action} as={:booking} method="put">
+  <.form for={@changeset} action={@action} as={:booking} method="put" :let={f}>
     <div class="form-grid">
       <div class="form-block">
         <div class="field">
           <label>Customer *</label>
-          <.input type="select" field={@changeset[:customer_id]} options={[{"Select customer...", ""} | @customers]} />
+          <.input type="select" field={f[:customer_id]} options={[{"Select customer...", ""} | @customers]} />
         </div>
 
         <div class="field">
           <label>Booking Date *</label>
-          <.input type="date" field={@changeset[:booking_date]} />
+          <.input type="date" field={f[:booking_date]} />
         </div>
 
         <div class="field">
           <label>Destination</label>
-          <.input type="text" field={@changeset[:destination]} />
+          <.input type="text" field={f[:destination]} />
         </div>
 
         <div class="field">
           <label>Passengers</label>
-          <.input type="number" field={@changeset[:passengers]} min="1" />
+          <.input type="number" field={f[:passengers]} min="1" />
         </div>
 
         <div class="field">
           <label>Travel Date</label>
-          <.input type="date" field={@changeset[:travel_date]} />
+          <.input type="date" field={f[:travel_date]} />
         </div>
 
         <div class="field">
           <label>Return Date</label>
-          <.input type="date" field={@changeset[:return_date]} />
+          <.input type="date" field={f[:return_date]} />
         </div>
 
         <div class="field" style="grid-column: 1 / -1;">
           <label>Notes</label>
-          <.input type="textarea" field={@changeset[:notes]} />
+          <.input type="textarea" field={f[:notes]} />
         </div>
       </div>
     </div>

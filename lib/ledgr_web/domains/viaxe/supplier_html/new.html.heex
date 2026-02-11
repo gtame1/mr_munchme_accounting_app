@@ -3,17 +3,17 @@
     <h2 class="card-title">New Supplier</h2>
   </div>
 
-  <.form for={@changeset} action={@action} as={:supplier}>
+  <.form for={@changeset} action={@action} as={:supplier} :let={f}>
     <div class="form-grid">
       <div class="form-block">
         <div class="field">
           <label>Name *</label>
-          <.input type="text" field={@changeset[:name]} />
+          <.input type="text" field={f[:name]} />
         </div>
 
         <div class="field">
           <label>Category</label>
-          <.input type="select" field={@changeset[:category]} options={[
+          <.input type="select" field={f[:category]} options={[
             {"Select category...", ""},
             {"Airline", "airline"},
             {"Hotel", "hotel"},
@@ -26,22 +26,22 @@
 
         <div class="field">
           <label>Contact Name</label>
-          <.input type="text" field={@changeset[:contact_name]} />
+          <.input type="text" field={f[:contact_name]} />
         </div>
 
         <div class="field">
           <label>Email</label>
-          <.input type="email" field={@changeset[:email]} />
+          <.input type="email" field={f[:email]} />
         </div>
 
         <div class="field">
           <label>Phone</label>
-          <.input type="text" field={@changeset[:phone]} />
+          <.input type="text" field={f[:phone]} />
         </div>
 
         <div class="field" style="grid-column: 1 / -1;">
           <label>Notes</label>
-          <.input type="textarea" field={@changeset[:notes]} />
+          <.input type="textarea" field={f[:notes]} />
         </div>
       </div>
     </div>
