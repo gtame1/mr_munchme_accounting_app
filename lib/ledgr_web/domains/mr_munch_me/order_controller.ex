@@ -6,6 +6,7 @@ defmodule LedgrWeb.Domains.MrMunchMe.OrderController do
   alias Ledgr.Domains.MrMunchMe.Orders
   alias Ledgr.Domains.MrMunchMe.Orders.{Order, OrderPayment}
   alias Ledgr.Core.{Accounting, Customers, Partners}
+  alias Ledgr.Domains.MrMunchMe.OrderAccounting
   alias Ledgr.Domains.MrMunchMe.Inventory
   alias Ledgr.Repo
   alias LedgrWeb.Helpers.MoneyHelper
@@ -110,10 +111,10 @@ defmodule LedgrWeb.Domains.MrMunchMe.OrderController do
 
     render(conn, :new,
       changeset: changeset,
-      action: ~p"/orders",
+      action: dp(conn, "/orders"),
       product_options: Orders.product_select_options(),
       product_prices: product_price_map(),
-      shipping_fee_cents: Accounting.shipping_fee_cents(),
+      shipping_fee_cents: OrderAccounting.shipping_fee_cents(),
       location_options: Inventory.list_locations() |> Enum.map(&{&1.name, &1.id}),
       customer_options: Customers.customer_select_options()
     )
@@ -124,17 +125,17 @@ defmodule LedgrWeb.Domains.MrMunchMe.OrderController do
       {:ok, order} ->
         conn
         |> put_flash(:info, "Order created.")
-        |> redirect(to: ~p"/orders/#{order.id}")
+        |> redirect(to: dp(conn, "/orders/#{order.id}"))
 
       {:error, %Ecto.Changeset{} = changeset} ->
         changeset = Map.put(changeset, :action, :insert)
 
         render(conn, :new,
           changeset: changeset,
-          action: ~p"/orders",
+          action: dp(conn, "/orders"),
           product_options: Orders.product_select_options(),
           product_prices: product_price_map(),
-          shipping_fee_cents: Accounting.shipping_fee_cents(),
+          shipping_fee_cents: OrderAccounting.shipping_fee_cents(),
           location_options: Inventory.list_locations() |> Enum.map(&{&1.name, &1.id}),
           customer_options: Customers.customer_select_options()
         )
@@ -149,10 +150,10 @@ defmodule LedgrWeb.Domains.MrMunchMe.OrderController do
         |> put_flash(:error, "There was a problem creating this order. Please check the form and try again.")
         |> render(:new,
           changeset: changeset,
-          action: ~p"/orders",
+          action: dp(conn, "/orders"),
           product_options: Orders.product_select_options(),
           product_prices: product_price_map(),
-          shipping_fee_cents: Accounting.shipping_fee_cents(),
+          shipping_fee_cents: OrderAccounting.shipping_fee_cents(),
           location_options: Inventory.list_locations() |> Enum.map(&{&1.name, &1.id}),
           customer_options: Customers.customer_select_options()
         )
@@ -218,7 +219,7 @@ defmodule LedgrWeb.Domains.MrMunchMe.OrderController do
       {:ok, order} ->
         conn
         |> put_flash(:info, "Order updated successfully.")
-        |> redirect(to: ~p"/orders/#{order.id}")
+        |> redirect(to: dp(conn, "/orders/#{order.id}"))
 
       {:error, %Ecto.Changeset{} = changeset} ->
         render(conn, :edit,
@@ -260,12 +261,12 @@ defmodule LedgrWeb.Domains.MrMunchMe.OrderController do
       {:ok, updated_order} ->
         conn
         |> put_flash(:info, "Order ingredients updated successfully.")
-        |> redirect(to: ~p"/orders/#{updated_order.id}")
+        |> redirect(to: dp(conn, "/orders/#{updated_order.id}"))
 
       {:error, reason} ->
         conn
         |> put_flash(:error, "Failed to update ingredients: #{inspect(reason)}")
-        |> redirect(to: ~p"/orders/#{order.id}")
+        |> redirect(to: dp(conn, "/orders/#{order.id}"))
     end
   end
 
@@ -276,18 +277,18 @@ defmodule LedgrWeb.Domains.MrMunchMe.OrderController do
       {:ok, _updated} ->
         conn
         |> put_flash(:info, "Order status updated to #{new_status}.")
-        |> redirect(to: ~p"/orders")
+        |> redirect(to: dp(conn, "/orders"))
 
       {:error, :invalid_status} ->
         conn
         |> put_flash(:error, "Invalid status change.")
-        |> redirect(to: ~p"/orders/#{order.id}")
+        |> redirect(to: dp(conn, "/orders/#{order.id}"))
 
       {:error, %Ecto.Changeset{} = _changeset} ->
         # This would be rare, but handle it nicely
         conn
         |> put_flash(:error, "Could not update status.")
-        |> redirect(to: ~p"/orders/#{order.id}")
+        |> redirect(to: dp(conn, "/orders/#{order.id}"))
     end
   end
 
@@ -305,7 +306,7 @@ defmodule LedgrWeb.Domains.MrMunchMe.OrderController do
       order: order,
       payment_summary: payment_summary,
       changeset: changeset,
-      action: ~p"/orders/#{order.id}/payments",
+      action: dp(conn, "/orders/#{order.id}/payments"),
       paid_to_account_options: Accounting.cash_or_payable_account_options(),
       partner_options: Partners.partner_select_options(),
       liability_account_options: Accounting.liability_account_options()
@@ -338,7 +339,7 @@ defmodule LedgrWeb.Domains.MrMunchMe.OrderController do
         order: order,
         payment_summary: Orders.payment_summary(order),
         changeset: changeset,
-        action: ~p"/orders/#{order.id}/payments",
+        action: dp(conn, "/orders/#{order.id}/payments"),
         paid_to_account_options: Accounting.cash_or_payable_account_options(),
         partner_options: Partners.partner_select_options(),
         liability_account_options: Accounting.liability_account_options()
@@ -386,7 +387,7 @@ defmodule LedgrWeb.Domains.MrMunchMe.OrderController do
           Logger.info("Payment created successfully: payment_id=#{payment.id}, order_id=#{order.id}")
           conn
           |> put_flash(:info, "Payment recorded successfully.")
-          |> redirect(to: ~p"/orders/#{order.id}")
+          |> redirect(to: dp(conn, "/orders/#{order.id}"))
 
         {:error, %Ecto.Changeset{} = changeset} ->
           # Log errors for debugging
@@ -403,7 +404,7 @@ defmodule LedgrWeb.Domains.MrMunchMe.OrderController do
             order: order,
             payment_summary: Orders.payment_summary(order),
             changeset: changeset,
-            action: ~p"/orders/#{order.id}/payments",
+            action: dp(conn, "/orders/#{order.id}/payments"),
             paid_to_account_options: Accounting.cash_or_payable_account_options(),
             partner_options: Partners.partner_select_options(),
             liability_account_options: Accounting.liability_account_options()

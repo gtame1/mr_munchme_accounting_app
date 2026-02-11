@@ -28,7 +28,7 @@ defmodule LedgrWeb.CustomerController do
 
   def new(conn, _params) do
     changeset = Customers.change_customer(%Customer{})
-    render(conn, :new, changeset: changeset, action: ~p"/customers")
+    render(conn, :new, changeset: changeset, action: dp(conn, "/customers"))
   end
 
   def create(conn, %{"customer" => customer_params}) do
@@ -36,18 +36,18 @@ defmodule LedgrWeb.CustomerController do
       {:ok, customer} ->
         conn
         |> put_flash(:info, "Customer created successfully.")
-        |> redirect(to: ~p"/customers/#{customer}")
+        |> redirect(to: dp(conn, "/customers/#{customer}"))
 
       {:error, %Ecto.Changeset{} = changeset} ->
         changeset = Map.put(changeset, :action, :insert)
-        render(conn, :new, changeset: changeset, action: ~p"/customers")
+        render(conn, :new, changeset: changeset, action: dp(conn, "/customers"))
     end
   end
 
   def edit(conn, %{"id" => id}) do
     customer = Customers.get_customer!(id)
     changeset = Customers.change_customer(customer)
-    render(conn, :edit, customer: customer, changeset: changeset, action: ~p"/customers/#{customer}")
+    render(conn, :edit, customer: customer, changeset: changeset, action: dp(conn, "/customers/#{customer}"))
   end
 
   def update(conn, %{"id" => id, "customer" => customer_params}) do
@@ -57,11 +57,11 @@ defmodule LedgrWeb.CustomerController do
       {:ok, customer} ->
         conn
         |> put_flash(:info, "Customer updated successfully.")
-        |> redirect(to: ~p"/customers/#{customer}")
+        |> redirect(to: dp(conn, "/customers/#{customer}"))
 
       {:error, %Ecto.Changeset{} = changeset} ->
         changeset = Map.put(changeset, :action, :update)
-        render(conn, :edit, customer: customer, changeset: changeset, action: ~p"/customers/#{customer}")
+        render(conn, :edit, customer: customer, changeset: changeset, action: dp(conn, "/customers/#{customer}"))
     end
   end
 
@@ -72,16 +72,15 @@ defmodule LedgrWeb.CustomerController do
       {:ok, _customer} ->
         conn
         |> put_flash(:info, "Customer deleted successfully.")
-        |> redirect(to: ~p"/customers")
+        |> redirect(to: dp(conn, "/customers"))
 
       {:error, :has_active_orders} ->
-        active_count = Customers.count_active_orders(customer)
         conn
         |> put_flash(
           :error,
-          "Cannot delete customer. This customer has #{active_count} active order(s). Please cancel or complete the orders first."
+          "Cannot delete customer. This customer has active orders or bookings. Please cancel or complete them first."
         )
-        |> redirect(to: ~p"/customers/#{customer.id}")
+        |> redirect(to: dp(conn, "/customers/#{customer.id}"))
     end
   end
 end

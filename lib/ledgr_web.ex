@@ -43,6 +43,7 @@ defmodule LedgrWeb do
       use Gettext, backend: LedgrWeb.Gettext
 
       import Plug.Conn
+      import LedgrWeb.Helpers.DomainHelpers
 
       unquote(verified_routes())
     end
@@ -86,6 +87,8 @@ defmodule LedgrWeb do
       import Phoenix.HTML
       # Core UI components
       import LedgrWeb.CoreComponents
+      # Domain-scoped path helpers
+      import LedgrWeb.Helpers.DomainHelpers
 
       # Common modules used in templates
       alias Phoenix.LiveView.JS

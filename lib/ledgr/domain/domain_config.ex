@@ -44,4 +44,45 @@ defmodule Ledgr.Domain.DomainConfig do
   Returns nil if no domain-specific seeds are needed.
   """
   @callback seed_file() :: String.t() | nil
+
+  @doc """
+  Returns true if the given customer has active dependencies in this domain.
+
+  Used by the Customers context to prevent deletion of customers that have
+  active orders, bookings, or other domain-specific records.
+  """
+  @callback has_active_dependencies?(customer_id :: integer()) :: boolean()
+
+  @doc """
+  URL slug for the domain, used in path prefixes.
+
+  Example: "mr-munch-me" → routes at /app/mr-munch-me/...
+  """
+  @callback slug() :: String.t()
+
+  @doc """
+  Full URL path prefix for the domain.
+
+  Example: "/app/mr-munch-me"
+  """
+  @callback path_prefix() :: String.t()
+
+  @doc """
+  Emoji or short string used as a logo in the sidebar.
+  """
+  @callback logo() :: String.t()
+
+  @doc """
+  Theme configuration for the domain.
+
+  Returns a map of CSS custom property values for per-domain theming.
+  """
+  @callback theme() :: %{
+              sidebar_bg: String.t(),
+              sidebar_text: String.t(),
+              sidebar_hover: String.t(),
+              primary: String.t(),
+              primary_soft: String.t(),
+              accent: String.t()
+            }
 end

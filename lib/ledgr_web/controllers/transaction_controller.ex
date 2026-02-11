@@ -22,7 +22,7 @@ defmodule LedgrWeb.TransactionController do
       changeset: Accounting.change_journal_entry(%JournalEntry{}),
       account_options: Accounting.account_select_options(),
       entry_types: JournalEntry.entry_types(),
-      action: ~p"/transactions"
+      action: dp(conn, "/transactions")
     )
   end
 
@@ -36,7 +36,7 @@ defmodule LedgrWeb.TransactionController do
       {:ok, entry} ->
         conn
         |> put_flash(:info, "Transaction recorded.")
-        |> redirect(to: ~p"/transactions/#{entry.id}")
+        |> redirect(to: dp(conn, "/transactions/#{entry.id}"))
 
       {:error, %Ecto.Changeset{} = changeset} ->
         # Mark changeset as having an attempted action so errors show in UI
@@ -47,7 +47,7 @@ defmodule LedgrWeb.TransactionController do
         render(conn, :new,
           page_title: "New Transaction",
           changeset: changeset,
-          action: ~p"/transactions",
+          action: dp(conn, "/transactions"),
           account_options: Accounting.account_select_options(),
           entry_types: JournalEntry.entry_types()
         )

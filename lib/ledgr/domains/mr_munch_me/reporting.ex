@@ -10,6 +10,7 @@ defmodule Ledgr.Domains.MrMunchMe.Reporting do
   alias Ledgr.Domains.MrMunchMe.Orders.{Order, Product}
   alias Ledgr.Core.Accounting
   alias Ledgr.Core.Accounting.JournalEntry
+  alias Ledgr.Domains.MrMunchMe.OrderAccounting
   alias Ledgr.Domains.MrMunchMe.Inventory
 
   @doc """
@@ -72,7 +73,7 @@ defmodule Ledgr.Domains.MrMunchMe.Reporting do
     delivered_orders = Map.get(orders_by_status, "delivered", 0)
 
     # --- Orders per product with revenue and COGS ---
-    shipping_fee = Accounting.shipping_fee_cents()
+    shipping_fee = OrderAccounting.shipping_fee_cents()
 
     orders_by_product_base =
       from(o in Order,
@@ -288,7 +289,7 @@ defmodule Ledgr.Domains.MrMunchMe.Reporting do
       Enum.reduce(orders, 0, fn order, acc ->
         quantity = order.quantity || 1
         base_revenue = (order.product.price_cents || 0) * quantity
-        shipping_cents = if order.customer_paid_shipping, do: Accounting.shipping_fee_cents(), else: 0
+        shipping_cents = if order.customer_paid_shipping, do: OrderAccounting.shipping_fee_cents(), else: 0
         acc + base_revenue + shipping_cents
       end)
 

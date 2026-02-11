@@ -105,9 +105,9 @@ defmodule LedgrWeb.Domains.MrMunchMe.InventoryControllerTest do
       assert movement != nil
 
       # Delete the purchase
-      conn = delete(conn, ~p"/inventory/purchases/#{movement.id}")
+      conn = delete(conn, "/app/mr-munch-me/inventory/purchases/#{movement.id}")
 
-      assert redirected_to(conn) == ~p"/inventory#recent_movements_card"
+      assert redirected_to(conn) == "/app/mr-munch-me/inventory#recent_movements_card"
       assert Phoenix.Flash.get(conn.assigns.flash, :info) == "Purchase deleted successfully."
 
       # Verify movement is deleted
@@ -159,9 +159,9 @@ defmodule LedgrWeb.Domains.MrMunchMe.InventoryControllerTest do
         )
 
       # Try to delete it as a purchase
-      conn = delete(conn, ~p"/inventory/purchases/#{movement.id}")
+      conn = delete(conn, "/app/mr-munch-me/inventory/purchases/#{movement.id}")
 
-      assert redirected_to(conn) == ~p"/inventory"
+      assert redirected_to(conn) == "/app/mr-munch-me/inventory"
       assert Phoenix.Flash.get(conn.assigns.flash, :error) == "This movement is not a purchase."
 
       # Verify movement still exists
@@ -213,9 +213,9 @@ defmodule LedgrWeb.Domains.MrMunchMe.InventoryControllerTest do
       assert movement != nil
 
       # Delete the transfer
-      conn = delete(conn, ~p"/inventory/movements/#{movement.id}")
+      conn = delete(conn, "/app/mr-munch-me/inventory/movements/#{movement.id}")
 
-      assert redirected_to(conn) == ~p"/inventory#recent_movements_card"
+      assert redirected_to(conn) == "/app/mr-munch-me/inventory#recent_movements_card"
       assert Phoenix.Flash.get(conn.assigns.flash, :info) == "Transfer deleted successfully."
 
       # Verify movement is deleted
@@ -249,9 +249,9 @@ defmodule LedgrWeb.Domains.MrMunchMe.InventoryControllerTest do
         )
 
       # Try to delete it as a transfer
-      conn = delete(conn, ~p"/inventory/movements/#{movement.id}")
+      conn = delete(conn, "/app/mr-munch-me/inventory/movements/#{movement.id}")
 
-      assert redirected_to(conn) == ~p"/inventory"
+      assert redirected_to(conn) == "/app/mr-munch-me/inventory"
       assert Phoenix.Flash.get(conn.assigns.flash, :error) == "Only transfers can be deleted."
 
       # Verify movement still exists
@@ -294,9 +294,9 @@ defmodule LedgrWeb.Domains.MrMunchMe.InventoryControllerTest do
         )
 
       # Try to delete it
-      conn = delete(conn, ~p"/inventory/movements/#{movement.id}")
+      conn = delete(conn, "/app/mr-munch-me/inventory/movements/#{movement.id}")
 
-      assert redirected_to(conn) == ~p"/inventory"
+      assert redirected_to(conn) == "/app/mr-munch-me/inventory"
       assert Phoenix.Flash.get(conn.assigns.flash, :error) == "Only transfers can be deleted."
 
       # Verify movement still exists

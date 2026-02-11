@@ -1,0 +1,144 @@
+defmodule Ledgr.Domains.Viaxe do
+  @moduledoc """
+  Viaxe domain configuration.
+
+  A travel agency business that manages bookings, supplier relationships,
+  and commission-based revenue.
+
+  This is a stub implementation — full features will be added in Phase 3.
+  """
+
+  @behaviour Ledgr.Domain.DomainConfig
+  @behaviour Ledgr.Domain.RevenueHandler
+  @behaviour Ledgr.Domain.DashboardProvider
+
+  # ── DomainConfig callbacks ──────────────────────────────────────────
+
+  @impl Ledgr.Domain.DomainConfig
+  def name, do: "Viaxe"
+
+  @impl Ledgr.Domain.DomainConfig
+  def slug, do: "viaxe"
+
+  @impl Ledgr.Domain.DomainConfig
+  def path_prefix, do: "/app/viaxe"
+
+  @impl Ledgr.Domain.DomainConfig
+  def logo, do: "✈️"
+
+  @impl Ledgr.Domain.DomainConfig
+  def theme do
+    %{
+      sidebar_bg: "#1a365d",
+      sidebar_text: "#e2e8f0",
+      sidebar_hover: "#2a4a7f",
+      primary: "#2b6cb0",
+      primary_soft: "#ebf4ff",
+      accent: "#63b3ed"
+    }
+  end
+
+  @impl Ledgr.Domain.DomainConfig
+  def account_codes do
+    %{
+      ar: "1100",
+      cash: "1000",
+      supplier_payables: "2100",
+      customer_deposits: "2200",
+      commission_revenue: "4000",
+      booking_cogs: "5000",
+      owners_equity: "3000",
+      retained_earnings: "3050",
+      owners_drawings: "3100"
+    }
+  end
+
+  @impl Ledgr.Domain.DomainConfig
+  def journal_entry_types do
+    [
+      {"Booking Created", "booking_created"},
+      {"Booking Payment", "booking_payment"},
+      {"Booking Completed", "booking_completed"}
+    ]
+  end
+
+  @impl Ledgr.Domain.DomainConfig
+  def menu_items do
+    prefix = path_prefix()
+
+    [
+      %{group: "Main Menu", items: [
+        %{label: "Dashboard", path: prefix, icon: :dashboard},
+        %{label: "Expenses", path: "#{prefix}/expenses", icon: :expenses}
+      ]},
+      %{group: "Travel", items: [
+        %{label: "Bookings", path: "#{prefix}/bookings", icon: :bookings},
+        %{label: "Services", path: "#{prefix}/services", icon: :services},
+        %{label: "Suppliers", path: "#{prefix}/suppliers", icon: :suppliers}
+      ]}
+    ]
+  end
+
+  @impl Ledgr.Domain.DomainConfig
+  def seed_file, do: nil
+
+  @impl Ledgr.Domain.DomainConfig
+  def has_active_dependencies?(_customer_id), do: false
+
+  # ── RevenueHandler callbacks (stubs) ──────────────────────────────
+
+  @impl Ledgr.Domain.RevenueHandler
+  def handle_status_change(_entity, _new_status), do: {:ok, nil}
+
+  @impl Ledgr.Domain.RevenueHandler
+  def record_payment(_payment), do: {:ok, nil}
+
+  @impl Ledgr.Domain.RevenueHandler
+  def revenue_breakdown(_start_date, _end_date), do: []
+
+  @impl Ledgr.Domain.RevenueHandler
+  def cogs_breakdown(_start_date, _end_date), do: []
+
+  # ── DashboardProvider callbacks (stubs) ───────────────────────────
+
+  @impl Ledgr.Domain.DashboardProvider
+  def dashboard_metrics(start_date, end_date) do
+    # Return basic P&L-only metrics for now
+    pnl = Ledgr.Core.Accounting.profit_and_loss(start_date, end_date)
+
+    %{
+      total_orders: 0,
+      total_units: 0,
+      delivered_orders: 0,
+      orders_by_status: %{},
+      orders_by_product: [],
+      revenue_cents: 0,
+      avg_order_value_cents: 0,
+      inventory_summary: %{total_value_cents: 0, total_items: 0, by_type: []},
+      pnl: pnl
+    }
+  end
+
+  @impl Ledgr.Domain.DashboardProvider
+  def unit_economics(_product_id, _start_date, _end_date), do: nil
+
+  @impl Ledgr.Domain.DashboardProvider
+  def all_unit_economics(_start_date, _end_date), do: []
+
+  @impl Ledgr.Domain.DashboardProvider
+  def product_select_options, do: []
+
+  @impl Ledgr.Domain.DashboardProvider
+  def data_date_range do
+    Ledgr.Core.Accounting.journal_entry_date_range()
+  end
+
+  @impl Ledgr.Domain.DashboardProvider
+  def verification_checks, do: %{}
+
+  @impl Ledgr.Domain.DashboardProvider
+  def run_repair(_repair_type), do: {:error, :not_supported}
+
+  @impl Ledgr.Domain.DashboardProvider
+  def repairable_checks, do: MapSet.new()
+end

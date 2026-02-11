@@ -13,7 +13,7 @@
       </div>
 
       <div class="actions" style="margin-bottom: 0.75rem;">
-        <.link navigate={~p"/transfers/new"} class="btn primary">
+        <.link navigate={dp(@domain_path_prefix, "/transfers/new")} class="btn primary">
           + New Transfer
         </.link>
       </div>
@@ -45,14 +45,14 @@
                   <td><%= t.note %></td>
                   <td>
                     <div style="display: flex; gap: 0.5rem;">
-                      <.link navigate={~p"/transfers/#{t.id}"} class="btn btn-sm">
+                      <.link navigate={dp(@domain_path_prefix, "/transfers/#{t.id}")} class="btn btn-sm">
                         View
                       </.link>
-                      <.link navigate={~p"/transfers/#{t.id}/edit"} class="btn btn-sm">
+                      <.link navigate={dp(@domain_path_prefix, "/transfers/#{t.id}/edit")} class="btn btn-sm">
                         Edit
                       </.link>
                       <.link
-                        href={~p"/transfers/#{t.id}"}
+                        href={dp(@domain_path_prefix, "/transfers/#{t.id}")}
                         method="delete"
                         data-confirm="Are you sure you want to delete this transfer?"
                         class="btn btn-sm"

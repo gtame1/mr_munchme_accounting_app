@@ -33,7 +33,7 @@ defmodule Mix.Tasks.DiagnoseCogs do
         nil ->
           # Dev: load app config first
           Application.load(:ledgr)
-          Application.get_env(:ledgr, Ledgr.Repo) || []
+          Application.get_env(:ledgr, Ledgr.Repos.MrMunchMe) || []
 
         url ->
           # Prod: use DATABASE_URL with SSL for Render
@@ -45,7 +45,8 @@ defmodule Mix.Tasks.DiagnoseCogs do
           ]
       end
 
-    {:ok, _} = Ledgr.Repo.start_link(repo_config)
+    {:ok, _} = Ledgr.Repos.MrMunchMe.start_link(repo_config)
+    Ledgr.Repo.put_active_repo(Ledgr.Repos.MrMunchMe)
 
     {opts, _, _} = OptionParser.parse(args, switches: [product: :string, fix: :boolean, yes: :boolean])
 

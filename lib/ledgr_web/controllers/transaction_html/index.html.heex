@@ -7,7 +7,7 @@
       </p>
     </div>
     <!--
-    <.link navigate={~p"/transactions/new"} class="btn primary">
+    <.link navigate={dp(@domain_path_prefix, "/transactions/new")} class="btn primary">
       + New Transaction
     </.link>
     -->
@@ -37,7 +37,7 @@
               <td><%= entry.entry_type %></td>
               <td class="numeric"><%= entry.total_amount_formatted %></td>
               <td class="numeric">
-                <.link navigate={~p"/transactions/#{entry.id}"} class="btn">
+                <.link navigate={dp(@domain_path_prefix, "/transactions/#{entry.id}")} class="btn">
                   View
                 </.link>
               </td>

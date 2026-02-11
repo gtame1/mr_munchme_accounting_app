@@ -7,16 +7,16 @@
   </div>
 
   <div class="actions" style="margin-bottom: 0.75rem; display: flex; gap: 0.5rem;">
-    <.link navigate={~p"/orders/new"} class="btn primary">
+    <.link navigate={dp(@domain_path_prefix, "/orders/new")} class="btn primary">
       + New Order
     </.link>
-    <.link navigate={~p"/orders/calendar"} class="btn">
+    <.link navigate={dp(@domain_path_prefix, "/orders/calendar")} class="btn">
       📅 Calendar View
     </.link>
   </div>
 
   <!-- Filters -->
-  <.form for={%{}} method="get" action={~p"/orders"} class="form-grid" :let={_f}>
+  <.form for={%{}} method="get" action={dp(@domain_path_prefix, "/orders")} class="form-grid" :let={_f}>
     <div class="form-block">
       <div class="field">
         <label>Status</label>
@@ -77,7 +77,7 @@
         <label>&nbsp;</label>
 
         <%= if filters_active?(@filters) do %>
-          <.link navigate={~p"/orders"} class="btn">
+          <.link navigate={dp(@domain_path_prefix, "/orders")} class="btn">
             Clear filters
           </.link>
         <% else %>
@@ -95,23 +95,23 @@
         <tr>
           <th>#</th>
           <th>
-            <.link navigate={~p"/orders?#{Map.merge(@filters, %{sort_by: "customer_name", sort_dir: next_dir(@filters, "customer_name")})}"}>
+            <.link navigate={dp(@domain_path_prefix, "/orders?#{URI.encode_query(Map.merge(@filters, %{sort_by: "customer_name", sort_dir: next_dir(@filters, "customer_name")}))}")}>
               Customer <span class="sort-arrow"><%= sort_arrow(@filters, "customer_name") %></span>
             </.link>
           </th>
           <th>
-            <.link navigate={~p"/orders?#{Map.merge(@filters, %{sort_by: "product", sort_dir: next_dir(@filters, "product")})}"}>
+            <.link navigate={dp(@domain_path_prefix, "/orders?#{URI.encode_query(Map.merge(@filters, %{sort_by: "product", sort_dir: next_dir(@filters, "product")}))}")}>
               Product <span class="sort-arrow"><%= sort_arrow(@filters, "product") %></span>
             </.link>
           </th>
           <th>
-            <.link navigate={~p"/orders?#{Map.merge(@filters, %{sort_by: "delivery_date", sort_dir: next_dir(@filters, "delivery_date")})}"}>
+            <.link navigate={dp(@domain_path_prefix, "/orders?#{URI.encode_query(Map.merge(@filters, %{sort_by: "delivery_date", sort_dir: next_dir(@filters, "delivery_date")}))}")}>
               Delivery Date <span class="sort-arrow"><%= sort_arrow(@filters, "delivery_date") %></span>
             </.link>
           </th>
           <th>Type</th>
           <th>
-            <.link navigate={~p"/orders?#{Map.merge(@filters, %{sort_by: "status", sort_dir: next_dir(@filters, "status")})}"}>
+            <.link navigate={dp(@domain_path_prefix, "/orders?#{URI.encode_query(Map.merge(@filters, %{sort_by: "status", sort_dir: next_dir(@filters, "status")}))}")}>
               Status <span class="sort-arrow"><%= sort_arrow(@filters, "status") %></span>
             </.link>
           </th>
@@ -130,7 +130,7 @@
           <%= for order <- @orders do %>
             <tr>
               <td>
-                <.link navigate={~p"/orders/#{order.id}"} class="link-text">
+                <.link navigate={dp(@domain_path_prefix, "/orders/#{order.id}")} class="link-text">
                   <%= order.id %>
                 </.link>
               </td>
@@ -171,28 +171,28 @@
                 <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
                   <%!-- Quick Status Update Buttons (same logic as order show page) --%>
                   <%= if order.status == "new_order" do %>
-                    <.form for={%{}} as={:status} action={~p"/orders/#{order.id}/status"} method="post" style="display: inline;" onsubmit="return confirm('Are you sure you want to move this order to In Prep?\n\nMake sure you have reviewed the ingredients. Inventory will be deducted and ingredients will be locked after this step.');">
+                    <.form for={%{}} as={:status} action={dp(@domain_path_prefix, "/orders/#{order.id}/status")} method="post" style="display: inline;" onsubmit="return confirm('Are you sure you want to move this order to In Prep?\n\nMake sure you have reviewed the ingredients. Inventory will be deducted and ingredients will be locked after this step.');">
                       <input type="hidden" name="status[status]" value="in_prep" />
                       <button class="btn btn-sm primary" type="submit" style="font-size: 0.75rem; padding: 0.25rem 0.5rem; white-space: nowrap;">Confirm & In Prep</button>
                     </.form>
                   <% end %>
 
                   <%= if order.status == "in_prep" do %>
-                    <.form for={%{}} as={:status} action={~p"/orders/#{order.id}/status"} method="post" style="display: inline;">
+                    <.form for={%{}} as={:status} action={dp(@domain_path_prefix, "/orders/#{order.id}/status")} method="post" style="display: inline;">
                       <input type="hidden" name="status[status]" value="ready" />
                       <button class="btn btn-sm primary" type="submit" style="font-size: 0.75rem; padding: 0.25rem 0.5rem; white-space: nowrap;">Mark as Ready</button>
                     </.form>
                   <% end %>
 
                   <%= if order.status == "ready" do %>
-                    <.form for={%{}} as={:status} action={~p"/orders/#{order.id}/status"} method="post" style="display: inline;">
+                    <.form for={%{}} as={:status} action={dp(@domain_path_prefix, "/orders/#{order.id}/status")} method="post" style="display: inline;">
                       <input type="hidden" name="status[status]" value="delivered" />
                       <button class="btn btn-sm primary" type="submit" style="font-size: 0.75rem; padding: 0.25rem 0.5rem; white-space: nowrap;">Mark as Delivered</button>
                     </.form>
                   <% end %>
 
                   <%= if order.status not in ["delivered", "canceled", "ready", "in_prep"] do %>
-                    <.form for={%{}} as={:status} action={~p"/orders/#{order.id}/status"} method="post" style="display: inline;">
+                    <.form for={%{}} as={:status} action={dp(@domain_path_prefix, "/orders/#{order.id}/status")} method="post" style="display: inline;">
                       <input type="hidden" name="status[status]" value="canceled" />
                       <button class="btn btn-sm danger" type="submit" style="font-size: 0.75rem; padding: 0.25rem 0.5rem; white-space: nowrap;">Cancel Order</button>
                     </.form>
@@ -201,7 +201,7 @@
                   <%!-- Quick Payment (hide for gifts) --%>
                   <%= if !order.is_gift and (!order.payment_summary || !order.payment_summary.fully_paid?) do %>
                     <.link
-                      navigate={~p"/orders/#{order.id}/payments/new"}
+                      navigate={dp(@domain_path_prefix, "/orders/#{order.id}/payments/new")}
                       class="btn btn-sm"
                       style="font-size: 0.75rem; padding: 0.25rem 0.5rem; white-space: nowrap;"
                     >
@@ -251,7 +251,7 @@
           <%= for order <- @completed_orders do %>
             <tr>
               <td>
-                <.link navigate={~p"/orders/#{order.id}"} class="link-text">
+                <.link navigate={dp(@domain_path_prefix, "/orders/#{order.id}")} class="link-text">
                   <%= order.id %>
                 </.link>
               </td>
@@ -288,7 +288,7 @@
 
   <%= if @has_more_completed do %>
     <div class="actions" style="margin-top: 1rem; text-align: center;">
-      <.link navigate={~p"/orders?#{Map.merge(@filters, %{completed_offset: @completed_offset + 10})}"} class="btn">
+      <.link navigate={dp(@domain_path_prefix, "/orders?#{URI.encode_query(Map.merge(@filters, %{completed_offset: @completed_offset + 10}))}")} class="btn">
         Load More
       </.link>
     </div>
@@ -329,7 +329,7 @@
           <%= for order <- @canceled_orders do %>
             <tr>
               <td>
-                <.link navigate={~p"/orders/#{order.id}"} class="link-text">
+                <.link navigate={dp(@domain_path_prefix, "/orders/#{order.id}")} class="link-text">
                   <%= order.id %>
                 </.link>
               </td>
@@ -366,7 +366,7 @@
 
   <%= if @has_more_canceled do %>
     <div class="actions" style="margin-top: 1rem; text-align: center;">
-      <.link navigate={~p"/orders?#{Map.merge(@filters, %{canceled_offset: @canceled_offset + 50})}"} class="btn">
+      <.link navigate={dp(@domain_path_prefix, "/orders?#{URI.encode_query(Map.merge(@filters, %{canceled_offset: @canceled_offset + 50}))}")} class="btn">
         Load More
       </.link>
     </div>

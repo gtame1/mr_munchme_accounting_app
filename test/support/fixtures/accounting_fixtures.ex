@@ -21,8 +21,8 @@ defmodule Ledgr.Core.AccountingFixtures do
       %{code: "3050", name: "Retained Earnings", type: "equity", normal_balance: "credit", is_cash: false},
       %{code: "3100", name: "Owner's Drawings", type: "equity", normal_balance: "debit", is_cash: false},
       %{code: "4000", name: "Sales Revenue", type: "revenue", normal_balance: "credit", is_cash: false},
-      %{code: "5000", name: "Ingredients COGS", type: "expense", normal_balance: "debit", is_cash: false},
-      %{code: "5100", name: "Packing COGS", type: "expense", normal_balance: "debit", is_cash: false}
+      %{code: "5000", name: "Ingredients COGS", type: "expense", normal_balance: "debit", is_cash: false, is_cogs: true},
+      %{code: "5100", name: "Packing COGS", type: "expense", normal_balance: "debit", is_cash: false, is_cogs: true}
     ]
 
     created_accounts =

@@ -14,7 +14,7 @@
         Default is current month. Adjust dates to see another period.
       </p>
 
-      <.form for={%{}} method="get" action={~p"/"} class="form-grid" :let={_f}>
+      <.form for={%{}} method="get" action={dp(@domain_path_prefix, "/")} class="form-grid" :let={_f}>
         <div class="form-block">
           <div class="field">
             <label>Start date</label>
@@ -32,10 +32,10 @@
               <button type="submit" class="btn primary">
                 Update period
               </button>
-              <.link navigate={~p"/?period=last_7_days"} class="btn">Last 7 days</.link>
-              <.link navigate={~p"/?period=this_month"} class="btn">This month</.link>
-              <.link navigate={~p"/?period=last_90_days"} class="btn">Last 90 days</.link>
-              <.link navigate={~p"/?period=all_time"} class="btn">All time</.link>
+              <.link navigate={dp(@domain_path_prefix, "/?period=last_7_days")} class="btn">Last 7 days</.link>
+              <.link navigate={dp(@domain_path_prefix, "/?period=this_month")} class="btn">This month</.link>
+              <.link navigate={dp(@domain_path_prefix, "/?period=last_90_days")} class="btn">Last 90 days</.link>
+              <.link navigate={dp(@domain_path_prefix, "/?period=all_time")} class="btn">All time</.link>
             </div>
           </div>
         </div>

@@ -6,7 +6,7 @@
   <div class="content-body">
     <!-- Navigation link to list view -->
     <div style="margin-bottom: 1rem;">
-      <.link navigate={~p"/reports/unit_economics_list?start_date=#{Date.to_iso8601(@start_date)}&end_date=#{Date.to_iso8601(@end_date)}"} class="btn">
+      <.link navigate={dp(@domain_path_prefix, "/reports/unit_economics_list?start_date=#{Date.to_iso8601(@start_date)}&end_date=#{Date.to_iso8601(@end_date)}")} class="btn">
         View All Products
       </.link>
     </div>
@@ -17,7 +17,7 @@
         Select a product and date range to view unit economics.
       </p>
 
-      <.form for={%{}} method="get" action={~p"/reports/unit_economics"} class="form-grid" :let={_f}>
+      <.form for={%{}} method="get" action={dp(@domain_path_prefix, "/reports/unit_economics")} class="form-grid" :let={_f}>
         <div class="form-block">
           <div class="field">
             <label>Product</label>
@@ -48,10 +48,10 @@
                 Update
               </button>
               <%= if @selected_product_id do %>
-                <.link navigate={~p"/reports/unit_economics?period=last_7_days&product_id=#{@selected_product_id}"} class="btn">Last 7 days</.link>
-                <.link navigate={~p"/reports/unit_economics?period=this_month&product_id=#{@selected_product_id}"} class="btn">This month</.link>
-                <.link navigate={~p"/reports/unit_economics?period=last_90_days&product_id=#{@selected_product_id}"} class="btn">Last 90 days</.link>
-                <.link navigate={~p"/reports/unit_economics?period=all_time&product_id=#{@selected_product_id}"} class="btn">All time</.link>
+                <.link navigate={dp(@domain_path_prefix, "/reports/unit_economics?period=last_7_days&product_id=#{@selected_product_id}")} class="btn">Last 7 days</.link>
+                <.link navigate={dp(@domain_path_prefix, "/reports/unit_economics?period=this_month&product_id=#{@selected_product_id}")} class="btn">This month</.link>
+                <.link navigate={dp(@domain_path_prefix, "/reports/unit_economics?period=last_90_days&product_id=#{@selected_product_id}")} class="btn">Last 90 days</.link>
+                <.link navigate={dp(@domain_path_prefix, "/reports/unit_economics?period=all_time&product_id=#{@selected_product_id}")} class="btn">All time</.link>
               <% end %>
             </div>
           </div>

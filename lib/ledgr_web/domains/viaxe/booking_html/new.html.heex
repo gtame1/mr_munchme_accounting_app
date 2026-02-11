@@ -1,0 +1,51 @@
+<section class="card">
+  <div class="card-header">
+    <h2 class="card-title">New Booking</h2>
+  </div>
+
+  <.form for={@changeset} action={@action} as={:booking}>
+    <div class="form-grid">
+      <div class="form-block">
+        <div class="field">
+          <label>Customer *</label>
+          <.input type="select" field={@changeset[:customer_id]} options={[{"Select customer...", ""} | @customers]} />
+        </div>
+
+        <div class="field">
+          <label>Booking Date *</label>
+          <.input type="date" field={@changeset[:booking_date]} />
+        </div>
+
+        <div class="field">
+          <label>Destination</label>
+          <.input type="text" field={@changeset[:destination]} />
+        </div>
+
+        <div class="field">
+          <label>Passengers</label>
+          <.input type="number" field={@changeset[:passengers]} min="1" />
+        </div>
+
+        <div class="field">
+          <label>Travel Date</label>
+          <.input type="date" field={@changeset[:travel_date]} />
+        </div>
+
+        <div class="field">
+          <label>Return Date</label>
+          <.input type="date" field={@changeset[:return_date]} />
+        </div>
+
+        <div class="field" style="grid-column: 1 / -1;">
+          <label>Notes</label>
+          <.input type="textarea" field={@changeset[:notes]} />
+        </div>
+      </div>
+    </div>
+
+    <div class="actions" style="margin-top: 1rem;">
+      <button type="submit" class="btn primary">Create Booking</button>
+      <.link navigate={dp(@domain_path_prefix, "/bookings")} class="btn">Cancel</.link>
+    </div>
+  </.form>
+</section>

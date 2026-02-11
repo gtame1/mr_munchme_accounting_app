@@ -7,7 +7,7 @@
   </div>
 
   <div class="actions" style="margin-bottom: 0.75rem;">
-    <.link navigate={~p"/recipes/new"} class="btn primary">
+    <.link navigate={dp(@domain_path_prefix, "/recipes/new")} class="btn primary">
       + New Recipe
     </.link>
   </div>
@@ -45,7 +45,7 @@
           </td>
           <td>
             <div style="display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center;">
-              <.link navigate={~p"/recipes/#{recipe.id}"} class="btn btn-sm">
+              <.link navigate={dp(@domain_path_prefix, "/recipes/#{recipe.id}")} class="btn btn-sm">
                 View
               </.link>
               <%= if Map.has_key?(@recipe_versions_by_product, recipe.product_id) do %>
@@ -111,7 +111,7 @@
                             <% end %>
                           </td>
                           <td>
-                            <.link navigate={~p"/recipes/#{version.id}"} class="btn btn-sm">
+                            <.link navigate={dp(@domain_path_prefix, "/recipes/#{version.id}")} class="btn btn-sm">
                               View Details
                             </.link>
                           </td>

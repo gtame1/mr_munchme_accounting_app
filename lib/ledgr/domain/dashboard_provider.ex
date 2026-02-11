@@ -8,4 +8,25 @@ defmodule Ledgr.Domain.DashboardProvider do
 
   @doc "Returns domain-specific metrics for the dashboard within a date range."
   @callback dashboard_metrics(Date.t(), Date.t()) :: map()
+
+  @doc "Unit economics for a single product/service."
+  @callback unit_economics(integer(), Date.t(), Date.t()) :: map() | nil
+
+  @doc "Unit economics for all products/services."
+  @callback all_unit_economics(Date.t(), Date.t()) :: [map()]
+
+  @doc "Options for product/service select dropdowns: [{label, id}]."
+  @callback product_select_options() :: [{String.t(), integer()}]
+
+  @doc "Earliest and latest date across all domain data (for date range pickers)."
+  @callback data_date_range() :: {Date.t() | nil, Date.t() | nil}
+
+  @doc "Run all diagnostic verification checks. Returns a map of check results."
+  @callback verification_checks() :: map()
+
+  @doc "Run a specific repair. Returns {:ok, list} or {:error, reason}."
+  @callback run_repair(String.t()) :: {:ok, list()} | {:error, any()}
+
+  @doc "Returns a MapSet of check names that support automated repair."
+  @callback repairable_checks() :: MapSet.t()
 end

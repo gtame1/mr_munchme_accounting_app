@@ -4,6 +4,7 @@ defmodule Ledgr.Core.Accounting.InventoryMovementAccountingTest do
   import Ecto.Query
 
   alias Ledgr.Core.Accounting
+  alias Ledgr.Domains.MrMunchMe.OrderAccounting
   alias Ledgr.Domains.MrMunchMe.Inventory
   alias Ledgr.Repo
   alias Ledgr.Core.Accounting.{Account, JournalEntry, JournalLine}
@@ -208,7 +209,7 @@ defmodule Ledgr.Core.Accounting.InventoryMovementAccountingTest do
         |> Repo.insert()
 
       # Move order to in_prep
-      Accounting.handle_order_status_change(order, "in_prep")
+      OrderAccounting.handle_order_status_change(order, "in_prep")
 
       # Verify journal entry was created
       reference = "Order ##{order.id}"
@@ -290,7 +291,7 @@ defmodule Ledgr.Core.Accounting.InventoryMovementAccountingTest do
       expected_cost = 200 * 5 + 100 * 3
 
       # Move order to in_prep
-      Accounting.handle_order_status_change(order, "in_prep")
+      OrderAccounting.handle_order_status_change(order, "in_prep")
 
       # Get journal entry
       reference = "Order ##{order.id}"
@@ -369,7 +370,7 @@ defmodule Ledgr.Core.Accounting.InventoryMovementAccountingTest do
         |> Repo.insert()
 
       # Move order to in_prep
-      Accounting.handle_order_status_change(order, "in_prep")
+      OrderAccounting.handle_order_status_change(order, "in_prep")
 
       # Get journal entry to find the amount
       reference = "Order ##{order.id}"
@@ -423,7 +424,7 @@ defmodule Ledgr.Core.Accounting.InventoryMovementAccountingTest do
         })
         |> Repo.insert()
 
-      Accounting.handle_order_status_change(order, "in_prep")
+      OrderAccounting.handle_order_status_change(order, "in_prep")
 
       # Get the WIP debit amount from in_prep entry
       reference = "Order ##{order.id}"
@@ -440,7 +441,7 @@ defmodule Ledgr.Core.Accounting.InventoryMovementAccountingTest do
         |> Map.get(:debit_cents)
 
       # Move order to delivered
-      Accounting.handle_order_status_change(order, "delivered")
+      OrderAccounting.handle_order_status_change(order, "delivered")
 
       # Verify delivered journal entry was created
       reference = "Order ##{order.id}"
@@ -528,13 +529,13 @@ defmodule Ledgr.Core.Accounting.InventoryMovementAccountingTest do
         })
         |> Repo.insert()
 
-      Accounting.handle_order_status_change(order, "in_prep")
+      OrderAccounting.handle_order_status_change(order, "in_prep")
 
       # Get balances after in_prep
       wip_balance_after_in_prep = get_account_balance(wip_account.id)
 
       # Move order to delivered
-      Accounting.handle_order_status_change(order, "delivered")
+      OrderAccounting.handle_order_status_change(order, "delivered")
 
       # Get balances after delivery
       wip_balance_after_delivery = get_account_balance(wip_account.id)
@@ -600,7 +601,7 @@ defmodule Ledgr.Core.Accounting.InventoryMovementAccountingTest do
         |> Repo.insert()
 
       # Move to in_prep
-      Accounting.handle_order_status_change(order, "in_prep")
+      OrderAccounting.handle_order_status_change(order, "in_prep")
 
       # Get WIP debit amount
       reference = "Order ##{order.id}"
@@ -624,7 +625,7 @@ defmodule Ledgr.Core.Accounting.InventoryMovementAccountingTest do
       assert wip_balance_after_in_prep == initial_wip_balance + wip_debit
 
       # Move to delivered
-      Accounting.handle_order_status_change(order, "delivered")
+      OrderAccounting.handle_order_status_change(order, "delivered")
 
       # Get delivered entry amounts
       reference = "Order ##{order.id}"
@@ -695,8 +696,8 @@ defmodule Ledgr.Core.Accounting.InventoryMovementAccountingTest do
         |> Repo.insert()
 
       # Call in_prep TWICE
-      Accounting.handle_order_status_change(order, "in_prep")
-      Accounting.handle_order_status_change(order, "in_prep")
+      OrderAccounting.handle_order_status_change(order, "in_prep")
+      OrderAccounting.handle_order_status_change(order, "in_prep")
 
       # Verify only ONE journal entry exists
       reference = "Order ##{order.id}"
@@ -729,11 +730,11 @@ defmodule Ledgr.Core.Accounting.InventoryMovementAccountingTest do
         |> Repo.insert()
 
       # Move to in_prep first
-      Accounting.handle_order_status_change(order, "in_prep")
+      OrderAccounting.handle_order_status_change(order, "in_prep")
 
       # Call delivered TWICE
-      Accounting.handle_order_status_change(order, "delivered")
-      Accounting.handle_order_status_change(order, "delivered")
+      OrderAccounting.handle_order_status_change(order, "delivered")
+      OrderAccounting.handle_order_status_change(order, "delivered")
 
       # Verify only ONE journal entry exists
       reference = "Order ##{order.id}"
@@ -768,9 +769,9 @@ defmodule Ledgr.Core.Accounting.InventoryMovementAccountingTest do
         |> Repo.insert()
 
       # Move to in_prep multiple times
-      Accounting.handle_order_status_change(order, "in_prep")
-      Accounting.handle_order_status_change(order, "in_prep")
-      Accounting.handle_order_status_change(order, "in_prep")
+      OrderAccounting.handle_order_status_change(order, "in_prep")
+      OrderAccounting.handle_order_status_change(order, "in_prep")
+      OrderAccounting.handle_order_status_change(order, "in_prep")
 
       # Get expected WIP/COGS from the single in_prep entry
       reference = "Order ##{order.id}"
@@ -787,9 +788,9 @@ defmodule Ledgr.Core.Accounting.InventoryMovementAccountingTest do
         |> Map.get(:debit_cents)
 
       # Deliver multiple times
-      Accounting.handle_order_status_change(order, "delivered")
-      Accounting.handle_order_status_change(order, "delivered")
-      Accounting.handle_order_status_change(order, "delivered")
+      OrderAccounting.handle_order_status_change(order, "delivered")
+      OrderAccounting.handle_order_status_change(order, "delivered")
+      OrderAccounting.handle_order_status_change(order, "delivered")
 
       # Get actual COGS balance
       actual_cogs = get_account_balance(cogs_account.id)

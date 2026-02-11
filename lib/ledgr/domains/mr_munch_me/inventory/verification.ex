@@ -1183,6 +1183,7 @@ defmodule Ledgr.Domains.MrMunchMe.Inventory.Verification do
   ])
 
   def repairable?(check_name), do: MapSet.member?(@repairable_checks, check_name)
+  def repairable_checks, do: @repairable_checks
 
   # ── Private helpers for AR / Customer Deposits checks ──────────────────
 

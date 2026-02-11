@@ -8,9 +8,11 @@
 import Config
 
 config :ledgr,
-  ecto_repos: [Ledgr.Repo],
+  ecto_repos: [Ledgr.Repos.MrMunchMe, Ledgr.Repos.Viaxe],
   generators: [timestamp_type: :utc_datetime],
-  domain: Ledgr.Domains.MrMunchMe
+  domain: Ledgr.Domains.MrMunchMe,
+  domains: [Ledgr.Domains.MrMunchMe, Ledgr.Domains.Viaxe],
+  default_domain: Ledgr.Domains.MrMunchMe
 
 # Configures the endpoint
 config :ledgr, LedgrWeb.Endpoint,

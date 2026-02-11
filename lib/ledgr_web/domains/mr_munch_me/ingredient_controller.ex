@@ -19,7 +19,7 @@ defmodule LedgrWeb.Domains.MrMunchMe.IngredientController do
     ]
     render(conn, :new,
       changeset: changeset,
-      action: ~p"/ingredients",
+      action: dp(conn, "/ingredients"),
       inventory_type_options: inventory_type_options
     )
   end
@@ -45,7 +45,7 @@ defmodule LedgrWeb.Domains.MrMunchMe.IngredientController do
       {:ok, _ingredient} ->
         conn
         |> put_flash(:info, "Ingredient created successfully.")
-        |> redirect(to: ~p"/ingredients")
+        |> redirect(to: dp(conn, "/ingredients"))
 
       {:error, %Ecto.Changeset{} = changeset} ->
         # Preserve the pesos value the user entered
@@ -58,7 +58,7 @@ defmodule LedgrWeb.Domains.MrMunchMe.IngredientController do
         ]
         render(conn, :new,
           changeset: changeset,
-          action: ~p"/ingredients",
+          action: dp(conn, "/ingredients"),
           inventory_type_options: inventory_type_options
         )
     end
@@ -81,7 +81,7 @@ defmodule LedgrWeb.Domains.MrMunchMe.IngredientController do
     render(conn, :edit,
       ingredient: ingredient,
       changeset: changeset,
-      action: ~p"/ingredients/#{ingredient}",
+      action: dp(conn, "/ingredients/#{ingredient}"),
       inventory_type_options: inventory_type_options
     )
   end
@@ -94,7 +94,7 @@ defmodule LedgrWeb.Domains.MrMunchMe.IngredientController do
       {:ok, _ingredient} ->
         conn
         |> put_flash(:info, "Ingredient updated successfully.")
-        |> redirect(to: ~p"/ingredients")
+        |> redirect(to: dp(conn, "/ingredients"))
 
       {:error, %Ecto.Changeset{} = changeset} ->
         # Preserve the pesos value the user entered
@@ -108,7 +108,7 @@ defmodule LedgrWeb.Domains.MrMunchMe.IngredientController do
         render(conn, :edit,
           ingredient: ingredient,
           changeset: changeset,
-          action: ~p"/ingredients/#{ingredient}",
+          action: dp(conn, "/ingredients/#{ingredient}"),
           inventory_type_options: inventory_type_options
         )
     end
@@ -120,7 +120,7 @@ defmodule LedgrWeb.Domains.MrMunchMe.IngredientController do
 
     conn
     |> put_flash(:info, "Ingredient deleted successfully.")
-    |> redirect(to: ~p"/ingredients")
+    |> redirect(to: dp(conn, "/ingredients"))
   end
 end
 

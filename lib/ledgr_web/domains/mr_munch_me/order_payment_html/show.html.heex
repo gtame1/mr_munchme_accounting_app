@@ -13,17 +13,17 @@
           </p>
         </div>
         <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
-          <.link navigate={~p"/order_payments"} class="btn">
+          <.link navigate={dp(@domain_path_prefix, "/order_payments")} class="btn">
             ← Back to Payments
           </.link>
-          <.link navigate={~p"/orders/#{@payment.order_id}"} class="btn">
+          <.link navigate={dp(@domain_path_prefix, "/orders/#{@payment.order_id}")} class="btn">
             View Order
           </.link>
-          <.link navigate={~p"/order_payments/#{@payment.id}/edit"} class="btn primary">
+          <.link navigate={dp(@domain_path_prefix, "/order_payments/#{@payment.id}/edit")} class="btn primary">
             Edit
           </.link>
           <.link
-            href={~p"/order_payments/#{@payment.id}"}
+            href={dp(@domain_path_prefix, "/order_payments/#{@payment.id}")}
             method="delete"
             data-confirm="Are you sure you want to delete this payment? This will also reverse the accounting entries."
             class="btn"
@@ -36,7 +36,7 @@
 
       <ul class="nice-list" style="margin-top: 1rem;">
         <li><strong>Order:</strong> 
-          <.link navigate={~p"/orders/#{@payment.order_id}"} class="link">
+          <.link navigate={dp(@domain_path_prefix, "/orders/#{@payment.order_id}")} class="link">
             Order #<%= @payment.order_id %> - <%= @payment.order.customer_name %>
           </.link>
         </li>

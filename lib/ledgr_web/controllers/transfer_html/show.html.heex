@@ -13,14 +13,14 @@
           </p>
         </div>
         <div style="display: flex; gap: 0.5rem;">
-          <.link navigate={~p"/transfers"} class="btn">
+          <.link navigate={dp(@domain_path_prefix, "/transfers")} class="btn">
             ← Back to Transfers
           </.link>
-          <.link navigate={~p"/transfers/#{@transfer.id}/edit"} class="btn primary">
+          <.link navigate={dp(@domain_path_prefix, "/transfers/#{@transfer.id}/edit")} class="btn primary">
             Edit
           </.link>
           <.link
-            href={~p"/transfers/#{@transfer.id}"}
+            href={dp(@domain_path_prefix, "/transfers/#{@transfer.id}")}
             method="delete"
             data-confirm="Are you sure you want to delete this transfer?"
             class="btn"

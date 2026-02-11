@@ -2,7 +2,7 @@
   <header class="content-header">
     <div style="display: flex; justify-content: space-between; align-items: center;">
       <h1 class="page-title">Recipe Details</h1>
-      <.link navigate={~p"/recipes"} class="btn">
+      <.link navigate={dp(@domain_path_prefix, "/recipes")} class="btn">
         ← Back to Recipes
       </.link>
     </div>
@@ -106,10 +106,10 @@
       </div>
 
       <div class="actions" style="margin-top: 1.5rem;">
-        <.link navigate={~p"/recipes/#{@recipe.id}/edit"} class="btn primary">
+        <.link navigate={dp(@domain_path_prefix, "/recipes/#{@recipe.id}/edit")} class="btn primary">
           Create New Version
         </.link>
-        <.link navigate={~p"/recipes"} class="btn">
+        <.link navigate={dp(@domain_path_prefix, "/recipes")} class="btn">
           Back to List
         </.link>
       </div>

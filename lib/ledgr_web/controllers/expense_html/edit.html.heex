@@ -57,7 +57,7 @@
         Update Expense
       </button>
 
-      <.link navigate={~p"/expenses/#{@expense.id}"} class="btn">
+      <.link navigate={dp(@domain_path_prefix, "/expenses/#{@expense.id}")} class="btn">
         Cancel
       </.link>
     </div>

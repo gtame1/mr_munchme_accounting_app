@@ -3,7 +3,7 @@ defmodule Ledgr.Domains.MrMunchMe.Orders do
   alias Ledgr.Repo
 
   alias Ledgr.Domains.MrMunchMe.Orders.{Order, Product, OrderPayment, OrderIngredient}
-  alias Ledgr.Core.Accounting
+  alias Ledgr.Domains.MrMunchMe.OrderAccounting
   alias Ledgr.Core.Customers
   alias Ledgr.Repo
 
@@ -333,7 +333,7 @@ defmodule Ledgr.Domains.MrMunchMe.Orders do
            |> Repo.insert() do
         {:ok, order} ->
           # Try to create the accounting entry; if it fails, we don't crash the order creation.
-          _ = Accounting.record_order_created(order)
+          _ = OrderAccounting.record_order_created(order)
           order
 
         {:error, changeset} ->
@@ -455,7 +455,7 @@ defmodule Ledgr.Domains.MrMunchMe.Orders do
         |> Order.changeset(attrs)
         |> Repo.update()
 
-      Accounting.handle_order_status_change(updated, new_status)
+      OrderAccounting.handle_order_status_change(updated, new_status)
 
       updated
     end)
@@ -502,7 +502,7 @@ defmodule Ledgr.Domains.MrMunchMe.Orders do
              %OrderPayment{}
              |> OrderPayment.changeset(attrs)
              |> Repo.insert(),
-           {:ok, _entry} <- Accounting.record_order_payment(payment) do
+           {:ok, _entry} <- OrderAccounting.record_order_payment(payment) do
         payment
       else
         {:error, %Ecto.Changeset{} = changeset} ->
@@ -521,7 +521,7 @@ defmodule Ledgr.Domains.MrMunchMe.Orders do
              |> OrderPayment.changeset(attrs)
              |> Repo.update(),
            payment <- payment |> Repo.preload([:order, :paid_to_account, :partner, :partner_payable_account]),
-           {:ok, _entry} <- Accounting.update_order_payment_journal_entry(payment) do
+           {:ok, _entry} <- OrderAccounting.update_order_payment_journal_entry(payment) do
         payment
       else
         {:error, %Ecto.Changeset{} = changeset} ->
@@ -641,7 +641,7 @@ defmodule Ledgr.Domains.MrMunchMe.Orders do
 
     shipping_cents =
       if order.customer_paid_shipping do
-        Ledgr.Core.Accounting.shipping_fee_cents()
+        OrderAccounting.shipping_fee_cents()
       else
         0
       end

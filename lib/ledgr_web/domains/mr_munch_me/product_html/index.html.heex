@@ -7,7 +7,7 @@
   </div>
 
   <div class="actions" style="margin-bottom: 0.75rem;">
-    <.link navigate={~p"/products/new"} class="btn primary">
+    <.link navigate={dp(@domain_path_prefix, "/products/new")} class="btn primary">
       + New Product
     </.link>
   </div>
@@ -36,7 +36,7 @@
             <% end %>
           </td>
           <td>
-            <.link navigate={~p"/products/#{product.id}/edit"} class="btn btn-sm">
+            <.link navigate={dp(@domain_path_prefix, "/products/#{product.id}/edit")} class="btn btn-sm">
               Edit
             </.link>
           </td>

@@ -7,7 +7,7 @@
   </div>
 
   <div class="actions" style="margin-bottom: 0.75rem;">
-    <.link navigate={~p"/expenses/new"} class="btn primary">
+    <.link navigate={dp(@domain_path_prefix, "/expenses/new")} class="btn primary">
       + New Expense
     </.link>
   </div>
@@ -37,14 +37,14 @@
             <td class="numeric"><%= format_currency(expense.amount_cents) %></td>
             <td>
               <div style="display: flex; gap: 0.5rem;">
-                <.link navigate={~p"/expenses/#{expense.id}"} class="btn">
+                <.link navigate={dp(@domain_path_prefix, "/expenses/#{expense.id}")} class="btn">
                   View
                 </.link>
-                <.link navigate={~p"/expenses/#{expense.id}/edit"} class="btn">
+                <.link navigate={dp(@domain_path_prefix, "/expenses/#{expense.id}/edit")} class="btn">
                   Edit
                 </.link>
                 <.link
-                  href={~p"/expenses/#{expense.id}"}
+                  href={dp(@domain_path_prefix, "/expenses/#{expense.id}")}
                   method="delete"
                   data-confirm="Are you sure you want to delete this expense?"
                   class="btn"

@@ -4,7 +4,7 @@
     Update ingredient details.
   </p>
 
-  <.form :let={f} for={@changeset} as={:ingredient} action={~p"/ingredients/#{@ingredient.id}"} method="patch" class="form-grid">
+  <.form :let={f} for={@changeset} as={:ingredient} action={dp(@domain_path_prefix, "/ingredients/#{@ingredient.id}")} method="patch" class="form-grid">
     <%= if @changeset.action do %>
       <div class="alert alert-error">
         <p>There were problems updating this ingredient. Please review the fields below.</p>
@@ -52,7 +52,7 @@
       <button class="btn primary" type="submit">
         Save Changes
       </button>
-      <.link navigate={~p"/ingredients"} class="btn">
+      <.link navigate={dp(@domain_path_prefix, "/ingredients")} class="btn">
         Cancel
       </.link>
     </div>

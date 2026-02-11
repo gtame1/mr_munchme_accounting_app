@@ -14,7 +14,7 @@ defmodule LedgrWeb.Domains.MrMunchMe.ProductController do
     changeset = Orders.change_product(%Product{})
     render(conn, :new,
       changeset: changeset,
-      action: ~p"/products"
+      action: dp(conn, "/products")
     )
   end
 
@@ -26,7 +26,7 @@ defmodule LedgrWeb.Domains.MrMunchMe.ProductController do
       {:ok, _product} ->
         conn
         |> put_flash(:info, "Product created successfully. Don't forget to create a recipe for it!")
-        |> redirect(to: ~p"/products")
+        |> redirect(to: dp(conn, "/products"))
 
       {:error, %Ecto.Changeset{} = changeset} ->
         # Convert price_cents back to pesos for form re-display
@@ -37,7 +37,7 @@ defmodule LedgrWeb.Domains.MrMunchMe.ProductController do
 
         render(conn, :new,
           changeset: changeset,
-          action: ~p"/products"
+          action: dp(conn, "/products")
         )
     end
   end
@@ -47,7 +47,7 @@ defmodule LedgrWeb.Domains.MrMunchMe.ProductController do
     # Convert cents to pesos for form display
     attrs = %{"price_cents" => MoneyHelper.cents_to_pesos(product.price_cents || 0)}
     changeset = Orders.change_product(product, attrs)
-    render(conn, :edit, product: product, changeset: changeset, action: ~p"/products/#{product}")
+    render(conn, :edit, product: product, changeset: changeset, action: dp(conn, "/products/#{product}"))
   end
 
   def update(conn, %{"id" => id, "product" => product_params}) do
@@ -60,7 +60,7 @@ defmodule LedgrWeb.Domains.MrMunchMe.ProductController do
       {:ok, _product} ->
         conn
         |> put_flash(:info, "Product updated successfully.")
-        |> redirect(to: ~p"/products")
+        |> redirect(to: dp(conn, "/products"))
 
       {:error, %Ecto.Changeset{} = changeset} ->
         # Convert price_cents back to pesos for form re-display
@@ -69,7 +69,7 @@ defmodule LedgrWeb.Domains.MrMunchMe.ProductController do
           |> Map.put(:action, :update)
           |> Ecto.Changeset.put_change(:price_cents, MoneyHelper.cents_to_pesos(Ecto.Changeset.get_field(changeset, :price_cents)))
 
-        render(conn, :edit, product: product, changeset: changeset, action: ~p"/products/#{product}")
+        render(conn, :edit, product: product, changeset: changeset, action: dp(conn, "/products/#{product}"))
     end
   end
 
@@ -80,7 +80,7 @@ defmodule LedgrWeb.Domains.MrMunchMe.ProductController do
 
     conn
     |> put_flash(:info, "Product deleted successfully.")
-    |> redirect(to: ~p"/products")
+    |> redirect(to: dp(conn, "/products"))
   end
 end
 

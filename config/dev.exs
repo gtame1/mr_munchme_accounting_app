@@ -1,14 +1,25 @@
 import Config
 
-# Configure your database
-config :ledgr, Ledgr.Repo,
+# Configure databases (one per domain)
+config :ledgr, Ledgr.Repos.MrMunchMe,
   username: "postgres",
   password: "postgres",
   hostname: "localhost",
-  database: "ledgr_dev",
+  database: "ledgr_mr_munch_me_dev",
   stacktrace: true,
   show_sensitive_data_on_connection_error: true,
-  pool_size: 10
+  pool_size: 10,
+  priv: "priv/repos/mr_munch_me"
+
+config :ledgr, Ledgr.Repos.Viaxe,
+  username: "postgres",
+  password: "postgres",
+  hostname: "localhost",
+  database: "ledgr_viaxe_dev",
+  stacktrace: true,
+  show_sensitive_data_on_connection_error: true,
+  pool_size: 10,
+  priv: "priv/repos/viaxe"
 
 # For development, we disable any cache and enable
 # debugging and code reloading.

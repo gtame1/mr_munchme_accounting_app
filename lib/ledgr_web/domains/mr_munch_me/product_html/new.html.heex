@@ -42,7 +42,7 @@
       <button class="btn primary" type="submit">
         Create Product
       </button>
-      <.link navigate={~p"/products"} class="btn">
+      <.link navigate={dp(@domain_path_prefix, "/products")} class="btn">
         Cancel
       </.link>
     </div>
@@ -53,7 +53,7 @@
     <p style="margin: 0; color: #1e40af; font-weight: 500;">
       💡 <strong>Remember:</strong> Don't forget to create a recipe for this product after creating it. 
       Products need a recipe for orders to work properly. You can create a recipe from the 
-      <a href={~p"/recipes"} style="color: #2563eb; text-decoration: underline;">Recipes page</a>.
+      <a href={dp(@domain_path_prefix, "/recipes")} style="color: #2563eb; text-decoration: underline;">Recipes page</a>.
     </p>
   </div>
 </section>

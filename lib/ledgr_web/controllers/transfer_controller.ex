@@ -25,7 +25,7 @@ defmodule LedgrWeb.TransferController do
       {:ok, transfer} ->
         conn
         |> put_flash(:info, "Transfer recorded successfully.")
-        |> redirect(to: ~p"/transfers/#{transfer.id}")
+        |> redirect(to: dp(conn, "/transfers/#{transfer.id}"))
 
       {:error, changeset} ->
         changeset = %{changeset | action: :insert}
@@ -73,7 +73,7 @@ defmodule LedgrWeb.TransferController do
       {:ok, transfer} ->
         conn
         |> put_flash(:info, "Transfer updated successfully.")
-        |> redirect(to: ~p"/transfers/#{transfer.id}")
+        |> redirect(to: dp(conn, "/transfers/#{transfer.id}"))
 
       {:error, changeset} ->
         changeset = %{changeset | action: :update}
@@ -93,12 +93,12 @@ defmodule LedgrWeb.TransferController do
       {:ok, _transfer} ->
         conn
         |> put_flash(:info, "Transfer deleted successfully.")
-        |> redirect(to: ~p"/transfers")
+        |> redirect(to: dp(conn, "/transfers"))
 
       {:error, _changeset} ->
         conn
         |> put_flash(:error, "Failed to delete transfer.")
-        |> redirect(to: ~p"/transfers/#{transfer.id}")
+        |> redirect(to: dp(conn, "/transfers/#{transfer.id}"))
     end
   end
 end

@@ -6,7 +6,7 @@
         Journal entry #<%= @entry.id %>
       </p>
     </div>
-    <.link navigate={~p"/transactions"} class="btn">
+    <.link navigate={dp(@domain_path_prefix, "/transactions")} class="btn">
       ← Back to list
     </.link>
   </div>

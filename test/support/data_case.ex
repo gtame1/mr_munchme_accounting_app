@@ -36,8 +36,12 @@ defmodule Ledgr.DataCase do
   Sets up the sandbox based on the test tags.
   """
   def setup_sandbox(tags) do
-    pid = Ecto.Adapters.SQL.Sandbox.start_owner!(Ledgr.Repo, shared: not tags[:async])
+    # Set up sandbox for the MrMunchMe repo (default for tests)
+    pid = Ecto.Adapters.SQL.Sandbox.start_owner!(Ledgr.Repos.MrMunchMe, shared: not tags[:async])
     on_exit(fn -> Ecto.Adapters.SQL.Sandbox.stop_owner(pid) end)
+
+    # Set the active repo in process dictionary so Ledgr.Repo delegates correctly
+    Ledgr.Repo.put_active_repo(Ledgr.Repos.MrMunchMe)
   end
 
   @doc """

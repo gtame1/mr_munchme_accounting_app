@@ -36,7 +36,7 @@
                 <tr>
                   <td><%= payment.payment_date %></td>
                   <td>
-                    <.link navigate={~p"/orders/#{payment.order_id}"} class="link">
+                    <.link navigate={dp(@domain_path_prefix, "/orders/#{payment.order_id}")} class="link">
                       Order #<%= payment.order_id %>
                     </.link>
                   </td>
@@ -57,14 +57,14 @@
                   </td>
                   <td>
                     <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
-                      <.link navigate={~p"/order_payments/#{payment.id}"} class="btn btn-sm">
+                      <.link navigate={dp(@domain_path_prefix, "/order_payments/#{payment.id}")} class="btn btn-sm">
                         View
                       </.link>
-                      <.link navigate={~p"/order_payments/#{payment.id}/edit"} class="btn btn-sm">
+                      <.link navigate={dp(@domain_path_prefix, "/order_payments/#{payment.id}/edit")} class="btn btn-sm">
                         Edit
                       </.link>
                       <.link
-                        href={~p"/order_payments/#{payment.id}"}
+                        href={dp(@domain_path_prefix, "/order_payments/#{payment.id}")}
                         method="delete"
                         data-confirm="Are you sure you want to delete this payment? This will also reverse the accounting entries."
                         class="btn btn-sm"

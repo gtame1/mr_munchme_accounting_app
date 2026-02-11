@@ -14,7 +14,7 @@
         Select an account and optional date range to view transactions.
       </p>
 
-      <.form for={%{}} method="get" action={~p"/account-transactions"} class="form-grid" :let={_f}>
+      <.form for={%{}} method="get" action={dp(@domain_path_prefix, "/account-transactions")} class="form-grid" :let={_f}>
         <div class="form-block">
           <div class="field">
             <label>Account</label>
@@ -43,8 +43,8 @@
             <div style="display: flex; gap: 0.5rem;">
               <button class="btn primary" type="submit">Apply Filters</button>
               <%= if @earliest_date && @latest_date do %>
-                <.link 
-                  navigate={~p"/account-transactions?account_id=#{@filters.account_id}&all_dates=true"} 
+                <.link
+                  navigate={dp(@domain_path_prefix, "/account-transactions?account_id=#{@filters.account_id}&all_dates=true")}
                   class="btn"
                   style="white-space: nowrap;"
                 >
@@ -52,7 +52,7 @@
                 </.link>
               <% end %>
               <%= if @filters.account_id != "" do %>
-                <.link navigate={~p"/account-transactions"} class="btn">
+                <.link navigate={dp(@domain_path_prefix, "/account-transactions")} class="btn">
                   Clear Filters
                 </.link>
               <% end %>
@@ -113,7 +113,7 @@
                 <tr>
                   <td><%= transaction.line.journal_entry.date %></td>
                   <td>
-                    <.link navigate={~p"/transactions/#{transaction.line.journal_entry.id}"} class="link-text">
+                    <.link navigate={dp(@domain_path_prefix, "/transactions/#{transaction.line.journal_entry.id}")} class="link-text">
                       #<%= transaction.line.journal_entry.id %> - <%= transaction.line.journal_entry.entry_type %>
                     </.link>
                   </td>
@@ -136,7 +136,7 @@
                     <%= Ledgr.Core.Accounting.format_cents(transaction.balance) %>
                   </td>
                   <td>
-                    <.link navigate={~p"/transactions/#{transaction.line.journal_entry.id}"} class="btn btn-sm">
+                    <.link navigate={dp(@domain_path_prefix, "/transactions/#{transaction.line.journal_entry.id}")} class="btn btn-sm">
                       View
                     </.link>
                   </td>

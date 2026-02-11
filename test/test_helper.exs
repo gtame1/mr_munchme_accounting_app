@@ -1,2 +1,2 @@
 ExUnit.start()
-Ecto.Adapters.SQL.Sandbox.mode(Ledgr.Repo, :manual)
+Ecto.Adapters.SQL.Sandbox.mode(Ledgr.Repos.MrMunchMe, :manual)

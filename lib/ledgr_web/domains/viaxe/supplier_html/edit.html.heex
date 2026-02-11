@@ -1,0 +1,54 @@
+<section class="card">
+  <div class="card-header">
+    <h2 class="card-title">Edit Supplier: <%= @supplier.name %></h2>
+  </div>
+
+  <.form for={@changeset} action={@action} as={:supplier} method="put">
+    <div class="form-grid">
+      <div class="form-block">
+        <div class="field">
+          <label>Name *</label>
+          <.input type="text" field={@changeset[:name]} />
+        </div>
+
+        <div class="field">
+          <label>Category</label>
+          <.input type="select" field={@changeset[:category]} options={[
+            {"Select category...", ""},
+            {"Airline", "airline"},
+            {"Hotel", "hotel"},
+            {"Tour Operator", "tour_operator"},
+            {"Transfer", "transfer"},
+            {"Insurance", "insurance"},
+            {"Other", "other"}
+          ]} />
+        </div>
+
+        <div class="field">
+          <label>Contact Name</label>
+          <.input type="text" field={@changeset[:contact_name]} />
+        </div>
+
+        <div class="field">
+          <label>Email</label>
+          <.input type="email" field={@changeset[:email]} />
+        </div>
+
+        <div class="field">
+          <label>Phone</label>
+          <.input type="text" field={@changeset[:phone]} />
+        </div>
+
+        <div class="field" style="grid-column: 1 / -1;">
+          <label>Notes</label>
+          <.input type="textarea" field={@changeset[:notes]} />
+        </div>
+      </div>
+    </div>
+
+    <div class="actions" style="margin-top: 1rem;">
+      <button type="submit" class="btn primary">Update Supplier</button>
+      <.link navigate={dp(@domain_path_prefix, "/suppliers")} class="btn">Cancel</.link>
+    </div>
+  </.form>
+</section>

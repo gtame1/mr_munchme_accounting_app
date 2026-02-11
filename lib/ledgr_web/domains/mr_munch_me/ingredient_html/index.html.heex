@@ -7,7 +7,7 @@
   </div>
 
   <div class="actions" style="margin-bottom: 0.75rem;">
-    <.link navigate={~p"/ingredients/new"} class="btn primary">
+    <.link navigate={dp(@domain_path_prefix, "/ingredients/new")} class="btn primary">
       + New Ingredient
     </.link>
   </div>
@@ -30,7 +30,7 @@
           <td><%= ingredient.unit %></td>
           <td><%= format_currency(ingredient.cost_per_unit_cents || 0) %></td>
           <td>
-            <.link navigate={~p"/ingredients/#{ingredient.id}/edit"} class="btn btn-sm">
+            <.link navigate={dp(@domain_path_prefix, "/ingredients/#{ingredient.id}/edit")} class="btn btn-sm">
               Edit
             </.link>
           </td>

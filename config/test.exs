@@ -5,13 +5,23 @@ import Config
 # The MIX_TEST_PARTITION environment variable can be used
 # to provide built-in test partitioning in CI environment.
 # Run `mix help test` for more information.
-config :ledgr, Ledgr.Repo,
+config :ledgr, Ledgr.Repos.MrMunchMe,
   username: "postgres",
   password: "postgres",
   hostname: "localhost",
-  database: "ledgr_test#{System.get_env("MIX_TEST_PARTITION")}",
+  database: "ledgr_mr_munch_me_test#{System.get_env("MIX_TEST_PARTITION")}",
   pool: Ecto.Adapters.SQL.Sandbox,
-  pool_size: System.schedulers_online() * 2
+  pool_size: System.schedulers_online() * 2,
+  priv: "priv/repos/mr_munch_me"
+
+config :ledgr, Ledgr.Repos.Viaxe,
+  username: "postgres",
+  password: "postgres",
+  hostname: "localhost",
+  database: "ledgr_viaxe_test#{System.get_env("MIX_TEST_PARTITION")}",
+  pool: Ecto.Adapters.SQL.Sandbox,
+  pool_size: System.schedulers_online() * 2,
+  priv: "priv/repos/viaxe"
 
 # We don't run a server during test. If one is required,
 # you can enable the server option below.

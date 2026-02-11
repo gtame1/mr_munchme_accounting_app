@@ -51,7 +51,7 @@
           <button class="btn primary" type="submit">
             Update Customer
           </button>
-          <.link navigate={~p"/customers/#{@customer.id}"} class="btn">
+          <.link navigate={dp(@domain_path_prefix, "/customers/#{@customer.id}")} class="btn">
             Cancel
           </.link>
         </div>

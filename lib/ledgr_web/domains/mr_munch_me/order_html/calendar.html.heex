@@ -6,24 +6,24 @@
     </div>
     <div class="calendar-header-actions">
       <.link 
-        navigate={~p"/orders/calendar?year=#{prev_month(@year, @month).year}&month=#{prev_month(@year, @month).month}"}
+        navigate={dp(@domain_path_prefix, "/orders/calendar?year=#{prev_month(@year, @month).year}&month=#{prev_month(@year, @month).month}")}
         class="btn btn-sm"
       >
         ← Previous
       </.link>
       <.link 
-        navigate={~p"/orders/calendar?year=#{Date.utc_today().year}&month=#{Date.utc_today().month}"}
+        navigate={dp(@domain_path_prefix, "/orders/calendar?year=#{Date.utc_today().year}&month=#{Date.utc_today().month}")}
         class="btn btn-sm"
       >
         Today
       </.link>
       <.link 
-        navigate={~p"/orders/calendar?year=#{next_month(@year, @month).year}&month=#{next_month(@year, @month).month}"}
+        navigate={dp(@domain_path_prefix, "/orders/calendar?year=#{next_month(@year, @month).year}&month=#{next_month(@year, @month).month}")}
         class="btn btn-sm"
       >
         Next →
       </.link>
-      <.link navigate={~p"/orders"} class="btn btn-sm primary">
+      <.link navigate={dp(@domain_path_prefix, "/orders")} class="btn btn-sm primary">
         View List
       </.link>
     </div>
@@ -71,7 +71,7 @@
                         true -> ""
                       end
                     }></span>
-                    <.link navigate={~p"/orders/#{order.id}"} class="calendar-order-link">
+                    <.link navigate={dp(@domain_path_prefix, "/orders/#{order.id}")} class="calendar-order-link">
                       <%= order.customer_name %> - <%= order.product && order.product.name %><%= if (order.quantity || 1) > 1, do: " x#{order.quantity}" %>
                     </.link>
                   </div>

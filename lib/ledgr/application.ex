@@ -9,11 +9,10 @@ defmodule Ledgr.Application do
   def start(_type, _args) do
     children = [
       LedgrWeb.Telemetry,
-      Ledgr.Repo,
+      Ledgr.Repos.MrMunchMe,
+      Ledgr.Repos.Viaxe,
       {DNSCluster, query: Application.get_env(:ledgr, :dns_cluster_query) || :ignore},
       {Phoenix.PubSub, name: Ledgr.PubSub},
-      # Start a worker by calling: Ledgr.Worker.start_link(arg)
-      # {Ledgr.Worker, arg},
       # Start to serve requests, typically the last entry
       LedgrWeb.Endpoint
     ]

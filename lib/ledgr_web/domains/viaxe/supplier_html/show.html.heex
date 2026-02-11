@@ -1,0 +1,34 @@
+<section class="card">
+  <div class="card-header">
+    <h2 class="card-title"><%= @supplier.name %></h2>
+    <p class="card-subtitle">Supplier details</p>
+  </div>
+
+  <div class="detail-grid" style="display: grid; grid-template-columns: auto 1fr; gap: 0.5rem 1.5rem; margin-bottom: 1.5rem;">
+    <strong>Category:</strong>
+    <span>
+      <%= if @supplier.category do %>
+        <%= String.capitalize(String.replace(@supplier.category, "_", " ")) %>
+      <% else %>
+        —
+      <% end %>
+    </span>
+
+    <strong>Contact:</strong>
+    <span><%= @supplier.contact_name || "—" %></span>
+
+    <strong>Email:</strong>
+    <span><%= @supplier.email || "—" %></span>
+
+    <strong>Phone:</strong>
+    <span><%= @supplier.phone || "—" %></span>
+
+    <strong>Notes:</strong>
+    <span><%= @supplier.notes || "—" %></span>
+  </div>
+
+  <div class="actions">
+    <.link navigate={dp(@domain_path_prefix, "/suppliers/#{@supplier.id}/edit")} class="btn primary">Edit</.link>
+    <.link navigate={dp(@domain_path_prefix, "/suppliers")} class="btn">Back to Suppliers</.link>
+  </div>
+</section>

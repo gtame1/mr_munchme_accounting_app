@@ -5,6 +5,7 @@ defmodule LedgrWeb.ReconciliationController do
   alias Ledgr.Core.Reconciliation
   alias Ledgr.Core.Accounting
   alias Ledgr.Domains.MrMunchMe.Inventory
+  alias Ledgr.Domains.MrMunchMe.Reconciliation, as: InventoryReconciliation
   alias Ledgr.Core.Settings
 
   # ---------- Accounting Reconciliation ----------
@@ -37,7 +38,7 @@ defmodule LedgrWeb.ReconciliationController do
     if is_nil(account_id) or is_nil(actual_balance_str) or is_nil(date_str) do
       conn
       |> put_flash(:error, "Missing required fields")
-      |> redirect(to: ~p"/reconciliation/accounting")
+      |> redirect(to: dp(conn, "/reconciliation/accounting"))
     else
       _account = Accounting.get_account!(account_id)
 
@@ -63,12 +64,12 @@ defmodule LedgrWeb.ReconciliationController do
       {:ok, _journal_entry} ->
         conn
         |> put_flash(:info, "Reconciliation adjustment created successfully")
-        |> redirect(to: ~p"/reconciliation/accounting")
+        |> redirect(to: dp(conn, "/reconciliation/accounting"))
 
       {:error, reason} when is_binary(reason) ->
         conn
         |> put_flash(:error, reason)
-        |> redirect(to: ~p"/reconciliation/accounting")
+        |> redirect(to: dp(conn, "/reconciliation/accounting"))
 
       {:error, changeset} ->
         error_msg =
@@ -79,7 +80,7 @@ defmodule LedgrWeb.ReconciliationController do
 
         conn
         |> put_flash(:error, error_msg)
-        |> redirect(to: ~p"/reconciliation/accounting")
+        |> redirect(to: dp(conn, "/reconciliation/accounting"))
       end
     end
   end
@@ -121,13 +122,13 @@ defmodule LedgrWeb.ReconciliationController do
 
     conn
     |> put_flash(:info, flash_msg)
-    |> redirect(to: ~p"/reconciliation/accounting?as_of=#{as_of}")
+    |> redirect(to: dp(conn, "/reconciliation/accounting?as_of=#{as_of}"))
   end
 
   # ---------- Inventory Reconciliation ----------
 
   def inventory_index(conn, _params) do
-    inventory_items = Reconciliation.list_inventory_for_reconciliation()
+    inventory_items = InventoryReconciliation.list_inventory_for_reconciliation()
     last_reconciled_date = Settings.get_last_inventory_reconciled_date()
     locations = Inventory.list_locations()
 
@@ -153,7 +154,7 @@ defmodule LedgrWeb.ReconciliationController do
       Logger.warning("Missing required fields in inventory adjust")
       conn
       |> put_flash(:error, "Missing required fields")
-      |> redirect(to: ~p"/reconciliation/inventory")
+      |> redirect(to: dp(conn, "/reconciliation/inventory"))
     else
       try do
         actual_quantity = String.to_integer(actual_quantity_str)
@@ -161,7 +162,7 @@ defmodule LedgrWeb.ReconciliationController do
 
         Logger.info("Calling create_inventory_reconciliation with ingredient_id: #{ingredient_id}, location_id: #{location_id}, actual_quantity: #{actual_quantity}, adjustment_date: #{adjustment_date}")
 
-        case Reconciliation.create_inventory_reconciliation(
+        case InventoryReconciliation.create_inventory_reconciliation(
                ingredient_id,
                location_id,
                actual_quantity,
@@ -172,13 +173,13 @@ defmodule LedgrWeb.ReconciliationController do
             Logger.info("Inventory reconciliation successful: #{inspect(result)}")
             conn
             |> put_flash(:info, "Inventory reconciliation adjustment created successfully")
-            |> redirect(to: ~p"/reconciliation/inventory")
+            |> redirect(to: dp(conn, "/reconciliation/inventory"))
 
           {:error, reason} when is_binary(reason) ->
             Logger.warning("Inventory reconciliation error (string): #{reason}")
             conn
             |> put_flash(:error, reason)
-            |> redirect(to: ~p"/reconciliation/inventory")
+            |> redirect(to: dp(conn, "/reconciliation/inventory"))
 
           {:error, changeset} ->
             Logger.error("Inventory reconciliation error (changeset): #{inspect(changeset.errors)}")
@@ -190,14 +191,14 @@ defmodule LedgrWeb.ReconciliationController do
 
             conn
             |> put_flash(:error, error_msg)
-            |> redirect(to: ~p"/reconciliation/inventory")
+            |> redirect(to: dp(conn, "/reconciliation/inventory"))
         end
       rescue
         e ->
           Logger.error("Exception in inventory_adjust: #{inspect(e)} - #{Exception.format(:error, e, __STACKTRACE__)}")
           conn
           |> put_flash(:error, "Error: #{Exception.message(e)}")
-          |> redirect(to: ~p"/reconciliation/inventory")
+          |> redirect(to: dp(conn, "/reconciliation/inventory"))
       end
     end
   end
@@ -212,7 +213,7 @@ defmodule LedgrWeb.ReconciliationController do
           [ingredient_id, location_id] ->
             case Integer.parse(actual_quantity_str) do
               {actual_quantity, _} ->
-                case Reconciliation.create_inventory_reconciliation(
+                case InventoryReconciliation.create_inventory_reconciliation(
                        ingredient_id,
                        location_id,
                        actual_quantity,
@@ -243,7 +244,7 @@ defmodule LedgrWeb.ReconciliationController do
 
     conn
     |> put_flash(:info, flash_msg)
-    |> redirect(to: ~p"/reconciliation/inventory")
+    |> redirect(to: dp(conn, "/reconciliation/inventory"))
   end
 
   def inventory_quick_transfer(conn, params) do
@@ -264,18 +265,18 @@ defmodule LedgrWeb.ReconciliationController do
         {:ok, _result} ->
           conn
           |> put_flash(:info, "Transferred #{quantity} #{ingredient_code} from #{from_location_code} to #{to_location_code}")
-          |> redirect(to: ~p"/reconciliation/inventory")
+          |> redirect(to: dp(conn, "/reconciliation/inventory"))
 
         {:error, reason} ->
           conn
           |> put_flash(:error, "Transfer failed: #{inspect(reason)}")
-          |> redirect(to: ~p"/reconciliation/inventory")
+          |> redirect(to: dp(conn, "/reconciliation/inventory"))
       end
     else
       _ ->
         conn
         |> put_flash(:error, "Invalid transfer — check quantity and locations")
-        |> redirect(to: ~p"/reconciliation/inventory")
+        |> redirect(to: dp(conn, "/reconciliation/inventory"))
     end
   end
 end

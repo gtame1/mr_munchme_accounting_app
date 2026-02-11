@@ -12,7 +12,7 @@
 
         <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.75rem; margin-bottom: 1rem;">
           <!-- Date filter -->
-          <.form for={%{}} method="get" action={~p"/reconciliation/accounting"} class="form-grid" style="margin: 0;" :let={_f}>
+          <.form for={%{}} method="get" action={dp(@domain_path_prefix, "/reconciliation/accounting")} class="form-grid" style="margin: 0;" :let={_f}>
             <div class="form-block" style="margin: 0;">
               <div class="field" style="margin: 0;">
                 <label>As of date</label>
@@ -65,7 +65,7 @@
                     <.form
                       for={%{}}
                       method="post"
-                      action={~p"/reconciliation/accounting/adjust"}
+                      action={dp(@domain_path_prefix, "/reconciliation/accounting/adjust")}
                       class="inline-form"
                       id={"adjust-form-#{account.id}"}
                     >
@@ -115,7 +115,7 @@
                     <.form
                       for={%{}}
                       method="post"
-                      action={~p"/reconciliation/accounting/adjust"}
+                      action={dp(@domain_path_prefix, "/reconciliation/accounting/adjust")}
                       class="inline-form"
                       id={"adjust-form-#{account.id}"}
                     >
@@ -169,7 +169,7 @@
         <.form
           for={%{}}
           method="post"
-          action={~p"/reconciliation/accounting/reconcile_all"}
+          action={dp(@domain_path_prefix, "/reconciliation/accounting/reconcile_all")}
           id="reconcile-all-form"
           style="display: none;"
         >

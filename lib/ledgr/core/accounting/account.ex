@@ -8,6 +8,7 @@ defmodule Ledgr.Core.Accounting.Account do
     field :type, :string
     field :normal_balance, :string
     field :is_cash, :boolean, default: false
+    field :is_cogs, :boolean, default: false
 
     has_many :journal_lines, Ledgr.Core.Accounting.JournalLine
 
@@ -20,7 +21,7 @@ defmodule Ledgr.Core.Accounting.Account do
 
   def changeset(account, attrs) do
     account
-    |> cast(attrs, [:code, :name, :type, :normal_balance, :is_cash])
+    |> cast(attrs, [:code, :name, :type, :normal_balance, :is_cash, :is_cogs])
     |> validate_required(@required_fields)
     |> validate_inclusion(:type, @types)
     |> validate_inclusion(:normal_balance, @normal_balances)

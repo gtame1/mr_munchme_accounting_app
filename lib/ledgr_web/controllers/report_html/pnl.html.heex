@@ -12,7 +12,7 @@
         Default is current month. Adjust dates to see another period.
       </p>
 
-      <.form for={%{}} method="get" action={~p"/reports/pnl"} class="form-grid" :let={_f}>
+      <.form for={%{}} method="get" action={dp(@domain_path_prefix, "/reports/pnl")} class="form-grid" :let={_f}>
         <div class="form-block">
           <div class="field">
             <label>Start date</label>
@@ -30,10 +30,10 @@
               <button type="submit" class="btn primary">
                 Update period
               </button>
-              <.link navigate={~p"/reports/pnl?period=last_7_days"} class="btn">Last 7 days</.link>
-              <.link navigate={~p"/reports/pnl?period=this_month"} class="btn">This month</.link>
-              <.link navigate={~p"/reports/pnl?period=last_90_days"} class="btn">Last 90 days</.link>
-              <.link navigate={~p"/reports/pnl?period=all_time"} class="btn">All time</.link>
+              <.link navigate={dp(@domain_path_prefix, "/reports/pnl?period=last_7_days")} class="btn">Last 7 days</.link>
+              <.link navigate={dp(@domain_path_prefix, "/reports/pnl?period=this_month")} class="btn">This month</.link>
+              <.link navigate={dp(@domain_path_prefix, "/reports/pnl?period=last_90_days")} class="btn">Last 90 days</.link>
+              <.link navigate={dp(@domain_path_prefix, "/reports/pnl?period=all_time")} class="btn">All time</.link>
             </div>
           </div>
         </div>

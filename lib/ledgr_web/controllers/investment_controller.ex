@@ -57,7 +57,7 @@ defmodule LedgrWeb.InvestmentController do
       {:ok, _contribution} ->
         conn
         |> put_flash(:info, "Investment recorded successfully.")
-        |> redirect(to: ~p"/investments")
+        |> redirect(to: dp(conn, "/investments"))
 
       {:error, changeset} ->
         partner_options =
@@ -79,7 +79,7 @@ defmodule LedgrWeb.InvestmentController do
       {:ok, _withdrawal} ->
         conn
         |> put_flash(:info, "Withdrawal recorded successfully.")
-        |> redirect(to: ~p"/investments")
+        |> redirect(to: dp(conn, "/investments"))
 
       {:error, changeset} ->
         partner_options =

@@ -13,7 +13,7 @@
       <.form
         for={@changeset}
         as={:contribution}
-        action={~p"/investments"}
+        action={dp(@domain_path_prefix, "/investments")}
         class="form-grid"
         :let={f}
       >
@@ -79,7 +79,7 @@
           <button type="submit" class="btn primary">
             Save Investment
           </button>
-          <.link navigate={~p"/investments"} class="btn">
+          <.link navigate={dp(@domain_path_prefix, "/investments")} class="btn">
             Cancel
           </.link>
         </div>

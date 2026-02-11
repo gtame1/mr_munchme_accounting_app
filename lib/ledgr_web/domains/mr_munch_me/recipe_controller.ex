@@ -47,7 +47,7 @@ defmodule LedgrWeb.Domains.MrMunchMe.RecipeController do
     render(conn, :new,
       changeset: changeset,
       form: form,
-      action: ~p"/recipes",
+      action: dp(conn, "/recipes"),
       product_options: Orders.product_select_options(),
       ingredient_options: ingredient_options,
       ingredient_options_json: ingredient_options_json
@@ -59,7 +59,7 @@ defmodule LedgrWeb.Domains.MrMunchMe.RecipeController do
       {:ok, _recipe} ->
         conn
         |> put_flash(:info, "Recipe created successfully.")
-        |> redirect(to: ~p"/recipes")
+        |> redirect(to: dp(conn, "/recipes"))
 
       {:error, %Ecto.Changeset{} = changeset} ->
         changeset = Map.put(changeset, :action, :insert)
@@ -71,7 +71,7 @@ defmodule LedgrWeb.Domains.MrMunchMe.RecipeController do
         render(conn, :new,
           changeset: changeset,
           form: form,
-          action: ~p"/recipes",
+          action: dp(conn, "/recipes"),
           product_options: Orders.product_select_options(),
           ingredient_options: ingredient_options,
           ingredient_options_json: ingredient_options_json
@@ -131,7 +131,7 @@ defmodule LedgrWeb.Domains.MrMunchMe.RecipeController do
       original_recipe: original_recipe,
       changeset: changeset,
       form: form,
-      action: ~p"/recipes/new_version/#{original_recipe.id}",
+      action: dp(conn, "/recipes/new_version/#{original_recipe.id}"),
       product_options: Orders.product_select_options(),
       ingredient_options: ingredient_options,
       ingredient_options_json: ingredient_options_json
@@ -145,7 +145,7 @@ defmodule LedgrWeb.Domains.MrMunchMe.RecipeController do
       {:ok, _new_recipe} ->
         conn
         |> put_flash(:info, "New recipe version created successfully. The original recipe remains unchanged for historical accuracy.")
-        |> redirect(to: ~p"/recipes")
+        |> redirect(to: dp(conn, "/recipes"))
 
       {:error, %Ecto.Changeset{} = changeset} ->
         # Debug: Log errors for troubleshooting
@@ -168,7 +168,7 @@ defmodule LedgrWeb.Domains.MrMunchMe.RecipeController do
           original_recipe: original_recipe,
           changeset: changeset,
           form: form,
-          action: ~p"/recipes/new_version/#{original_recipe.id}",
+          action: dp(conn, "/recipes/new_version/#{original_recipe.id}"),
           product_options: Orders.product_select_options(),
           ingredient_options: ingredient_options,
           ingredient_options_json: ingredient_options_json
@@ -182,7 +182,7 @@ defmodule LedgrWeb.Domains.MrMunchMe.RecipeController do
 
     conn
     |> put_flash(:info, "Recipe deleted successfully.")
-    |> redirect(to: ~p"/recipes")
+    |> redirect(to: dp(conn, "/recipes"))
   end
 end
 

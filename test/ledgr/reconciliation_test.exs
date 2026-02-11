@@ -2,6 +2,7 @@ defmodule Ledgr.Core.ReconciliationTest do
   use Ledgr.DataCase, async: true
 
   alias Ledgr.Core.{Reconciliation, Accounting}
+  alias Ledgr.Domains.MrMunchMe.Reconciliation, as: InventoryReconciliation
   alias Ledgr.Domains.MrMunchMe.Inventory
   alias Ledgr.Repo
   alias Ledgr.Domains.MrMunchMe.Inventory.{Ingredient, Location}
@@ -212,7 +213,7 @@ defmodule Ledgr.Core.ReconciliationTest do
     end
 
     test "get_inventory_quantity/2 returns 0 for no stock", %{ingredient: ingredient, location: location} do
-      quantity = Reconciliation.get_inventory_quantity(ingredient.id, location.id)
+      quantity = InventoryReconciliation.get_inventory_quantity(ingredient.id, location.id)
       assert quantity == 0
     end
 
@@ -230,7 +231,7 @@ defmodule Ledgr.Core.ReconciliationTest do
       }
       {:ok, _} = Inventory.create_purchase(purchase_attrs)
 
-      quantity = Reconciliation.get_inventory_quantity(ingredient.id, location.id)
+      quantity = InventoryReconciliation.get_inventory_quantity(ingredient.id, location.id)
       assert quantity == 500
     end
 
@@ -248,7 +249,7 @@ defmodule Ledgr.Core.ReconciliationTest do
       }
       {:ok, _} = Inventory.create_purchase(purchase_attrs)
 
-      result = Reconciliation.list_inventory_for_reconciliation()
+      result = InventoryReconciliation.list_inventory_for_reconciliation()
 
       assert is_list(result)
       # Find our ingredient/location combo - the result has :ingredient and :location associations
@@ -275,7 +276,7 @@ defmodule Ledgr.Core.ReconciliationTest do
       {:ok, _} = Inventory.create_purchase(purchase_attrs)
 
       # System shows 100, actual is 150
-      {:ok, _} = Reconciliation.create_inventory_reconciliation(
+      {:ok, _} = InventoryReconciliation.create_inventory_reconciliation(
         ingredient.id,
         location.id,
         150,
@@ -284,7 +285,7 @@ defmodule Ledgr.Core.ReconciliationTest do
       )
 
       # Check new quantity
-      quantity = Reconciliation.get_inventory_quantity(ingredient.id, location.id)
+      quantity = InventoryReconciliation.get_inventory_quantity(ingredient.id, location.id)
       assert quantity == 150
     end
 
@@ -303,7 +304,7 @@ defmodule Ledgr.Core.ReconciliationTest do
       {:ok, _} = Inventory.create_purchase(purchase_attrs)
 
       # System shows 200, actual is 150
-      {:ok, _} = Reconciliation.create_inventory_reconciliation(
+      {:ok, _} = InventoryReconciliation.create_inventory_reconciliation(
         ingredient.id,
         location.id,
         150,
@@ -312,7 +313,7 @@ defmodule Ledgr.Core.ReconciliationTest do
       )
 
       # Check new quantity
-      quantity = Reconciliation.get_inventory_quantity(ingredient.id, location.id)
+      quantity = InventoryReconciliation.get_inventory_quantity(ingredient.id, location.id)
       assert quantity == 150
     end
 
@@ -331,7 +332,7 @@ defmodule Ledgr.Core.ReconciliationTest do
       {:ok, _} = Inventory.create_purchase(purchase_attrs)
 
       # System shows 100, actual is 100
-      result = Reconciliation.create_inventory_reconciliation(
+      result = InventoryReconciliation.create_inventory_reconciliation(
         ingredient.id,
         location.id,
         100,

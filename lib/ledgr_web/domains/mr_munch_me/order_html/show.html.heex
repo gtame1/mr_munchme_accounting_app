@@ -1,7 +1,7 @@
 <%!-- ── Header ── --%>
 <div style="display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap; margin-bottom: 1rem;">
   <div style="display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;">
-    <.link navigate={~p"/orders"} style="color: var(--text-muted); text-decoration: none; font-size: 1.1rem;">←</.link>
+    <.link navigate={dp(@domain_path_prefix, "/orders")} style="color: var(--text-muted); text-decoration: none; font-size: 1.1rem;">←</.link>
     <h2 style="margin: 0; font-size: 1.15rem; font-weight: 600;">Order #<%= @order.id %></h2>
     <.status_badge status={@order.status} />
     <%= if @order.is_gift do %>
@@ -12,7 +12,7 @@
     </span>
     <.location_badge location={@order.prep_location} />
   </div>
-  <.link navigate={~p"/orders/#{@order.id}/edit"} class="btn">Edit</.link>
+  <.link navigate={dp(@domain_path_prefix, "/orders/#{@order.id}/edit")} class="btn">Edit</.link>
 </div>
 
 <%= if @order.is_gift do %>
@@ -185,7 +185,7 @@
                 <td><%= p.method %></td>
                 <td><%= p.note %></td>
                 <td>
-                  <.link navigate={~p"/order_payments/#{p.id}"} class="btn btn-sm">View</.link>
+                  <.link navigate={dp(@domain_path_prefix, "/order_payments/#{p.id}")} class="btn btn-sm">View</.link>
                 </td>
               </tr>
             <% end %>
@@ -199,32 +199,32 @@
 <%!-- ── Actions ── --%>
 <div style="margin-top: 1rem; display: flex; gap: 0.5rem; flex-wrap: wrap;">
   <%= if @order.status == "new_order" do %>
-    <.form for={%{}} as={:status} action={~p"/orders/#{@order.id}/status"} method="post" style="margin: 0;" onsubmit="return confirm('Are you sure you want to move this order to In Prep?\n\nMake sure you have reviewed the ingredients. Inventory will be deducted and ingredients will be locked after this step.');">
+    <.form for={%{}} as={:status} action={dp(@domain_path_prefix, "/orders/#{@order.id}/status")} method="post" style="margin: 0;" onsubmit="return confirm('Are you sure you want to move this order to In Prep?\n\nMake sure you have reviewed the ingredients. Inventory will be deducted and ingredients will be locked after this step.');">
       <input type="hidden" name="status[status]" value="in_prep" />
       <button class="btn primary" type="submit">Confirm & Move to In Prep</button>
     </.form>
   <% end %>
   <%= if @order.status == "in_prep" do %>
-    <.form for={%{}} as={:status} action={~p"/orders/#{@order.id}/status"} method="post" style="margin: 0;">
+    <.form for={%{}} as={:status} action={dp(@domain_path_prefix, "/orders/#{@order.id}/status")} method="post" style="margin: 0;">
       <input type="hidden" name="status[status]" value="ready" />
       <button class="btn primary" type="submit">Mark as Ready</button>
     </.form>
   <% end %>
   <%= if @order.status == "ready" do %>
-    <.form for={%{}} as={:status} action={~p"/orders/#{@order.id}/status"} method="post" style="margin: 0;">
+    <.form for={%{}} as={:status} action={dp(@domain_path_prefix, "/orders/#{@order.id}/status")} method="post" style="margin: 0;">
       <input type="hidden" name="status[status]" value="delivered" />
       <button class="btn primary" type="submit">Mark as Delivered</button>
     </.form>
   <% end %>
 
   <%= unless @order.is_gift do %>
-    <.link navigate={~p"/orders/#{@order.id}/payments/new"} class="btn payment">
+    <.link navigate={dp(@domain_path_prefix, "/orders/#{@order.id}/payments/new")} class="btn payment">
       Record Payment
     </.link>
   <% end %>
 
   <%= if @order.status not in ["delivered", "canceled", "ready", "in_prep"] do %>
-    <.form for={%{}} as={:status} action={~p"/orders/#{@order.id}/status"} method="post" style="margin: 0;">
+    <.form for={%{}} as={:status} action={dp(@domain_path_prefix, "/orders/#{@order.id}/status")} method="post" style="margin: 0;">
       <input type="hidden" name="status[status]" value="canceled" />
       <button class="btn danger" type="submit">Cancel Order</button>
     </.form>
@@ -241,7 +241,7 @@
   </div>
 
   <%= if @order.status == "new_order" do %>
-    <.form for={%{}} as={:ingredients} action={~p"/orders/#{@order.id}/ingredients"} method="post" id="ingredients-form">
+    <.form for={%{}} as={:ingredients} action={dp(@domain_path_prefix, "/orders/#{@order.id}/ingredients")} method="post" id="ingredients-form">
       <div id="ingredients-container" style="margin-top: 0.75rem;">
         <%= for {ingredient, idx} <- Enum.with_index(@current_ingredients) do %>
           <div class="ingredient-row" style="display: flex; gap: 0.75rem; align-items: center; margin-bottom: 0.5rem;">

@@ -3,16 +3,14 @@ defmodule LedgrWeb.ReportController do
 
   alias Ledgr.Core.Accounting
   alias Ledgr.Core.Reporting
-  alias Ledgr.Domains.MrMunchMe.Reporting, as: DomainReporting
-  alias Ledgr.Domains.MrMunchMe.Orders
-  alias Ledgr.Domains.MrMunchMe.Inventory
-  alias Ledgr.Domains.MrMunchMe.Inventory.Verification
+  alias Ledgr.Domain
 
   def dashboard(conn, params) do
+    domain = Domain.current()
     {start_date, end_date} = resolve_period(params)
-    {earliest_date, latest_date} = data_date_range()
+    {earliest_date, latest_date} = domain.data_date_range()
 
-    metrics = DomainReporting.dashboard_metrics(start_date, end_date)
+    metrics = domain.dashboard_metrics(start_date, end_date)
 
     render(conn, :dashboard,
       metrics: metrics,
@@ -25,8 +23,9 @@ defmodule LedgrWeb.ReportController do
 
   # P&L for a period (default: current month)
   def pnl(conn, params) do
+    domain = Domain.current()
     {start_date, end_date} = resolve_period(params)
-    {earliest_date, latest_date} = data_date_range()
+    {earliest_date, latest_date} = domain.data_date_range()
 
     summary  = Accounting.profit_and_loss(start_date, end_date)
     monthly  = Accounting.profit_and_loss_monthly(5)  # last 6 months including current
@@ -72,25 +71,26 @@ defmodule LedgrWeb.ReportController do
       {:ok, :nothing_to_close} ->
         conn
         |> put_flash(:info, "No income or drawings to close for #{close_date}.")
-        |> redirect(to: ~p"/reports/balance_sheet")
+        |> redirect(to: dp(conn, "/reports/balance_sheet"))
 
       {:ok, _entry} ->
         conn
         |> put_flash(:info, "Year-end close completed successfully for #{close_date}.")
-        |> redirect(to: ~p"/reports/balance_sheet")
+        |> redirect(to: dp(conn, "/reports/balance_sheet"))
 
       {:error, reason} ->
         conn
         |> put_flash(:error, "Year-end close failed: #{reason}")
-        |> redirect(to: ~p"/reports/balance_sheet")
+        |> redirect(to: dp(conn, "/reports/balance_sheet"))
     end
   end
 
   def unit_economics(conn, params) do
+    domain = Domain.current()
     {start_date, end_date} = resolve_period(params)
 
     # Get product_id from params, default to first product if not provided
-    product_options = Orders.product_select_options()
+    product_options = domain.product_select_options()
 
     product_id =
       case Map.get(params, "product_id") do
@@ -115,7 +115,7 @@ defmodule LedgrWeb.ReportController do
     unit_economics_data =
       if product_id do
         try do
-          DomainReporting.unit_economics(product_id, start_date, end_date)
+          domain.unit_economics(product_id, start_date, end_date)
         rescue
           Ecto.NoResultsError ->
             # Product doesn't exist - return nil
@@ -125,7 +125,7 @@ defmodule LedgrWeb.ReportController do
         nil
       end
 
-    {earliest_date, latest_date} = data_date_range()
+    {earliest_date, latest_date} = domain.data_date_range()
 
     render(conn, :unit_economics,
       unit_economics: unit_economics_data,
@@ -139,8 +139,9 @@ defmodule LedgrWeb.ReportController do
   end
 
   def cash_flow(conn, params) do
+    domain = Domain.current()
     {start_date, end_date} = resolve_period(params)
-    {earliest_date, latest_date} = data_date_range()
+    {earliest_date, latest_date} = domain.data_date_range()
 
     cash_flow_data = Reporting.cash_flow(start_date, end_date)
 
@@ -154,10 +155,11 @@ defmodule LedgrWeb.ReportController do
   end
 
   def unit_economics_list(conn, params) do
+    domain = Domain.current()
     {start_date, end_date} = resolve_period(params)
-    {earliest_date, latest_date} = data_date_range()
+    {earliest_date, latest_date} = domain.data_date_range()
 
-    all_unit_economics = DomainReporting.all_unit_economics(start_date, end_date)
+    all_unit_economics = domain.all_unit_economics(start_date, end_date)
 
     # Calculate totals across all products
     totals = calculate_totals(all_unit_economics)
@@ -218,32 +220,35 @@ defmodule LedgrWeb.ReportController do
   end
 
   def diagnostics(conn, params) do
+    domain = Domain.current()
+
     # Handle repair action (POST request)
     if conn.method == "POST" do
       repair_type = Map.get(params, "repair_type", "inventory_quantities")
 
-      case Verification.run_repair(repair_type) do
+      case domain.run_repair(repair_type) do
         {:ok, repairs_list} when is_list(repairs_list) ->
           conn
           |> put_session(:repair_results, %{type: repair_type, count: length(repairs_list)})
-          |> redirect(to: ~p"/reports/diagnostics?run=true#repair-results")
+          |> redirect(to: dp(conn, "/reports/diagnostics?run=true#repair-results"))
 
         {:error, reason} ->
           conn
           |> put_session(:repair_results, %{type: repair_type, error: inspect(reason)})
-          |> redirect(to: ~p"/reports/diagnostics?run=true#repair-results")
+          |> redirect(to: dp(conn, "/reports/diagnostics?run=true#repair-results"))
       end
     else
       # GET request
       if Map.get(params, "run") == "true" do
         # Phase 2: Actually run checks and render results
-        results = Verification.run_all_checks()
+        results = domain.verification_checks()
         repair_results = get_session(conn, :repair_results)
         conn = delete_session(conn, :repair_results)
 
         render(conn, :diagnostics,
           results: results,
           repair_results: repair_results,
+          repairable_checks: domain.repairable_checks(),
           loading: false
         )
       else
@@ -253,6 +258,7 @@ defmodule LedgrWeb.ReportController do
         render(conn, :diagnostics,
           results: %{},
           repair_results: repair_results,
+          repairable_checks: MapSet.new(),
           loading: true
         )
       end
@@ -260,19 +266,6 @@ defmodule LedgrWeb.ReportController do
   end
 
   # Helpers
-
-  # Returns the broadest date range across all data sources (inventory movements + journal entries)
-  defp data_date_range do
-    {inv_earliest, inv_latest} = Inventory.movement_date_range()
-    {je_earliest, je_latest} = Accounting.journal_entry_date_range()
-
-    dates = [inv_earliest, inv_latest, je_earliest, je_latest] |> Enum.reject(&is_nil/1)
-
-    case dates do
-      [] -> {nil, nil}
-      _ -> {Enum.min(dates, Date), Enum.max(dates, Date)}
-    end
-  end
 
   defp resolve_period(%{"period" => "last_7_days"}) do
     today = Date.utc_today()
@@ -291,7 +284,8 @@ defmodule LedgrWeb.ReportController do
   end
 
   defp resolve_period(%{"all_dates" => "true"}) do
-    {earliest, latest} = data_date_range()
+    domain = Domain.current()
+    {earliest, latest} = domain.data_date_range()
 
     case {earliest, latest} do
       {nil, nil} ->

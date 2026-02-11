@@ -2,6 +2,7 @@ defmodule Ledgr.Core.AccountingTest do
   use Ledgr.DataCase, async: true
 
   alias Ledgr.Core.Accounting
+  alias Ledgr.Domains.MrMunchMe.OrderAccounting
   alias Ledgr.Repo
   alias Ledgr.Core.Accounting.{Account, JournalEntry, MoneyTransfer}
   alias Ledgr.Domains.MrMunchMe.Orders.{OrderPayment}
@@ -647,12 +648,12 @@ defmodule Ledgr.Core.AccountingTest do
 
   describe "shipping_fee_cents/0" do
     test "returns 0 when no shipping product exists" do
-      assert Accounting.shipping_fee_cents() == 0
+      assert OrderAccounting.shipping_fee_cents() == 0
     end
 
     test "returns price when shipping product exists" do
       _shipping = product_fixture(%{sku: "ENVIO", name: "Shipping", price_cents: 5500})
-      assert Accounting.shipping_fee_cents() == 5500
+      assert OrderAccounting.shipping_fee_cents() == 5500
     end
   end
 
@@ -681,7 +682,7 @@ defmodule Ledgr.Core.AccountingTest do
         })
         |> Repo.insert()
 
-      {:ok, entry} = Accounting.record_order_payment(payment)
+      {:ok, entry} = OrderAccounting.record_order_payment(payment)
       entry = Repo.preload(entry, :journal_lines)
 
       assert entry.entry_type == "order_payment"
@@ -714,7 +715,7 @@ defmodule Ledgr.Core.AccountingTest do
         })
         |> Repo.insert()
 
-      {:ok, entry} = Accounting.record_order_payment(payment)
+      {:ok, entry} = OrderAccounting.record_order_payment(payment)
       entry = Repo.preload(entry, :journal_lines)
 
       # Cash debit

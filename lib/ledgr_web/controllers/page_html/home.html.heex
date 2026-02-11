@@ -1,25 +1,18 @@
-<section class="card">
-  <h2 class="card-title">Welcome to Mr Munch Me Accounting</h2>
-  <p class="card-subtitle">
-    This will become your mini accounting dashboard: P&amp;L, balance sheet and cash flow.
-  </p>
+<div class="landing-page">
+  <header class="landing-header">
+    <h1 class="landing-title">Ledgr</h1>
+    <p class="landing-subtitle">Choose a business to manage</p>
+  </header>
 
-  <div class="dashboard-metrics">
-    <div class="metric-card">
-      <span class="metric-label">Total Revenue</span>
-      <span class="metric-value">$0.00</span>
-    </div>
-    <div class="metric-card">
-      <span class="metric-label">Total Expenses</span>
-      <span class="metric-value">$0.00</span>
-    </div>
-    <div class="metric-card">
-      <span class="metric-label">Net Income</span>
-      <span class="metric-value">$0.00</span>
-    </div>
-    <div class="metric-card">
-      <span class="metric-label">Cash Balance</span>
-      <span class="metric-value">$0.00</span>
-    </div>
+  <div class="landing-grid">
+    <%= for domain <- @domains do %>
+      <a href={domain.path} class="landing-card" style={"--card-accent: #{domain.theme.primary}; --card-accent-soft: #{domain.theme.primary_soft}; --card-sidebar: #{domain.theme.sidebar_bg};"}>
+        <div class="landing-card-logo"><%= domain.logo %></div>
+        <div class="landing-card-body">
+          <h2 class="landing-card-name"><%= domain.name %></h2>
+          <span class="landing-card-arrow">&rarr;</span>
+        </div>
+      </a>
+    <% end %>
   </div>
-</section>
+</div>

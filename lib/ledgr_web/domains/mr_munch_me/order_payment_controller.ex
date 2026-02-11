@@ -67,7 +67,7 @@ defmodule LedgrWeb.Domains.MrMunchMe.OrderPaymentController do
       {:ok, payment} ->
         conn
         |> put_flash(:info, "Payment updated successfully.")
-        |> redirect(to: ~p"/order_payments/#{payment.id}")
+        |> redirect(to: dp(conn, "/order_payments/#{payment.id}"))
 
       {:error, %Ecto.Changeset{} = changeset} ->
         render(conn, :edit,
@@ -87,12 +87,12 @@ defmodule LedgrWeb.Domains.MrMunchMe.OrderPaymentController do
       {:ok, _payment} ->
         conn
         |> put_flash(:info, "Payment deleted successfully.")
-        |> redirect(to: ~p"/order_payments")
+        |> redirect(to: dp(conn, "/order_payments"))
 
       {:error, _changeset} ->
         conn
         |> put_flash(:error, "Failed to delete payment.")
-        |> redirect(to: ~p"/order_payments/#{payment.id}")
+        |> redirect(to: dp(conn, "/order_payments/#{payment.id}"))
     end
   end
 end

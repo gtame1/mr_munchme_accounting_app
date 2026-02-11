@@ -160,7 +160,7 @@ defmodule LedgrWeb.Domains.MrMunchMe.InventoryController do
 
     conn
     |> put_flash(:error, "Invalid form data. Please try again.")
-    |> redirect(to: ~p"/inventory/purchases/new")
+    |> redirect(to: dp(conn, "/inventory/purchases/new"))
   end
 
   defp handle_purchase_submission(conn, purchase_params) do
@@ -173,7 +173,7 @@ defmodule LedgrWeb.Domains.MrMunchMe.InventoryController do
 
         conn
         |> put_flash(:info, "Purchase list recorded successfully.")
-        |> redirect(to: ~p"/inventory")
+        |> redirect(to: dp(conn, "/inventory"))
 
       {:error, %Ecto.Changeset{} = changeset} ->
         Logger.error("❌ Inventory.create_purchase_list/1 returned changeset error: #{inspect(changeset.errors)}")
@@ -229,7 +229,7 @@ defmodule LedgrWeb.Domains.MrMunchMe.InventoryController do
 
     conn
     |> put_flash(:error, "Invalid form data. Please try again.")
-    |> redirect(to: ~p"/inventory/movements/new")
+    |> redirect(to: dp(conn, "/inventory/movements/new"))
   end
 
   defp handle_movement_submission(conn, movement_params) do
@@ -242,7 +242,7 @@ defmodule LedgrWeb.Domains.MrMunchMe.InventoryController do
 
         conn
         |> put_flash(:info, "Movement list recorded successfully.")
-        |> redirect(to: ~p"/inventory")
+        |> redirect(to: dp(conn, "/inventory"))
 
       {:error, %Ecto.Changeset{} = changeset} ->
         Logger.error("❌ Inventory.create_movement_list/1 returned changeset error: #{inspect(changeset.errors)}")
@@ -269,7 +269,7 @@ defmodule LedgrWeb.Domains.MrMunchMe.InventoryController do
 
         conn
         |> put_flash(:error, "Unexpected error while saving movement list.")
-        |> redirect(to: ~p"/inventory/movements/new")
+        |> redirect(to: dp(conn, "/inventory/movements/new"))
     end
   end
 
@@ -289,7 +289,7 @@ defmodule LedgrWeb.Domains.MrMunchMe.InventoryController do
     if movement.movement_type != "purchase" do
       conn
       |> put_flash(:error, "This movement is not a purchase.")
-      |> redirect(to: ~p"/inventory")
+      |> redirect(to: dp(conn, "/inventory"))
     else
       # Convert movement to form attrs
       total_cost_pesos =
@@ -326,12 +326,12 @@ defmodule LedgrWeb.Domains.MrMunchMe.InventoryController do
       {:ok, _result} ->
         conn
         |> put_flash(:info, "Purchase updated successfully.")
-        |> redirect(to: ~p"/inventory")
+        |> redirect(to: dp(conn, "/inventory"))
 
       {:error, :not_a_purchase} ->
         conn
         |> put_flash(:error, "This movement is not a purchase.")
-        |> redirect(to: ~p"/inventory")
+        |> redirect(to: dp(conn, "/inventory"))
 
       {:error, changeset} ->
         movement = Inventory.get_movement!(id)
@@ -353,17 +353,17 @@ defmodule LedgrWeb.Domains.MrMunchMe.InventoryController do
       {:ok, _result} ->
         conn
         |> put_flash(:info, "Purchase deleted successfully.")
-        |> redirect(to: ~p"/inventory#recent_movements_card")
+        |> redirect(to: dp(conn, "/inventory#recent_movements_card"))
 
       {:error, :not_a_purchase} ->
         conn
         |> put_flash(:error, "This movement is not a purchase.")
-        |> redirect(to: ~p"/inventory")
+        |> redirect(to: dp(conn, "/inventory"))
 
       {:error, _reason} ->
         conn
         |> put_flash(:error, "Failed to delete purchase.")
-        |> redirect(to: ~p"/inventory")
+        |> redirect(to: dp(conn, "/inventory"))
     end
   end
 
@@ -384,27 +384,27 @@ defmodule LedgrWeb.Domains.MrMunchMe.InventoryController do
       {:ok, _result} ->
         conn
         |> put_flash(:info, "Purchase returned successfully.")
-        |> redirect(to: ~p"/inventory#recent_movements_card")
+        |> redirect(to: dp(conn, "/inventory#recent_movements_card"))
 
       {:error, :not_a_purchase} ->
         conn
         |> put_flash(:error, "This movement is not a purchase.")
-        |> redirect(to: ~p"/inventory")
+        |> redirect(to: dp(conn, "/inventory"))
 
       {:error, {:insufficient_quantity, message}} ->
         conn
         |> put_flash(:error, message)
-        |> redirect(to: ~p"/inventory")
+        |> redirect(to: dp(conn, "/inventory"))
 
       {:error, reason} when is_binary(reason) ->
         conn
         |> put_flash(:error, reason)
-        |> redirect(to: ~p"/inventory")
+        |> redirect(to: dp(conn, "/inventory"))
 
       {:error, _reason} ->
         conn
         |> put_flash(:error, "Failed to return purchase.")
-        |> redirect(to: ~p"/inventory")
+        |> redirect(to: dp(conn, "/inventory"))
     end
   end
 
@@ -437,7 +437,7 @@ defmodule LedgrWeb.Domains.MrMunchMe.InventoryController do
     else
       conn
       |> put_flash(:error, "Only transfers can be edited.")
-      |> redirect(to: ~p"/inventory")
+      |> redirect(to: dp(conn, "/inventory"))
     end
   end
 
@@ -447,18 +447,18 @@ defmodule LedgrWeb.Domains.MrMunchMe.InventoryController do
     if movement.movement_type != "transfer" do
       conn
       |> put_flash(:error, "Only transfers can be updated.")
-      |> redirect(to: ~p"/inventory")
+      |> redirect(to: dp(conn, "/inventory"))
     else
       case Inventory.update_transfer(id, movement_params) do
         {:ok, _result} ->
           conn
           |> put_flash(:info, "Transfer updated successfully.")
-          |> redirect(to: ~p"/inventory")
+          |> redirect(to: dp(conn, "/inventory"))
 
         {:error, :not_a_transfer} ->
           conn
           |> put_flash(:error, "This movement is not a transfer.")
-          |> redirect(to: ~p"/inventory")
+          |> redirect(to: dp(conn, "/inventory"))
 
         {:error, changeset} ->
           changeset = %{changeset | action: :update}
@@ -483,23 +483,23 @@ defmodule LedgrWeb.Domains.MrMunchMe.InventoryController do
           {:ok, _result} ->
             conn
             |> put_flash(:info, "Transfer deleted successfully.")
-            |> redirect(to: ~p"/inventory#recent_movements_card")
+            |> redirect(to: dp(conn, "/inventory#recent_movements_card"))
 
           {:error, :not_a_transfer} ->
             conn
             |> put_flash(:error, "This movement is not a transfer.")
-            |> redirect(to: ~p"/inventory")
+            |> redirect(to: dp(conn, "/inventory"))
 
           {:error, _reason} ->
             conn
             |> put_flash(:error, "Failed to delete transfer.")
-            |> redirect(to: ~p"/inventory")
+            |> redirect(to: dp(conn, "/inventory"))
         end
 
       _ ->
         conn
         |> put_flash(:error, "Only transfers can be deleted.")
-        |> redirect(to: ~p"/inventory")
+        |> redirect(to: dp(conn, "/inventory"))
     end
   end
 

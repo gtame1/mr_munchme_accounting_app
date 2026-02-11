@@ -93,35 +93,20 @@ defmodule Ledgr.Core.Customers do
       {:error, :has_active_orders}
   """
   def delete_customer(%Customer{} = customer) do
-    # Check if customer has active orders (not canceled, and not delivered+paid)
-    alias Ledgr.Domains.MrMunchMe.Orders.Order
+    domain = Ledgr.Domain.current()
 
-    active_orders =
-      from o in Order,
-        where: o.customer_id == ^customer.id,
-        where: o.status != "canceled"
+    has_deps =
+      if domain do
+        domain.has_active_dependencies?(customer.id)
+      else
+        false
+      end
 
-    # Check if there are any active orders
-    if Repo.exists?(active_orders) do
+    if has_deps do
       {:error, :has_active_orders}
     else
       Repo.delete(customer)
     end
-  end
-
-  @doc """
-  Counts the number of active orders for a customer.
-  Active orders are those that are not canceled.
-  """
-  def count_active_orders(%Customer{} = customer) do
-    alias Ledgr.Domains.MrMunchMe.Orders.Order
-
-    from(o in Order,
-      where: o.customer_id == ^customer.id,
-      where: o.status != "canceled",
-      select: count()
-    )
-    |> Repo.one()
   end
 
   @doc """

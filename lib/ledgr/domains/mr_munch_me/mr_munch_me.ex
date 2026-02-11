@@ -10,12 +10,33 @@ defmodule Ledgr.Domains.MrMunchMe do
   @behaviour Ledgr.Domain.RevenueHandler
   @behaviour Ledgr.Domain.DashboardProvider
 
-  alias Ledgr.Core.Accounting
+  alias Ledgr.Domains.MrMunchMe.OrderAccounting
 
   # ── DomainConfig callbacks ──────────────────────────────────────────
 
   @impl Ledgr.Domain.DomainConfig
   def name, do: "MrMunchMe"
+
+  @impl Ledgr.Domain.DomainConfig
+  def slug, do: "mr-munch-me"
+
+  @impl Ledgr.Domain.DomainConfig
+  def path_prefix, do: "/app/mr-munch-me"
+
+  @impl Ledgr.Domain.DomainConfig
+  def logo, do: "🍪"
+
+  @impl Ledgr.Domain.DomainConfig
+  def theme do
+    %{
+      sidebar_bg: "#3c2415",
+      sidebar_text: "#fdf6ec",
+      sidebar_hover: "#5a3a28",
+      primary: "#a0522d",
+      primary_soft: "#f5e6d3",
+      accent: "#d4a574"
+    }
+  end
 
   @impl Ledgr.Domain.DomainConfig
   def account_codes do
@@ -53,46 +74,60 @@ defmodule Ledgr.Domains.MrMunchMe do
 
   @impl Ledgr.Domain.DomainConfig
   def menu_items do
+    prefix = path_prefix()
+
     [
       %{group: "Main Menu", items: [
-        %{label: "Dashboard", path: "/", icon: :dashboard},
-        %{label: "All Orders", path: "/orders", icon: :orders},
-        %{label: "Order Calendar", path: "/orders/calendar", icon: :calendar},
-        %{label: "Inventory", path: "/inventory", icon: :inventory},
-        %{label: "Shopping List", path: "/inventory/requirements", icon: :shopping},
-        %{label: "Expenses", path: "/expenses", icon: :expenses}
+        %{label: "Dashboard", path: prefix, icon: :dashboard},
+        %{label: "All Orders", path: "#{prefix}/orders", icon: :orders},
+        %{label: "Order Calendar", path: "#{prefix}/orders/calendar", icon: :calendar},
+        %{label: "Inventory", path: "#{prefix}/inventory", icon: :inventory},
+        %{label: "Shopping List", path: "#{prefix}/inventory/requirements", icon: :shopping},
+        %{label: "Expenses", path: "#{prefix}/expenses", icon: :expenses}
       ]},
       %{group: "Materials", items: [
-        %{label: "Product List", path: "/products", icon: :products},
-        %{label: "Ingredient List", path: "/ingredients", icon: :ingredients},
-        %{label: "Recepies", path: "/recipes", icon: :recipes}
+        %{label: "Product List", path: "#{prefix}/products", icon: :products},
+        %{label: "Ingredient List", path: "#{prefix}/ingredients", icon: :ingredients},
+        %{label: "Recepies", path: "#{prefix}/recipes", icon: :recipes}
       ]}
     ]
   end
 
   @impl Ledgr.Domain.DomainConfig
-  def seed_file, do: "priv/repo/seeds/mr_munch_me_seeds.exs"
+  def seed_file, do: "priv/repos/mr_munch_me/seeds/mr_munch_me_seeds.exs"
+
+  @impl Ledgr.Domain.DomainConfig
+  def has_active_dependencies?(customer_id) do
+    import Ecto.Query, warn: false
+    alias Ledgr.Domains.MrMunchMe.Orders.Order
+
+    Ledgr.Repo.exists?(
+      from o in Order,
+        where: o.customer_id == ^customer_id,
+        where: o.status != "canceled"
+    )
+  end
 
   # ── RevenueHandler callbacks ────────────────────────────────────────
 
   @impl Ledgr.Domain.RevenueHandler
   def handle_status_change(order, new_status) do
-    Accounting.handle_order_status_change(order, new_status)
+    OrderAccounting.handle_order_status_change(order, new_status)
   end
 
   @impl Ledgr.Domain.RevenueHandler
   def record_payment(payment) do
-    Accounting.record_order_payment(payment)
+    OrderAccounting.record_order_payment(payment)
   end
 
   @impl Ledgr.Domain.RevenueHandler
   def revenue_breakdown(start_date, end_date) do
-    Accounting.revenue_by_product(start_date, end_date)
+    OrderAccounting.revenue_by_product(start_date, end_date)
   end
 
   @impl Ledgr.Domain.RevenueHandler
   def cogs_breakdown(start_date, end_date) do
-    Accounting.cogs_by_product(start_date, end_date)
+    OrderAccounting.cogs_by_product(start_date, end_date)
   end
 
   # ── DashboardProvider callbacks ─────────────────────────────────────
@@ -100,5 +135,48 @@ defmodule Ledgr.Domains.MrMunchMe do
   @impl Ledgr.Domain.DashboardProvider
   def dashboard_metrics(start_date, end_date) do
     Ledgr.Domains.MrMunchMe.Reporting.dashboard_metrics(start_date, end_date)
+  end
+
+  @impl Ledgr.Domain.DashboardProvider
+  def unit_economics(product_id, start_date, end_date) do
+    Ledgr.Domains.MrMunchMe.Reporting.unit_economics(product_id, start_date, end_date)
+  end
+
+  @impl Ledgr.Domain.DashboardProvider
+  def all_unit_economics(start_date, end_date) do
+    Ledgr.Domains.MrMunchMe.Reporting.all_unit_economics(start_date, end_date)
+  end
+
+  @impl Ledgr.Domain.DashboardProvider
+  def product_select_options do
+    Ledgr.Domains.MrMunchMe.Orders.product_select_options()
+  end
+
+  @impl Ledgr.Domain.DashboardProvider
+  def data_date_range do
+    {inv_earliest, inv_latest} = Ledgr.Domains.MrMunchMe.Inventory.movement_date_range()
+    {je_earliest, je_latest} = Ledgr.Core.Accounting.journal_entry_date_range()
+
+    dates = [inv_earliest, inv_latest, je_earliest, je_latest] |> Enum.reject(&is_nil/1)
+
+    case dates do
+      [] -> {nil, nil}
+      _ -> {Enum.min(dates, Date), Enum.max(dates, Date)}
+    end
+  end
+
+  @impl Ledgr.Domain.DashboardProvider
+  def verification_checks do
+    Ledgr.Domains.MrMunchMe.Inventory.Verification.run_all_checks()
+  end
+
+  @impl Ledgr.Domain.DashboardProvider
+  def run_repair(repair_type) do
+    Ledgr.Domains.MrMunchMe.Inventory.Verification.run_repair(repair_type)
+  end
+
+  @impl Ledgr.Domain.DashboardProvider
+  def repairable_checks do
+    Ledgr.Domains.MrMunchMe.Inventory.Verification.repairable_checks()
   end
 end

@@ -17,7 +17,7 @@ defmodule LedgrWeb.ExpenseController do
 
     render(conn, :new,
       changeset: changeset,
-      action: ~p"/expenses",
+      action: dp(conn, "/expenses"),
       expense_account_options: Accounting.expense_account_options(),
       paid_from_account_options: Accounting.cash_or_payable_account_options()
     )
@@ -31,7 +31,7 @@ defmodule LedgrWeb.ExpenseController do
       {:ok, expense} ->
         conn
         |> put_flash(:info, "Expense recorded.")
-        |> redirect(to: ~p"/expenses/#{expense.id}")
+        |> redirect(to: dp(conn, "/expenses/#{expense.id}"))
 
       {:error, %Ecto.Changeset{} = changeset} ->
         # Convert amount_cents back to pesos for form re-display
@@ -42,7 +42,7 @@ defmodule LedgrWeb.ExpenseController do
 
         render(conn, :new,
           changeset: changeset,
-          action: ~p"/expenses",
+          action: dp(conn, "/expenses"),
           expense_account_options: Accounting.expense_account_options(),
           paid_from_account_options: Accounting.cash_or_payable_account_options()
         )
@@ -68,7 +68,7 @@ defmodule LedgrWeb.ExpenseController do
     render(conn, :edit,
       expense: expense,
       changeset: changeset,
-      action: ~p"/expenses/#{expense.id}",
+      action: dp(conn, "/expenses/#{expense.id}"),
       expense_account_options: Accounting.expense_account_options(),
       paid_from_account_options: Accounting.cash_or_payable_account_options()
     )
@@ -84,7 +84,7 @@ defmodule LedgrWeb.ExpenseController do
       {:ok, expense} ->
         conn
         |> put_flash(:info, "Expense updated successfully.")
-        |> redirect(to: ~p"/expenses/#{expense.id}")
+        |> redirect(to: dp(conn, "/expenses/#{expense.id}"))
 
       {:error, %Ecto.Changeset{} = changeset} ->
         # Convert amount_cents back to pesos for form re-display
@@ -96,7 +96,7 @@ defmodule LedgrWeb.ExpenseController do
         render(conn, :edit,
           expense: expense,
           changeset: changeset,
-          action: ~p"/expenses/#{expense.id}",
+          action: dp(conn, "/expenses/#{expense.id}"),
           expense_account_options: Accounting.expense_account_options(),
           paid_from_account_options: Accounting.cash_or_payable_account_options()
         )
@@ -110,12 +110,12 @@ defmodule LedgrWeb.ExpenseController do
       {:ok, _expense} ->
         conn
         |> put_flash(:info, "Expense deleted successfully.")
-        |> redirect(to: ~p"/expenses")
+        |> redirect(to: dp(conn, "/expenses"))
 
       {:error, _changeset} ->
         conn
         |> put_flash(:error, "Failed to delete expense.")
-        |> redirect(to: ~p"/expenses/#{expense.id}")
+        |> redirect(to: dp(conn, "/expenses/#{expense.id}"))
     end
   end
 end

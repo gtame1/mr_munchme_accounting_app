@@ -2,15 +2,11 @@ defmodule Ledgr.Core.Customers.Customer do
   use Ecto.Schema
   import Ecto.Changeset
 
-  alias Ledgr.Domains.MrMunchMe.Orders.Order
-
   schema "customers" do
     field :name, :string
     field :email, :string
     field :phone, :string
     field :delivery_address, :string
-
-    has_many :orders, Order
 
     timestamps(type: :utc_datetime)
   end
