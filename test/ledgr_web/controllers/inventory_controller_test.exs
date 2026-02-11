@@ -8,7 +8,9 @@ defmodule LedgrWeb.Domains.MrMunchMe.InventoryControllerTest do
   alias Ledgr.Repo
   alias Ledgr.Domains.MrMunchMe.Inventory.{Ingredient, Location, InventoryMovement}
 
-  setup do
+  setup %{conn: conn} do
+    conn = log_in_user(conn)
+
     # Create accounts
     {:ok, cash_account} =
       Accounting.create_account(%{
@@ -66,6 +68,7 @@ defmodule LedgrWeb.Domains.MrMunchMe.InventoryControllerTest do
 
     {
       :ok,
+      conn: conn,
       cash_account: cash_account,
       ingredients_account: ingredients_account,
       ingredient: ingredient,

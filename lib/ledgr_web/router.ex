@@ -13,6 +13,10 @@ defmodule LedgrWeb.Router do
     plug LedgrWeb.Plugs.DomainPlug
   end
 
+  pipeline :require_auth do
+    plug LedgrWeb.Plugs.AuthPlug
+  end
+
   pipeline :api do
     plug :accepts, ["json"]
   end
@@ -24,9 +28,18 @@ defmodule LedgrWeb.Router do
     get "/", PageController, :home
   end
 
-  # ── MrMunchMe app ───────────────────────────────────────────────────
+  # ── MrMunchMe: public auth routes ──────────────────────────────────
   scope "/app/mr-munch-me", LedgrWeb do
     pipe_through :browser
+
+    get "/login", SessionController, :new
+    post "/login", SessionController, :create
+    delete "/logout", SessionController, :delete
+  end
+
+  # ── MrMunchMe: protected routes ────────────────────────────────────
+  scope "/app/mr-munch-me", LedgrWeb do
+    pipe_through [:browser, :require_auth]
 
     core_routes()
 
@@ -60,9 +73,18 @@ defmodule LedgrWeb.Router do
     post "/recipes/new_version/:id", Domains.MrMunchMe.RecipeController, :create_new_version
   end
 
-  # ── Viaxe app ──────────────────────────────────────────────────────
+  # ── Viaxe: public auth routes ──────────────────────────────────────
   scope "/app/viaxe", LedgrWeb do
     pipe_through :browser
+
+    get "/login", SessionController, :new
+    post "/login", SessionController, :create
+    delete "/logout", SessionController, :delete
+  end
+
+  # ── Viaxe: protected routes ────────────────────────────────────────
+  scope "/app/viaxe", LedgrWeb do
+    pipe_through [:browser, :require_auth]
 
     core_routes()
 

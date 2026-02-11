@@ -1,0 +1,41 @@
+<div class="login-card">
+  <% domain = assigns[:current_domain] %>
+  <% theme = if domain, do: domain.theme(), else: %{} %>
+
+  <div class="login-card-header">
+    <%= if theme[:card_logo] do %>
+      <img src={theme[:card_logo]} alt={domain.name()} class="login-logo" />
+    <% else %>
+      <span class="login-app-logo"><%= if domain, do: domain.logo(), else: "" %></span>
+      <h1 class="login-app-name"><%= if domain, do: domain.name(), else: "Ledgr" %></h1>
+    <% end %>
+  </div>
+
+  <h2 class="login-title">Sign In</h2>
+
+  <%= if @error_message do %>
+    <div class="login-error">
+      <%= @error_message %>
+    </div>
+  <% end %>
+
+  <form action={dp(@domain_path_prefix, "/login")} method="post" class="login-form">
+    <input type="hidden" name="_csrf_token" value={get_csrf_token()} />
+
+    <div class="login-field">
+      <label for="session_email">Email</label>
+      <input type="email" name="session[email]" id="session_email" required autofocus
+        placeholder="you@example.com" />
+    </div>
+
+    <div class="login-field">
+      <label for="session_password">Password</label>
+      <input type="password" name="session[password]" id="session_password" required
+        placeholder="Enter your password" />
+    </div>
+
+    <button type="submit" class="login-btn">Sign In</button>
+  </form>
+
+  <a href="/" class="login-back-link">← Back to home</a>
+</div>

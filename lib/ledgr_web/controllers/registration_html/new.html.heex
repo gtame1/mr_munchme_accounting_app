@@ -1,0 +1,52 @@
+<div class="login-card">
+  <% domain = assigns[:current_domain] %>
+  <% theme = if domain, do: domain.theme(), else: %{} %>
+
+  <div class="login-card-header">
+    <%= if theme[:card_logo] do %>
+      <img src={theme[:card_logo]} alt={domain.name()} class="login-logo" />
+    <% else %>
+      <span class="login-app-logo"><%= if domain, do: domain.logo(), else: "" %></span>
+      <h1 class="login-app-name"><%= if domain, do: domain.name(), else: "Ledgr" %></h1>
+    <% end %>
+  </div>
+
+  <h2 class="login-title">Create Account</h2>
+
+  <%= if @changeset.action do %>
+    <div class="login-error">
+      <p>Please fix the errors below:</p>
+      <ul>
+        <%= for {field, {msg, _opts}} <- @changeset.errors do %>
+          <li><strong><%= Phoenix.Naming.humanize(field) %>:</strong> <%= msg %></li>
+        <% end %>
+      </ul>
+    </div>
+  <% end %>
+
+  <form action={dp(@domain_path_prefix, "/register")} method="post" class="login-form">
+    <input type="hidden" name="_csrf_token" value={get_csrf_token()} />
+
+    <div class="login-field">
+      <label for="user_email">Email</label>
+      <input type="email" name="user[email]" id="user_email" required autofocus
+        value={Phoenix.HTML.Form.normalize_value("email", Ecto.Changeset.get_field(@changeset, :email))}
+        placeholder="you@example.com" />
+    </div>
+
+    <div class="login-field">
+      <label for="user_password">Password</label>
+      <input type="password" name="user[password]" id="user_password" required
+        placeholder="At least 8 characters" minlength="8" />
+    </div>
+
+    <button type="submit" class="login-btn">Create Account</button>
+  </form>
+
+  <p class="login-footer-text">
+    Already have an account?
+    <a href={dp(@domain_path_prefix, "/login")} class="login-link">Sign In</a>
+  </p>
+
+  <a href="/" class="login-back-link">← Back to home</a>
+</div>

@@ -35,4 +35,29 @@ defmodule LedgrWeb.ConnCase do
     Ledgr.DataCase.setup_sandbox(tags)
     {:ok, conn: Phoenix.ConnTest.build_conn()}
   end
+
+  @doc """
+  Creates a test user and logs them in by setting the domain-scoped session key.
+
+  Returns the conn with the session initialized. The domain slug defaults to
+  "mr-munch-me" since tests run against the MrMunchMe repo by default.
+
+  ## Examples
+
+      setup %{conn: conn} do
+        {:ok, conn: log_in_user(conn)}
+      end
+
+  """
+  def log_in_user(conn, opts \\ []) do
+    slug = Keyword.get(opts, :slug, "mr-munch-me")
+    email = Keyword.get(opts, :email, "test@example.com")
+    password = Keyword.get(opts, :password, "password123!")
+
+    {:ok, user} =
+      Ledgr.Core.Accounts.create_user(%{email: email, password: password})
+
+    conn
+    |> Phoenix.ConnTest.init_test_session(%{"user_id:#{slug}" => user.id})
+  end
 end

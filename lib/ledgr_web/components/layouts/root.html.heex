@@ -65,6 +65,12 @@
       <% domain = assigns[:current_domain] %>
       <% prefix = domain.path_prefix() %>
       <% theme = domain.theme() %>
+      <%= if assigns[:hide_sidebar] do %>
+        <!-- Auth pages: clean centered layout, no sidebar -->
+        <main class="login-layout">
+          <%= @inner_content %>
+        </main>
+      <% else %>
       <div class="app-layout">
         <!-- Mobile hamburger button -->
         <button class="hamburger-btn" id="hamburger-btn" aria-label="Open menu" aria-expanded="false">
@@ -144,6 +150,13 @@
           </nav>
 
           <div class="sidebar-footer">
+            <%= if assigns[:current_user] do %>
+              <span class="sidebar-user-email"><%= assigns[:current_user].email %></span>
+              <.link href={"#{prefix}/logout"} method="delete" class="app-switcher-link logout-link">
+                <.icon name="hero-arrow-right-on-rectangle" class="app-switcher-icon" />
+                <span>Sign Out</span>
+              </.link>
+            <% end %>
             <a href="/" class="app-switcher-link">
               <.icon name="hero-arrows-right-left" class="app-switcher-icon" />
               <span>Switch App</span>
@@ -157,6 +170,7 @@
           </section>
         </main>
       </div>
+      <% end %>
     <% else %>
       <!-- No domain context (landing page, etc.) -->
       <main>

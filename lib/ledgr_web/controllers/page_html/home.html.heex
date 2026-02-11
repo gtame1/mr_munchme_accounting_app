@@ -8,12 +8,13 @@
 
   <div class="landing-grid">
     <%= for domain <- @domains do %>
-      <a href={domain.path} class={"landing-card #{if domain.theme[:card_logo], do: "landing-card--has-logo", else: ""}"} style={"--card-accent: #{domain.theme.primary}; --card-accent-soft: #{domain.theme.primary_soft}; --card-sidebar: #{domain.theme.sidebar_bg};"}>
+      <a href={domain.path} title={domain.name} class={"landing-card #{if domain.theme[:card_logo], do: "landing-card--has-logo", else: ""}"} style={"--card-accent: #{domain.theme.primary}; --card-accent-soft: #{domain.theme.primary_soft}; --card-sidebar: #{domain.theme.sidebar_bg};"}>
         <%= if domain.theme[:card_logo] do %>
           <div class="landing-card-logo-full">
             <img src={domain.theme[:card_logo]} alt={domain.name} class="landing-card-logo-img" />
           </div>
           <div class="landing-card-enter">
+            <h2 class="landing-card-name"><%= domain.name %></h2>
             <span class="landing-card-arrow">&rarr;</span>
           </div>
         <% else %>
