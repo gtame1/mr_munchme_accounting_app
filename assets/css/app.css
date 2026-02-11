@@ -11,27 +11,27 @@
 
   :root {
     /* defaults — overridden per domain via inline <style> in root layout */
-    --bg: #fff7f2;
+    --bg: #fdf6f4;
     --bg-card: #ffffff;
-    --bg-surface: #fffaf6;
-    --border-subtle: #f1e4da;
-    --border-strong: #e2cdbd;
-    --text-main: #3d2318;
-    --text-muted: #8b6f5b;
-    --primary: #8a3b2f;
-    --primary-soft: #fbe4db;
-    --sidebar-bg: #3d2318;
-    --sidebar-text: #fdf5ee;
-    --sidebar-hover: #5a3a28;
-    --btn-secondary-bg: #f3e4d8;
-    --btn-secondary-text: #3d2318;
-    --btn-secondary-hover: #ead4c4;
-    --btn-primary-hover: #703025;
-    --shadow-color: 61, 35, 24;
-    --table-header-bg: #fff6ee;
-    --gradient-start: #fde2d0;
-    --gradient-mid: #fff7f2;
-    --gradient-end: #fffaf5;
+    --bg-surface: #fef9f7;
+    --border-subtle: #f0ddd8;
+    --border-strong: #e0c7c0;
+    --text-main: #3b1c1c;
+    --text-muted: #8c6b63;
+    --primary: #6b2d2d;
+    --primary-soft: #f5e0dc;
+    --sidebar-bg: #3b1c1c;
+    --sidebar-text: #faf0ed;
+    --sidebar-hover: #572e2e;
+    --btn-secondary-bg: #f2ddd7;
+    --btn-secondary-text: #3b1c1c;
+    --btn-secondary-hover: #e8cdc5;
+    --btn-primary-hover: #552222;
+    --shadow-color: 59, 28, 28;
+    --table-header-bg: #fdf2ee;
+    --gradient-start: #f5dbd3;
+    --gradient-mid: #fdf6f4;
+    --gradient-end: #fef9f7;
     --radius-lg: 16px;
     --radius-md: 10px;
     --shadow-soft: 0 10px 25px rgba(var(--shadow-color), 0.14);
