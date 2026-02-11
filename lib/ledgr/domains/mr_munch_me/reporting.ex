@@ -49,15 +49,27 @@ defmodule Ledgr.Domains.MrMunchMe.Reporting do
       )
       |> Repo.one()
 
-    orders_by_status =
+    active_by_status =
       from(o in Order,
-        where: fragment("COALESCE(?, ?)", o.actual_delivery_date, o.delivery_date) >= ^start_date and
+        where: o.status in ["new_order", "in_prep", "ready"],
+        group_by: o.status,
+        select: {o.status, count(o.id)}
+      )
+      |> Repo.all()
+      |> Enum.into(%{})
+
+    completed_by_status =
+      from(o in Order,
+        where: o.status in ["delivered", "canceled"] and
+          fragment("COALESCE(?, ?)", o.actual_delivery_date, o.delivery_date) >= ^start_date and
           fragment("COALESCE(?, ?)", o.actual_delivery_date, o.delivery_date) <= ^end_date,
         group_by: o.status,
         select: {o.status, count(o.id)}
       )
       |> Repo.all()
       |> Enum.into(%{})
+
+    orders_by_status = Map.merge(active_by_status, completed_by_status)
 
     total_orders = order_rev_stats.order_count || 0
     total_units = order_rev_stats.unit_count || 0
