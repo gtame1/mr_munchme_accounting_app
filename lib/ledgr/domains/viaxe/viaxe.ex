@@ -29,12 +29,31 @@ defmodule Ledgr.Domains.Viaxe do
   @impl Ledgr.Domain.DomainConfig
   def theme do
     %{
-      sidebar_bg: "#1a365d",
-      sidebar_text: "#e2e8f0",
-      sidebar_hover: "#2a4a7f",
-      primary: "#2b6cb0",
-      primary_soft: "#ebf4ff",
-      accent: "#63b3ed"
+      sidebar_bg: "#060a3a",
+      sidebar_text: "#f5f5f5",
+      sidebar_hover: "#131963",
+      primary: "#1e40af",
+      primary_soft: "#e8edf8",
+      accent: "#3b82f6",
+      bg: "#f8fafc",
+      bg_surface: "#f1f5f9",
+      border_subtle: "#e2e8f0",
+      border_strong: "#cbd5e1",
+      text_main: "#1e293b",
+      text_muted: "#64748b",
+      btn_secondary_bg: "#e2e8f0",
+      btn_secondary_text: "#1e293b",
+      btn_secondary_hover: "#cbd5e1",
+      btn_primary_hover: "#1e3a8a",
+      shadow_color: "30, 41, 59",
+      table_header_bg: "#f1f5f9",
+      gradient_start: "#dbeafe",
+      gradient_mid: "#f0f5ff",
+      gradient_end: "#f8fafc",
+      sidebar_logo: "/images/viaxe-logos/Viaxe-D5.png",
+      card_logo: "/images/viaxe-logos/Viaxe-D4.png",
+      tab_title: "Viaxe App",
+      favicon: "/images/favicon-viaxe.png"
     }
   end
 

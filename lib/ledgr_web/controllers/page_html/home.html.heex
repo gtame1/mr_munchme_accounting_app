@@ -1,17 +1,30 @@
 <div class="landing-page">
   <header class="landing-header">
-    <h1 class="landing-title">Ledgr</h1>
+    <div class="landing-logo">
+      <img src={~p"/images/ledgr-logo.png"} alt="Ledgr" />
+    </div>
     <p class="landing-subtitle">Choose a business to manage</p>
   </header>
 
   <div class="landing-grid">
     <%= for domain <- @domains do %>
-      <a href={domain.path} class="landing-card" style={"--card-accent: #{domain.theme.primary}; --card-accent-soft: #{domain.theme.primary_soft}; --card-sidebar: #{domain.theme.sidebar_bg};"}>
-        <div class="landing-card-logo"><%= domain.logo %></div>
-        <div class="landing-card-body">
-          <h2 class="landing-card-name"><%= domain.name %></h2>
-          <span class="landing-card-arrow">&rarr;</span>
-        </div>
+      <a href={domain.path} class={"landing-card #{if domain.theme[:card_logo], do: "landing-card--has-logo", else: ""}"} style={"--card-accent: #{domain.theme.primary}; --card-accent-soft: #{domain.theme.primary_soft}; --card-sidebar: #{domain.theme.sidebar_bg};"}>
+        <%= if domain.theme[:card_logo] do %>
+          <div class="landing-card-logo-full">
+            <img src={domain.theme[:card_logo]} alt={domain.name} class="landing-card-logo-img" />
+          </div>
+          <div class="landing-card-enter">
+            <span class="landing-card-arrow">&rarr;</span>
+          </div>
+        <% else %>
+          <div class="landing-card-logo">
+            <%= domain.logo %>
+          </div>
+          <div class="landing-card-body">
+            <h2 class="landing-card-name"><%= domain.name %></h2>
+            <span class="landing-card-arrow">&rarr;</span>
+          </div>
+        <% end %>
       </a>
     <% end %>
   </div>

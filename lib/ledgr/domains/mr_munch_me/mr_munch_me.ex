@@ -34,7 +34,24 @@ defmodule Ledgr.Domains.MrMunchMe do
       sidebar_hover: "#5a3a28",
       primary: "#a0522d",
       primary_soft: "#f5e6d3",
-      accent: "#d4a574"
+      accent: "#d4a574",
+      bg: "#fff7f2",
+      bg_surface: "#fffaf6",
+      border_subtle: "#f1e4da",
+      border_strong: "#e2cdbd",
+      text_main: "#3d2318",
+      text_muted: "#8b6f5b",
+      btn_secondary_bg: "#f3e4d8",
+      btn_secondary_text: "#3d2318",
+      btn_secondary_hover: "#ead4c4",
+      btn_primary_hover: "#703025",
+      shadow_color: "61, 35, 24",
+      table_header_bg: "#fff6ee",
+      gradient_start: "#fde2d0",
+      gradient_mid: "#fff7f2",
+      gradient_end: "#fffaf5",
+      tab_title: "MrMunchMe App",
+      favicon: "/images/favicon-mr-munch-me.png"
     }
   end
 

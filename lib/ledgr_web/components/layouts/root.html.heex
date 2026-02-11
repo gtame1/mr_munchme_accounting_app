@@ -4,9 +4,12 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="csrf-token" content={get_csrf_token()} />
-    <.live_title default="Ledgr" suffix="">
+    <.live_title default={if(assigns[:current_domain], do: assigns[:current_domain].theme()[:tab_title] || assigns[:current_domain].name(), else: "Ledgr")} suffix="">
       {assigns[:page_title]}
     </.live_title>
+    <%= if assigns[:current_domain] && assigns[:current_domain].theme()[:favicon] do %>
+      <link rel="icon" type="image/png" href={assigns[:current_domain].theme()[:favicon]} />
+    <% end %>
     <link phx-track-static rel="stylesheet" href={~p"/assets/css/app.css"} />
     <%= if assigns[:current_domain] do %>
       <% t = assigns[:current_domain].theme() %>
@@ -14,8 +17,24 @@
         :root {
           --sidebar-bg: <%= t.sidebar_bg %>;
           --sidebar-text: <%= t.sidebar_text %>;
+          --sidebar-hover: <%= t.sidebar_hover %>;
           --primary: <%= t.primary %>;
           --primary-soft: <%= t.primary_soft %>;
+          --bg: <%= t[:bg] || "#fff7f2" %>;
+          --bg-surface: <%= t[:bg_surface] || "#fffaf6" %>;
+          --border-subtle: <%= t[:border_subtle] || "#f1e4da" %>;
+          --border-strong: <%= t[:border_strong] || "#e2cdbd" %>;
+          --text-main: <%= t[:text_main] || "#3d2318" %>;
+          --text-muted: <%= t[:text_muted] || "#8b6f5b" %>;
+          --btn-secondary-bg: <%= t[:btn_secondary_bg] || "#f3e4d8" %>;
+          --btn-secondary-text: <%= t[:btn_secondary_text] || "#3d2318" %>;
+          --btn-secondary-hover: <%= t[:btn_secondary_hover] || "#ead4c4" %>;
+          --btn-primary-hover: <%= t[:btn_primary_hover] || "#703025" %>;
+          --shadow-color: <%= t[:shadow_color] || "61, 35, 24" %>;
+          --table-header-bg: <%= t[:table_header_bg] || "#fff6ee" %>;
+          --gradient-start: <%= t[:gradient_start] || "#fde2d0" %>;
+          --gradient-mid: <%= t[:gradient_mid] || "#fff7f2" %>;
+          --gradient-end: <%= t[:gradient_end] || "#fffaf5" %>;
         }
       </style>
     <% end %>
@@ -45,6 +64,7 @@
     <%= if assigns[:current_domain] do %>
       <% domain = assigns[:current_domain] %>
       <% prefix = domain.path_prefix() %>
+      <% theme = domain.theme() %>
       <div class="app-layout">
         <!-- Mobile hamburger button -->
         <button class="hamburger-btn" id="hamburger-btn" aria-label="Open menu" aria-expanded="false">
@@ -55,9 +75,13 @@
 
         <aside class="sidebar" id="sidebar">
           <.link navigate={prefix}>
-            <div class="sidebar-header" >
-              <span class="app-logo"><%= domain.logo() %></span>
-              <span class="app-title"><%= domain.name() %></span>
+            <div class="sidebar-header">
+              <%= if theme[:sidebar_logo] do %>
+                <img src={theme[:sidebar_logo]} alt={domain.name()} class="sidebar-logo-img" />
+              <% else %>
+                <span class="app-logo"><%= domain.logo() %></span>
+                <span class="app-title"><%= domain.name() %></span>
+              <% end %>
             </div>
           </.link>
 
@@ -118,6 +142,13 @@
             </div>
 
           </nav>
+
+          <div class="sidebar-footer">
+            <a href="/" class="app-switcher-link">
+              <.icon name="hero-arrows-right-left" class="app-switcher-icon" />
+              <span>Switch App</span>
+            </a>
+          </div>
         </aside>
 
         <main class="content">
