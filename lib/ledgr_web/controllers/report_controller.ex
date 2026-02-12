@@ -265,7 +265,53 @@ defmodule LedgrWeb.ReportController do
     end
   end
 
+  def financial_analysis(conn, params) do
+    domain = Domain.current()
+    {start_date, end_date} = resolve_period(params)
+    {earliest_date, latest_date} = domain.data_date_range()
+
+    # Gather domain-specific enrichment data
+    inventory_value_cents = get_inventory_value()
+    delivered_order_count = count_delivered_orders(start_date, end_date)
+
+    analysis =
+      Reporting.financial_analysis(start_date, end_date,
+        inventory_value_cents: inventory_value_cents,
+        delivered_order_count: delivered_order_count
+      )
+
+    render(conn, :financial_analysis,
+      analysis: analysis,
+      start_date: start_date,
+      end_date: end_date,
+      earliest_date: earliest_date,
+      latest_date: latest_date
+    )
+  end
+
   # Helpers
+
+  defp get_inventory_value do
+    try do
+      Ledgr.Domains.MrMunchMe.Inventory.total_inventory_value_cents()
+    rescue
+      _ -> nil
+    end
+  end
+
+  defp count_delivered_orders(start_date, end_date) do
+    import Ecto.Query
+
+    # Use same COALESCE pattern as MrMunchMe.Reporting.dashboard_metrics/2
+    from(o in "orders",
+      where:
+        o.status == "delivered" and
+          fragment("COALESCE(?, ?)", o.actual_delivery_date, o.delivery_date) >= ^start_date and
+          fragment("COALESCE(?, ?)", o.actual_delivery_date, o.delivery_date) <= ^end_date,
+      select: count(o.id)
+    )
+    |> Ledgr.Repo.one() || 0
+  end
 
   defp resolve_period(%{"period" => "last_7_days"}) do
     today = Date.utc_today()
