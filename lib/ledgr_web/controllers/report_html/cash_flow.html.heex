@@ -224,6 +224,51 @@
         </table>
       </div>
     </section>
+
+    <!-- Cash Balance Reconciliation -->
+    <section class="card">
+      <h2 class="card-title">Cash Balance Reconciliation</h2>
+      <p class="card-subtitle">
+        Verifies that the net cash flow reconciles with actual cash balances.
+      </p>
+
+      <div class="table-wrapper" style="margin-top: 1rem;">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Item</th>
+              <th class="numeric">Amount</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Beginning Cash Balance <span style="color: var(--text-muted); font-size: 0.85rem;">(as of <%= Date.add(@cash_flow.period.start_date, -1) %>)</span></td>
+              <td class="numeric">
+                <%= format_currency(@cash_flow.beginning_balance_cents) %>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding-left: 2rem; color: #059669;">+ Cash Inflows</td>
+              <td class="numeric" style="color: #059669;">
+                <%= format_currency(@cash_flow.cash_inflows_cents) %>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding-left: 2rem; color: #dc2626;">− Cash Outflows</td>
+              <td class="numeric" style="color: #dc2626;">
+                (<%= format_currency(@cash_flow.cash_outflows_cents) %>)
+              </td>
+            </tr>
+            <tr style="font-weight: 700; background-color: #f0fdf4; border-top: 2px solid #333;">
+              <td>Ending Cash Balance <span style="color: var(--text-muted); font-size: 0.85rem;">(as of <%= @cash_flow.period.end_date %>)</span></td>
+              <td class="numeric">
+                <%= format_currency(@cash_flow.ending_balance_cents) %>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
   </div>
 </section>
 

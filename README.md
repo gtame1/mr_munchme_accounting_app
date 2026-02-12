@@ -85,3 +85,22 @@ Runs priv/repo/seeds.exs without clearing data (useful for adding new seed data)
 ```sh
 MIX_ENV=prod mix seed_new_tables
 ```
+
+### Creating Users
+
+Registration is disabled in the UI — accounts are created internally via the command line.
+
+Use `--no-start` to avoid conflicting with a running web server:
+
+```sh
+mix run --no-start -e "
+  Application.ensure_all_started(:bcrypt_elixir)
+  Application.ensure_all_started(:ecto_sql)
+  Ledgr.Repos.Viaxe.start_link([])
+  Ledgr.Repo.put_active_repo(Ledgr.Repos.Viaxe)
+  Ledgr.Core.Accounts.create_user(%{email: ~s(super@admin.com), password: ~s(P@ss!w0rd#2025)})
+  |> IO.inspect()
+"
+```
+
+For MrMunchMe, swap `Ledgr.Repos.Viaxe` with `Ledgr.Repos.MrMunchMe` in both lines.
