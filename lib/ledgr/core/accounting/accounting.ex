@@ -20,6 +20,10 @@ defmodule Ledgr.Core.Accounting do
   @owners_drawings_code "3100"
   @ingredients_cogs_code "5000"
   @packaging_cogs_code "5010"
+  @accum_depreciation_code "1310"
+  @iva_receivable_code "1400"
+  @sales_tax_payable_code "2100"
+  @depreciation_expense_code "6045"
   @inventory_waste_code "6060"
   @other_expenses_code "6099"
 
@@ -615,26 +619,52 @@ defmodule Ledgr.Core.Accounting do
   # -------- record_expense --------
 
   @doc """
-  Given a persisted %Expense{}, creates an 'expense' journal entry:
+  Given a persisted %Expense{}, creates an 'expense' journal entry.
 
+  When iva_cents > 0, splits the expense into net + IVA:
+    Debit: expense_account (amount_cents - iva_cents)   — net expense
+    Debit: IVA Receivable 1400 (iva_cents)              — tax credit
+    Credit: paid_from_account (amount_cents)             — total paid
+
+  When iva_cents == 0 (default):
     Debit: expense_account (amount_cents)
     Credit: paid_from_account (amount_cents)
   """
   def record_expense(%Expense{} = expense) do
-    lines = [
-      %{
-        account_id: expense.expense_account_id,
-        debit_cents: expense.amount_cents,
-        credit_cents: 0,
-        description: "Expense: #{expense.description}"
-      },
-      %{
-        account_id: expense.paid_from_account_id,
-        debit_cents: 0,
-        credit_cents: expense.amount_cents,
-        description: "Paid from #{describe_account(expense.paid_from_account_id)}"
-      }
-    ]
+    iva = expense.iva_cents || 0
+    net_cents = expense.amount_cents - iva
+
+    expense_line = %{
+      account_id: expense.expense_account_id,
+      debit_cents: net_cents,
+      credit_cents: 0,
+      description: "Expense: #{expense.description}"
+    }
+
+    iva_line =
+      if iva > 0 do
+        iva_account = get_account_by_code!(@iva_receivable_code)
+
+        [
+          %{
+            account_id: iva_account.id,
+            debit_cents: iva,
+            credit_cents: 0,
+            description: "IVA on expense: #{expense.description}"
+          }
+        ]
+      else
+        []
+      end
+
+    paid_line = %{
+      account_id: expense.paid_from_account_id,
+      debit_cents: 0,
+      credit_cents: expense.amount_cents,
+      description: "Paid from #{describe_account(expense.paid_from_account_id)}"
+    }
+
+    lines = [expense_line] ++ iva_line ++ [paid_line]
 
     entry_attrs = %{
       date: expense.date,
@@ -1163,7 +1193,12 @@ defmodule Ledgr.Core.Accounting do
     {cogs_accounts, operating_expense_accounts} =
       Enum.split_with(expense_accounts, fn acc -> acc.is_cogs end)
 
-    total_revenue_cents = Enum.reduce(revenue_accounts, 0, fn acc, sum -> sum + acc.net_cents end)
+    # Contra-revenue accounts (like Sales Discounts 4010) have normal_balance "debit"
+    # and must be subtracted from total revenue, not added.
+    total_revenue_cents =
+      Enum.reduce(revenue_accounts, 0, fn acc, sum ->
+        if acc.normal_balance == "debit", do: sum - acc.net_cents, else: sum + acc.net_cents
+      end)
     total_cogs_cents = Enum.reduce(cogs_accounts, 0, fn acc, sum -> sum + acc.net_cents end)
     total_opex_cents = Enum.reduce(operating_expense_accounts, 0, fn acc, sum -> sum + acc.net_cents end)
 
@@ -1544,7 +1579,11 @@ defmodule Ledgr.Core.Accounting do
 
     case contrib.direction do
       "in"  -> record_owner_investment(contrib, cash_account, equity_account, amount)
-      "out" -> record_owner_withdrawal(contrib, cash_account, equity_account, amount)
+      "out" ->
+        # Withdrawals must debit Owner's Drawings (contra-equity), not Owner's Equity directly.
+        # Owner's Drawings is closed to Retained Earnings at year-end.
+        drawings_account = get_account_by_code!(@owners_drawings_code)
+        record_owner_withdrawal(contrib, cash_account, drawings_account, amount)
       _     -> {:error, :unknown_direction}
     end
   end
@@ -1592,7 +1631,7 @@ defmodule Ledgr.Core.Accounting do
         account_id: equity_account.id,
         debit_cents: amount_cents,
         credit_cents: 0,
-        description: "Decrease in owner's equity"
+        description: "Owner's drawings (withdrawal)"
       },
       %{
         account_id: cash_account.id,
@@ -1603,5 +1642,145 @@ defmodule Ledgr.Core.Accounting do
     ]
 
     create_journal_entry_with_lines(entry_attrs, lines)
+  end
+
+  # ── Depreciation ──────────────────────────────────────────────────────
+
+  @doc """
+  Record monthly straight-line depreciation for kitchen equipment.
+
+  Creates a journal entry:
+    Dr Depreciation Expense (6045)
+    Cr Accumulated Depreciation - Equipment (1310)
+
+  Parameters:
+    - amount_cents: monthly depreciation amount
+    - opts:
+      - :date - date of the entry (defaults to today)
+      - :reference - reference string
+      - :description - custom description
+  """
+  def record_depreciation(amount_cents, opts \\ []) do
+    depreciation_expense = get_account_by_code!(@depreciation_expense_code)
+    accum_depreciation = get_account_by_code!(@accum_depreciation_code)
+
+    date = Keyword.get(opts, :date, Date.utc_today())
+    reference = Keyword.get(opts, :reference, "Monthly depreciation")
+    description = Keyword.get(opts, :description, "Monthly straight-line depreciation - Kitchen Equipment")
+
+    entry_attrs = %{
+      date: date,
+      entry_type: "depreciation",
+      reference: reference,
+      description: description
+    }
+
+    lines = [
+      %{
+        account_id: depreciation_expense.id,
+        debit_cents: amount_cents,
+        credit_cents: 0,
+        description: "Depreciation expense"
+      },
+      %{
+        account_id: accum_depreciation.id,
+        debit_cents: 0,
+        credit_cents: amount_cents,
+        description: "Accumulated depreciation - Equipment"
+      }
+    ]
+
+    create_journal_entry_with_lines(entry_attrs, lines)
+  end
+
+  @doc """
+  Calculate monthly depreciation amount for kitchen equipment using straight-line method.
+
+  Parameters:
+    - useful_life_months: total useful life in months (e.g., 60 for 5 years)
+
+  Returns the monthly depreciation amount in cents, or 0 if no equipment exists.
+  """
+  def calculate_monthly_depreciation(useful_life_months) do
+    equipment_account = get_account_by_code!(@kitchen_inventory_code)
+    accum_depr_account = get_account_by_code!(@accum_depreciation_code)
+
+    # Get gross equipment cost (debit balance of 1300)
+    gross_cost =
+      from(jl in JournalLine,
+        join: je in JournalEntry,
+        on: jl.journal_entry_id == je.id,
+        where: jl.account_id == ^equipment_account.id,
+        select: coalesce(sum(jl.debit_cents), 0) - coalesce(sum(jl.credit_cents), 0)
+      )
+      |> Repo.one()
+      |> case do
+        nil -> 0
+        total -> total
+      end
+
+    # Get accumulated depreciation so far (credit balance of 1310)
+    accum_depr =
+      from(jl in JournalLine,
+        join: je in JournalEntry,
+        on: jl.journal_entry_id == je.id,
+        where: jl.account_id == ^accum_depr_account.id,
+        select: coalesce(sum(jl.credit_cents), 0) - coalesce(sum(jl.debit_cents), 0)
+      )
+      |> Repo.one()
+      |> case do
+        nil -> 0
+        total -> total
+      end
+
+    remaining = gross_cost - accum_depr
+
+    if remaining > 0 and useful_life_months > 0 do
+      # Monthly depreciation = gross cost / useful life
+      # (Not remaining / remaining life, since straight-line uses original cost)
+      div(gross_cost, useful_life_months)
+    else
+      0
+    end
+  end
+
+  # ------- IVA / VAT POSITION -------
+
+  @doc """
+  Calculate the net IVA position as of the given date.
+
+  Returns a map with:
+  - iva_receivable_cents:  debit balance of 1400 (IVA paid on purchases)
+  - iva_payable_cents:     credit balance of 2100 (IVA collected on sales)
+  - net_position_cents:    receivable - payable (positive = net credit, negative = net payable)
+  """
+  def iva_position(as_of_date \\ Date.utc_today()) do
+    iva_receivable_account = get_account_by_code!(@iva_receivable_code)
+    iva_payable_account = get_account_by_code!(@sales_tax_payable_code)
+
+    receivable =
+      from(jl in JournalLine,
+        join: je in JournalEntry,
+        on: jl.journal_entry_id == je.id,
+        where: jl.account_id == ^iva_receivable_account.id and je.date <= ^as_of_date,
+        select: coalesce(sum(jl.debit_cents), 0) - coalesce(sum(jl.credit_cents), 0)
+      )
+      |> Repo.one() || 0
+
+    payable =
+      from(jl in JournalLine,
+        join: je in JournalEntry,
+        on: jl.journal_entry_id == je.id,
+        where: jl.account_id == ^iva_payable_account.id and je.date <= ^as_of_date,
+        select: coalesce(sum(jl.credit_cents), 0) - coalesce(sum(jl.debit_cents), 0)
+      )
+      |> Repo.one() || 0
+
+    %{
+      as_of_date: as_of_date,
+      iva_receivable_cents: receivable,
+      iva_payable_cents: payable,
+      net_position_cents: receivable - payable
+    }
   end
 end

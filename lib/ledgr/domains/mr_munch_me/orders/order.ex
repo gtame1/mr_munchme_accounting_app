@@ -29,6 +29,7 @@ defmodule Ledgr.Domains.MrMunchMe.Orders.Order do
     field :discount_value, :decimal
     field :is_gift, :boolean, default: false
     field :quantity, :integer, default: 1
+    field :shipping_fee_cents, :integer
 
     belongs_to :product, Product
     belongs_to :prep_location, Location
@@ -59,7 +60,8 @@ defmodule Ledgr.Domains.MrMunchMe.Orders.Order do
       :discount_value,
       :is_gift,
       :actual_delivery_date,
-      :quantity
+      :quantity,
+      :shipping_fee_cents
     ])
     |> validate_required([
       :delivery_type,

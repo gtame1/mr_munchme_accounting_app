@@ -328,6 +328,9 @@ defmodule Ledgr.Domains.MrMunchMe.Orders do
             end
         end
 
+      # Snapshot the current shipping fee at order creation time for historical accuracy
+      attrs = Map.put_new(attrs, "shipping_fee_cents", OrderAccounting.shipping_fee_cents())
+
       case %Order{}
            |> Order.changeset(attrs)
            |> Repo.insert() do
@@ -641,7 +644,8 @@ defmodule Ledgr.Domains.MrMunchMe.Orders do
 
     shipping_cents =
       if order.customer_paid_shipping do
-        OrderAccounting.shipping_fee_cents()
+        # Use stored shipping fee if available, fallback to current catalog price for legacy orders
+        order.shipping_fee_cents || OrderAccounting.shipping_fee_cents()
       else
         0
       end

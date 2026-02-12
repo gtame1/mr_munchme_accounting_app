@@ -206,11 +206,12 @@ defmodule Ledgr.Domains.MrMunchMe.Inventory do
     # 2) Calculate cumulative average from all purchase movements (including the one we just inserted)
     new_avg_cost = calculate_cumulative_avg_cost(ingredient.id, location.id) || unit_cost_cents
 
-    # 3) Update stock with new quantity and cumulative average cost
+    # 3) Update stock with new quantity, cumulative average cost, and clear negative flag if recovered
     stock
     |> InventoryItem.changeset(%{
       quantity_on_hand: new_qty,
-      avg_cost_per_unit_cents: new_avg_cost
+      avg_cost_per_unit_cents: new_avg_cost,
+      negative_stock: new_qty < 0
     })
     |> Repo.update!()
 
@@ -231,9 +232,11 @@ defmodule Ledgr.Domains.MrMunchMe.Inventory do
 
       stock = get_or_create_stock!(ingredient.id, location.id)
 
-      # Warn if insufficient stock
-      if stock.quantity_on_hand < quantity do
-        Logger.warning("⚠️ Insufficient stock for #{ingredient_code} at #{location_code}: have #{stock.quantity_on_hand}, need #{quantity}")
+      # Warn if insufficient stock (allow but flag - bakery operations shouldn't be blocked)
+      going_negative = stock.quantity_on_hand < quantity
+
+      if going_negative do
+        Logger.warning("Insufficient stock for #{ingredient_code} at #{location_code}: have #{stock.quantity_on_hand}, need #{quantity}")
       end
 
       # Use current average cost, with fallback to historical purchase average, then ingredient catalog cost
@@ -267,9 +270,13 @@ defmodule Ledgr.Domains.MrMunchMe.Inventory do
         })
         |> Repo.insert()
 
+      # Set negative_stock flag when stock goes below zero; clear it when it recovers
       stock =
         stock
-        |> InventoryItem.changeset(%{quantity_on_hand: new_qty})
+        |> InventoryItem.changeset(%{
+          quantity_on_hand: new_qty,
+          negative_stock: new_qty < 0
+        })
         |> Repo.update!()
 
       # Create journal entry for manual usage (not for orders, which go through WIP)
@@ -361,6 +368,44 @@ defmodule Ledgr.Domains.MrMunchMe.Inventory do
         |> Map.update!(:total, &(&1 + cost_cents))
       end)
     end
+  end
+
+  @doc """
+  Reverses inventory consumption for a canceled order.
+  Finds all "usage" movements linked to the order and adds the quantities back to stock.
+  """
+  def reverse_order_consumption(order_id) do
+    movements =
+      from(m in InventoryMovement,
+        where: m.source_type == "order" and m.source_id == ^order_id and m.movement_type == "usage"
+      )
+      |> Repo.all()
+
+    Enum.each(movements, fn movement ->
+      stock = get_or_create_stock!(movement.ingredient_id, movement.from_location_id)
+      new_qty = stock.quantity_on_hand + movement.quantity
+
+      stock
+      |> InventoryItem.changeset(%{quantity_on_hand: new_qty})
+      |> Repo.update!()
+
+      # Record a return movement for audit trail
+      %InventoryMovement{}
+      |> InventoryMovement.changeset(%{
+        ingredient_id: movement.ingredient_id,
+        to_location_id: movement.from_location_id,
+        from_location_id: nil,
+        quantity: movement.quantity,
+        movement_type: "return",
+        unit_cost_cents: movement.unit_cost_cents,
+        total_cost_cents: movement.total_cost_cents,
+        source_type: "order",
+        source_id: order_id,
+        note: "Return from canceled order ##{order_id}",
+        movement_date: Date.utc_today()
+      })
+      |> Repo.insert!()
+    end)
   end
 
   @doc """
@@ -559,6 +604,18 @@ defmodule Ledgr.Domains.MrMunchMe.Inventory do
   def list_stock_items do
     InventoryItem
     |> preload([:ingredient, :location])
+    |> Repo.all()
+  end
+
+  @doc """
+  Returns stock items that are flagged as negative.
+  These need reconciliation (either restock or inventory count correction).
+  """
+  def list_negative_stock_items do
+    from(i in InventoryItem,
+      where: i.negative_stock == true,
+      preload: [:ingredient, :location]
+    )
     |> Repo.all()
   end
 

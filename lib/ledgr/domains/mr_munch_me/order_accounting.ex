@@ -14,7 +14,7 @@ defmodule Ledgr.Domains.MrMunchMe.OrderAccounting do
   alias Ledgr.Domains.MrMunchMe.Orders.{Order, OrderPayment, Product}
   alias Ledgr.Domains.MrMunchMe.Inventory
   alias Ledgr.Core.Accounting
-  alias Ledgr.Core.Accounting.JournalEntry
+  alias Ledgr.Core.Accounting.{JournalEntry, JournalLine}
 
   # ── MrMunchMe-specific account codes ──────────────────────────────────
   @ar_code "1100"
@@ -26,6 +26,7 @@ defmodule Ledgr.Domains.MrMunchMe.OrderAccounting do
   @sales_code "4000"
   @sales_discounts_code "4010"
   @ingredients_cogs_code "5000"
+  @packing_cogs_code "5010"
   @samples_gifts_code "6070"
 
   @shipping_product_sku "ENVIO"
@@ -132,9 +133,72 @@ defmodule Ledgr.Domains.MrMunchMe.OrderAccounting do
     end
   end
 
-  # For now, we do not create any accounting entry on cancellation.
-  # (We only allow cancelling orders that have not yet been delivered in the UI.)
-  def record_order_canceled(%Order{} = _order), do: :ok
+  @doc """
+  When an in-prep order is canceled, reverse the WIP journal entry and restore inventory.
+  If the order was never in-prep, this is a no-op.
+  """
+  def record_order_canceled(%Order{} = order) do
+    reference = "Order ##{order.id}"
+
+    # Check if there was an "order_in_prep" journal entry to reverse
+    in_prep_entry =
+      from(je in JournalEntry,
+        where: je.entry_type == "order_in_prep" and je.reference == ^reference,
+        preload: [:journal_lines]
+      )
+      |> Repo.one()
+
+    # Also check that we haven't already reversed (or delivered) this order
+    already_reversed =
+      from(je in JournalEntry,
+        where: je.entry_type == "order_canceled" and je.reference == ^reference
+      )
+      |> Repo.one()
+
+    already_delivered =
+      from(je in JournalEntry,
+        where: je.entry_type == "order_delivered" and je.reference == ^reference
+      )
+      |> Repo.one()
+
+    cond do
+      is_nil(in_prep_entry) ->
+        # Never went to in_prep, nothing to reverse
+        :ok
+
+      already_reversed ->
+        # Already reversed, idempotent
+        {:ok, already_reversed}
+
+      already_delivered ->
+        # Already delivered, cannot cancel accounting (order should not reach here)
+        :ok
+
+      true ->
+        # Reverse the WIP journal entry: swap debits and credits
+        reversal_lines =
+          Enum.map(in_prep_entry.journal_lines, fn line ->
+            %{
+              account_id: line.account_id,
+              debit_cents: line.credit_cents,
+              credit_cents: line.debit_cents,
+              description: "Reversal: #{line.description}"
+            }
+          end)
+
+        entry_attrs = %{
+          date: Date.utc_today(),
+          entry_type: "order_canceled",
+          reference: reference,
+          description: "Reverse WIP for canceled order ##{order.id}"
+        }
+
+        # Reverse inventory movements (restore stock)
+        Inventory.reverse_order_consumption(order.id)
+
+        Accounting.create_journal_entry_with_lines(entry_attrs, reversal_lines)
+    end
+  end
 
   def record_order_payment(%OrderPayment{} = payment) do
     payment = Repo.preload(payment, [:order, :paid_to_account, :partner, :partner_payable_account])
@@ -226,7 +290,7 @@ defmodule Ledgr.Domains.MrMunchMe.OrderAccounting do
 
   # Get revenue breakdown by product
   def revenue_by_product(start_date, end_date) do
-    shipping_fee = shipping_fee_cents()
+    fallback_shipping_fee = shipping_fee_cents()
 
     from(o in Order,
       join: p in assoc(o, :product),
@@ -236,7 +300,7 @@ defmodule Ledgr.Domains.MrMunchMe.OrderAccounting do
         product_id: p.id,
         product_name: p.name,
         product_sku: p.sku,
-        revenue_cents: fragment("SUM(? * COALESCE(?, 1)) + SUM(CASE WHEN ? THEN ? ELSE 0 END)", p.price_cents, o.quantity, o.customer_paid_shipping, ^shipping_fee)
+        revenue_cents: fragment("SUM(? * COALESCE(?, 1)) + SUM(CASE WHEN ? THEN COALESCE(?, ?) ELSE 0 END)", p.price_cents, o.quantity, o.customer_paid_shipping, o.shipping_fee_cents, ^fallback_shipping_fee)
       }
     )
     |> Repo.all()
@@ -398,8 +462,8 @@ defmodule Ledgr.Domains.MrMunchMe.OrderAccounting do
     sales = Accounting.get_account_by_code!(@sales_code)
     customer_deposits = Accounting.get_account_by_code!(@customer_deposits_code)
 
-    # For now, ALL COGS -> Ingredients Used (5000).
     ingredients_cogs = Accounting.get_account_by_code!(@ingredients_cogs_code)
+    packing_cogs = Accounting.get_account_by_code!(@packing_cogs_code)
 
     date = order.actual_delivery_date || order.delivery_date || Date.utc_today()
 
@@ -514,24 +578,38 @@ defmodule Ledgr.Domains.MrMunchMe.OrderAccounting do
         []
       end
 
-    # 3) COGS: DR COGS, CR WIP
-    # For now, post all cost to Ingredients COGS (5000).
+    # 3) COGS: DR COGS (split by type), CR WIP
+    # Retrieve cost breakdown from the "order_in_prep" journal entry credit lines
+    # to split COGS between Ingredients (5000) and Packaging (5010).
+    # Kitchen costs (1300) are included with Ingredients COGS (5000).
     cogs_lines =
       if cost_cents > 0 do
-        [
-          %{
-            account_id: ingredients_cogs.id,
-            debit_cents: cost_cents,
-            credit_cents: 0,
-            description: "COGS for order ##{order.id}"
-          },
-          %{
-            account_id: wip.id,
-            debit_cents: 0,
-            credit_cents: cost_cents,
-            description: "Relieve WIP for order ##{order.id}"
-          }
-        ]
+        cost_split = get_order_production_cost_breakdown(order.id)
+
+        cogs_debit_lines =
+          [
+            {ingredients_cogs, (cost_split.ingredients || 0) + (cost_split.kitchen || 0),
+             "Ingredients COGS"},
+            {packing_cogs, cost_split.packing || 0, "Packaging COGS"}
+          ]
+          |> Enum.filter(fn {_account, cents, _label} -> cents > 0 end)
+          |> Enum.map(fn {account, cents, label} ->
+            %{
+              account_id: account.id,
+              debit_cents: cents,
+              credit_cents: 0,
+              description: "#{label} for order ##{order.id}"
+            }
+          end)
+
+        wip_credit_line = %{
+          account_id: wip.id,
+          debit_cents: 0,
+          credit_cents: cost_cents,
+          description: "Relieve WIP for order ##{order.id}"
+        }
+
+        cogs_debit_lines ++ [wip_credit_line]
       else
         []
       end
@@ -623,5 +701,33 @@ defmodule Ledgr.Domains.MrMunchMe.OrderAccounting do
         select: jl.debit_cents,
         limit: 1
     )
+  end
+
+  # Get the production cost breakdown by inventory type from the "order_in_prep" journal entry.
+  # Returns %{ingredients: cents, packing: cents, kitchen: cents} by reading the credit lines
+  # which correspond to the inventory accounts (1200, 1210, 1300).
+  defp get_order_production_cost_breakdown(order_id) do
+    reference = "Order ##{order_id}"
+
+    ingredients_account = Accounting.get_account_by_code!(@ingredients_inventory_code)
+    packing_account = Accounting.get_account_by_code!(@packing_inventory_code)
+    kitchen_account = Accounting.get_account_by_code!(@kitchen_inventory_code)
+
+    credit_lines =
+      from(je in JournalEntry,
+        join: jl in JournalLine,
+        on: jl.journal_entry_id == je.id,
+        where: je.entry_type == "order_in_prep" and je.reference == ^reference,
+        where: jl.credit_cents > 0,
+        select: {jl.account_id, jl.credit_cents}
+      )
+      |> Repo.all()
+      |> Enum.into(%{})
+
+    %{
+      ingredients: Map.get(credit_lines, ingredients_account.id, 0),
+      packing: Map.get(credit_lines, packing_account.id, 0),
+      kitchen: Map.get(credit_lines, kitchen_account.id, 0)
+    }
   end
 end

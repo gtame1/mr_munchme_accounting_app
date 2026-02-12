@@ -24,6 +24,7 @@ defmodule Ledgr.Core.Accounting.JournalEntry do
     internal_transfer
     reconciliation
     year_end_close
+    depreciation
     other
   )
 
@@ -36,6 +37,7 @@ defmodule Ledgr.Core.Accounting.JournalEntry do
     {"Internal Transfer", "internal_transfer"},
     {"Reconciliation", "reconciliation"},
     {"Year-End Close", "year_end_close"},
+    {"Depreciation", "depreciation"},
     {"Other", "other"}
   ]
 

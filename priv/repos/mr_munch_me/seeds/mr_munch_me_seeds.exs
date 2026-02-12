@@ -92,7 +92,6 @@ accounts = [
   %{code: "1010", name: "NuBank Ana Gaby Account", type: "asset", normal_balance: "debit", is_cash: true},
   %{code: "1011", name: "Banco Fer", type: "asset", normal_balance: "debit", is_cash: true},
   %{code: "1100", name: "Accounts Receivable (Unpaid Orders)", type: "asset", normal_balance: "debit"},
-  %{code: "1100", name: "Orders Paid By Company", type: "asset", normal_balance: "credit"},
 
   # Inventory
   %{code: "1200", name: "Ingredients Inventory", type: "asset", normal_balance: "debit"},
@@ -101,6 +100,8 @@ accounts = [
 
   # Fixed assets
   %{code: "1300", name: "Kitchen Equipment", type: "asset", normal_balance: "debit"},
+  %{code: "1310", name: "Accumulated Depreciation - Equipment", type: "asset", normal_balance: "credit"},
+  %{code: "1400", name: "IVA Receivable (Tax Credit)", type: "asset", normal_balance: "debit"},
 
   # Liabilities
   %{code: "2000", name: "Accounts Payable (General)", type: "liability", normal_balance: "credit"},
@@ -129,8 +130,14 @@ accounts = [
   %{code: "6030", name: "Advertising & Marketing", type: "expense", normal_balance: "debit"},
   %{code: "6040", name: "Test Inventory", type: "expense", normal_balance: "debit"},
   %{code: "6050", name: "Parking", type: "expense", normal_balance: "debit"},
+  %{code: "6045", name: "Depreciation Expense", type: "expense", normal_balance: "debit"},
   %{code: "6060", name: "Inventory Waste & Shrinkage", type: "expense", normal_balance: "debit"},
   %{code: "6070", name: "Samples & Gifts", type: "expense", normal_balance: "debit"},
+  %{code: "6035", name: "Payment Processing Fees", type: "expense", normal_balance: "debit"},
+  %{code: "6080", name: "Utilities (Gas, Electricity, Water)", type: "expense", normal_balance: "debit"},
+  %{code: "6085", name: "Kitchen Supplies", type: "expense", normal_balance: "debit"},
+  %{code: "6090", name: "Permits & Licenses", type: "expense", normal_balance: "debit"},
+  %{code: "6095", name: "Insurance", type: "expense", normal_balance: "debit"},
   %{code: "6099", name: "Other Expenses", type: "expense", normal_balance: "debit"},
 ]
 

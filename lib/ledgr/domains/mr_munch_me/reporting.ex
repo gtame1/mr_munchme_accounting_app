@@ -8,6 +8,7 @@ defmodule Ledgr.Domains.MrMunchMe.Reporting do
   alias Ledgr.Repo
 
   alias Ledgr.Domains.MrMunchMe.Orders.{Order, Product}
+  alias Ledgr.Domains.MrMunchMe.Orders
   alias Ledgr.Core.Accounting
   alias Ledgr.Core.Accounting.JournalEntry
   alias Ledgr.Domains.MrMunchMe.OrderAccounting
@@ -85,7 +86,8 @@ defmodule Ledgr.Domains.MrMunchMe.Reporting do
     delivered_orders = Map.get(orders_by_status, "delivered", 0)
 
     # --- Orders per product with revenue and COGS ---
-    shipping_fee = OrderAccounting.shipping_fee_cents()
+    # Fallback shipping fee for legacy orders that don't have it stored
+    fallback_shipping_fee = OrderAccounting.shipping_fee_cents()
 
     orders_by_product_base =
       from(o in Order,
@@ -101,7 +103,7 @@ defmodule Ledgr.Domains.MrMunchMe.Reporting do
           product_sku: p.sku,
           order_count: count(o.id),
           unit_count: sum(fragment("COALESCE(?, 1)", o.quantity)),
-          revenue_cents: fragment("SUM(? * COALESCE(?, 1)) + SUM(CASE WHEN ? THEN ? ELSE 0 END)", p.price_cents, o.quantity, o.customer_paid_shipping, ^shipping_fee)
+          revenue_cents: fragment("SUM(? * COALESCE(?, 1)) + SUM(CASE WHEN ? THEN COALESCE(?, ?) ELSE 0 END)", p.price_cents, o.quantity, o.customer_paid_shipping, o.shipping_fee_cents, ^fallback_shipping_fee)
         },
         order_by: [desc: count(o.id)]
       )
@@ -301,7 +303,7 @@ defmodule Ledgr.Domains.MrMunchMe.Reporting do
       Enum.reduce(orders, 0, fn order, acc ->
         quantity = order.quantity || 1
         base_revenue = (order.product.price_cents || 0) * quantity
-        shipping_cents = if order.customer_paid_shipping, do: OrderAccounting.shipping_fee_cents(), else: 0
+        shipping_cents = if order.customer_paid_shipping, do: order.shipping_fee_cents || OrderAccounting.shipping_fee_cents(), else: 0
         acc + base_revenue + shipping_cents
       end)
 
@@ -440,5 +442,105 @@ defmodule Ledgr.Domains.MrMunchMe.Reporting do
       unit_economics(product.id, start_date, end_date)
     end)
     |> Enum.filter(fn ue -> ue.units_sold > 0 end)
+  end
+
+  @doc """
+  AR Aging Report: shows outstanding receivables by age bucket.
+
+  Returns:
+    %{
+      as_of_date: Date,
+      total_outstanding_cents: integer,
+      buckets: %{
+        current: integer,      # 0-30 days
+        days_31_60: integer,   # 31-60 days
+        days_61_90: integer,   # 61-90 days
+        over_90: integer       # 90+ days
+      },
+      line_items: [
+        %{
+          order_id: integer,
+          customer_name: string,
+          delivery_date: Date,
+          days_outstanding: integer,
+          order_total_cents: integer,
+          paid_cents: integer,
+          outstanding_cents: integer,
+          bucket: string
+        }
+      ]
+    }
+  """
+  def ar_aging_report(as_of_date \\ Date.utc_today()) do
+    # Get all delivered orders with their payments preloaded
+    delivered_orders =
+      from(o in Order,
+        where: o.status == "delivered",
+        preload: [:product, :order_payments]
+      )
+      |> Repo.all()
+
+    line_items =
+      delivered_orders
+      |> Enum.map(fn order ->
+        # Calculate order total (product + shipping)
+        {product_cents, shipping_cents} = Orders.order_total_cents(order)
+        order_total = product_cents + shipping_cents
+
+        # Sum all payments (deposits + regular payments)
+        paid_cents =
+          Enum.reduce(order.order_payments, 0, fn payment, sum ->
+            sum + (payment.amount_cents || 0)
+          end)
+
+        outstanding = order_total - paid_cents
+
+        # Use actual_delivery_date if available, else delivery_date
+        effective_date = order.actual_delivery_date || order.delivery_date
+        days = if effective_date, do: Date.diff(as_of_date, effective_date), else: 0
+
+        bucket =
+          cond do
+            days <= 30 -> "current"
+            days <= 60 -> "31-60"
+            days <= 90 -> "61-90"
+            true -> "90+"
+          end
+
+        %{
+          order_id: order.id,
+          customer_name: order.customer_name,
+          delivery_date: effective_date,
+          days_outstanding: max(days, 0),
+          order_total_cents: order_total,
+          paid_cents: paid_cents,
+          outstanding_cents: outstanding,
+          bucket: bucket
+        }
+      end)
+      # Only include orders with outstanding balance
+      |> Enum.filter(fn item -> item.outstanding_cents > 0 end)
+      |> Enum.sort_by(fn item -> -item.days_outstanding end)
+
+    # Aggregate by bucket
+    buckets =
+      Enum.reduce(line_items, %{current: 0, days_31_60: 0, days_61_90: 0, over_90: 0}, fn item, acc ->
+        case item.bucket do
+          "current" -> %{acc | current: acc.current + item.outstanding_cents}
+          "31-60" -> %{acc | days_31_60: acc.days_31_60 + item.outstanding_cents}
+          "61-90" -> %{acc | days_61_90: acc.days_61_90 + item.outstanding_cents}
+          "90+" -> %{acc | over_90: acc.over_90 + item.outstanding_cents}
+        end
+      end)
+
+    total_outstanding =
+      buckets.current + buckets.days_31_60 + buckets.days_61_90 + buckets.over_90
+
+    %{
+      as_of_date: as_of_date,
+      total_outstanding_cents: total_outstanding,
+      buckets: buckets,
+      line_items: line_items
+    }
   end
 end

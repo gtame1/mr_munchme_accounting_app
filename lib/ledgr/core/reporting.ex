@@ -154,6 +154,23 @@ defmodule Ledgr.Core.Reporting do
         total -> total
       end
 
+    other_inflows_cents = cash_inflows_cents - sales_inflows_cents - investment_inflows_cents
+    other_outflows_cents = cash_outflows_cents - expense_outflows_cents - withdrawal_outflows_cents
+
+    # IAS 7 / NIF B-2 Standard Classification:
+    # Operating: sales receipts, operating expense payments, inventory purchases
+    # Investing: currently minimal (equipment purchases would go here)
+    # Financing: owner investments and withdrawals
+    operating_inflows = sales_inflows_cents + other_inflows_cents
+    operating_outflows = expense_outflows_cents + other_outflows_cents
+    net_operating = operating_inflows - operating_outflows
+
+    net_investing = 0  # Future: equipment purchases would be classified here
+
+    financing_inflows = investment_inflows_cents
+    financing_outflows = withdrawal_outflows_cents
+    net_financing = financing_inflows - financing_outflows
+
     %{
       period: %{start_date: start_date, end_date: end_date},
       beginning_balance_cents: beginning_balance_cents,
@@ -161,13 +178,30 @@ defmodule Ledgr.Core.Reporting do
       cash_inflows_cents: cash_inflows_cents,
       cash_outflows_cents: cash_outflows_cents,
       net_cash_flow_cents: net_cash_flow_cents,
+      # Standard IAS 7 classification
+      operating: %{
+        inflows_cents: operating_inflows,
+        outflows_cents: operating_outflows,
+        net_cents: net_operating
+      },
+      investing: %{
+        inflows_cents: 0,
+        outflows_cents: 0,
+        net_cents: net_investing
+      },
+      financing: %{
+        inflows_cents: financing_inflows,
+        outflows_cents: financing_outflows,
+        net_cents: net_financing
+      },
+      # Detailed sub-breakdown (backward compatible)
       breakdown: %{
         sales_inflows_cents: sales_inflows_cents,
         investment_inflows_cents: investment_inflows_cents,
         expense_outflows_cents: expense_outflows_cents,
         withdrawal_outflows_cents: withdrawal_outflows_cents,
-        other_inflows_cents: cash_inflows_cents - sales_inflows_cents - investment_inflows_cents,
-        other_outflows_cents: cash_outflows_cents - expense_outflows_cents - withdrawal_outflows_cents
+        other_inflows_cents: other_inflows_cents,
+        other_outflows_cents: other_outflows_cents
       }
     }
   end
@@ -211,10 +245,10 @@ defmodule Ledgr.Core.Reporting do
     ar_balance = find_account_balance(bs.assets, "1100")
 
     # Inventory: prefer actual inventory system value over GL balance
+    # Note: Kitchen Equipment (1300) is a fixed asset, not working capital inventory
     inventory_gl =
       find_account_balance(bs.assets, "1200") +
-        find_account_balance(bs.assets, "1210") +
-        find_account_balance(bs.assets, "1300")
+        find_account_balance(bs.assets, "1210")
 
     inventory_value = Keyword.get(opts, :inventory_value_cents) || inventory_gl
     wip_balance = find_account_balance(bs.assets, "1220")

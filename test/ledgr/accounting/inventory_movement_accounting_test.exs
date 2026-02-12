@@ -64,6 +64,35 @@ defmodule Ledgr.Core.Accounting.InventoryMovementAccountingTest do
         name: "Ingredients COGS",
         type: "expense",
         normal_balance: "debit",
+        is_cash: false,
+        is_cogs: true
+      })
+
+    {:ok, _packing_cogs_account} =
+      Accounting.create_account(%{
+        code: "5010",
+        name: "Packing COGS",
+        type: "expense",
+        normal_balance: "debit",
+        is_cash: false,
+        is_cogs: true
+      })
+
+    {:ok, _packing_inventory_account} =
+      Accounting.create_account(%{
+        code: "1210",
+        name: "Packing Inventory",
+        type: "asset",
+        normal_balance: "debit",
+        is_cash: false
+      })
+
+    {:ok, _kitchen_equipment_account} =
+      Accounting.create_account(%{
+        code: "1300",
+        name: "Kitchen Equipment",
+        type: "asset",
+        normal_balance: "debit",
         is_cash: false
       })
 
