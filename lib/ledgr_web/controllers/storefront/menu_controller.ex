@@ -3,13 +3,13 @@ defmodule LedgrWeb.Storefront.MenuController do
 
   alias Ledgr.Domains.MrMunchMe.Orders
 
-  def index(conn, _params) do
-    products = Orders.list_products()
+  def index(conn, params) do
+    products = Orders.list_products_filtered(params)
 
     conn
     |> assign(:storefront, true)
     |> assign(:page_title, "Menu")
-    |> render(:index, products: products)
+    |> render(:index, products: products, current_q: params["q"] || "")
   end
 
   def show(conn, %{"id" => id}) do

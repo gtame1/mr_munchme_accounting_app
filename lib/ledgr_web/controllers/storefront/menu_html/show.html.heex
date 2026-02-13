@@ -59,6 +59,16 @@
         </div>
       <% end %>
 
+      <form method="post" action="/mr-munch-me/cart/add" class="product-detail-cart-form">
+        <input type="hidden" name="_csrf_token" value={Plug.CSRFProtection.get_csrf_token()} />
+        <input type="hidden" name="product_id" value={@product.id} />
+        <div class="product-detail-quantity">
+          <label for="quantity">Quantity:</label>
+          <input type="number" name="quantity" id="quantity" value="1" min="1" max="50" class="qty-input" />
+        </div>
+        <button type="submit" class="btn btn-primary btn-add-to-cart-lg">Add to Cart</button>
+      </form>
+
     </div>
   </div>
 </div>

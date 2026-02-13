@@ -1,0 +1,70 @@
+<div class="cart-page">
+  <h1 class="cart-title">Your Cart</h1>
+
+  <%= if Enum.empty?(@cart_items) do %>
+    <div class="cart-empty">
+      <p>Your cart is empty.</p>
+      <a href="/mr-munch-me/menu" class="btn btn-primary">Browse Menu</a>
+    </div>
+  <% else %>
+    <div class="cart-items">
+      <%= for item <- @cart_items do %>
+        <div class="cart-item">
+          <div class="cart-item-image">
+            <%= if item.product.image_url do %>
+              <img src={item.product.image_url} alt={item.product.name} />
+            <% else %>
+              <div class="cart-item-placeholder">
+                <img src="/images/mr-munchme-logos/mr-munchme-icon.png" alt="MrMunchMe" />
+              </div>
+            <% end %>
+          </div>
+          <div class="cart-item-info">
+            <a href={"/mr-munch-me/menu/#{item.product.id}"} class="cart-item-name">
+              <%= item.product.name %>
+            </a>
+            <div class="cart-item-price"><%= format_price(item.product.price_cents) %> each</div>
+          </div>
+          <div class="cart-item-quantity">
+            <form method="post" action="/mr-munch-me/cart/update">
+              <input type="hidden" name="_csrf_token" value={Plug.CSRFProtection.get_csrf_token()} />
+              <input type="hidden" name="_method" value="put" />
+              <input type="hidden" name="product_id" value={item.product.id} />
+              <input
+                type="number"
+                name="quantity"
+                value={item.quantity}
+                min="1"
+                max="50"
+                class="qty-input"
+                onchange="this.form.submit()"
+              />
+            </form>
+          </div>
+          <div class="cart-item-subtotal">
+            <%= format_price(item.subtotal) %>
+          </div>
+          <div class="cart-item-remove">
+            <form method="post" action="/mr-munch-me/cart/remove">
+              <input type="hidden" name="_csrf_token" value={Plug.CSRFProtection.get_csrf_token()} />
+              <input type="hidden" name="product_id" value={item.product.id} />
+              <button type="submit" class="btn-remove" title="Remove item">&times;</button>
+            </form>
+          </div>
+        </div>
+      <% end %>
+    </div>
+
+    <div class="cart-summary">
+      <div class="cart-total">
+        <span class="cart-total-label">Total:</span>
+        <span class="cart-total-amount"><%= format_price(@cart_total) %></span>
+      </div>
+    </div>
+
+    <div class="cart-actions">
+      <a href="/mr-munch-me/menu" class="btn btn-secondary">Continue Shopping</a>
+      <a href="/mr-munch-me/checkout" class="btn btn-primary">Proceed to Checkout</a>
+    </div>
+  <% end %>
+</div>

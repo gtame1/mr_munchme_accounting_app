@@ -14,6 +14,22 @@ defmodule Ledgr.Domains.MrMunchMe.Orders do
     Repo.all(from p in Product, where: p.active == true, order_by: p.name)
   end
 
+  def list_products_filtered(params \\ %{}) do
+    Product
+    |> where([p], p.active == true)
+    |> maybe_search_products(params["q"])
+    |> order_by([p], p.name)
+    |> Repo.all()
+  end
+
+  defp maybe_search_products(query, nil), do: query
+  defp maybe_search_products(query, ""), do: query
+
+  defp maybe_search_products(query, term) do
+    search = "%#{term}%"
+    from p in query, where: ilike(p.name, ^search) or ilike(p.description, ^search)
+  end
+
   def list_all_products do
     Repo.all(from p in Product, order_by: p.name)
   end

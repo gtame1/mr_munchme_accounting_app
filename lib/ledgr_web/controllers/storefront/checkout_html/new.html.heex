@@ -1,0 +1,132 @@
+<div class="checkout-page">
+  <a href="/mr-munch-me/cart" class="checkout-back">&larr; Back to Cart</a>
+  <h1 class="checkout-title">Checkout</h1>
+
+  <div class="checkout-layout">
+    <%!-- Left: Checkout form --%>
+    <div class="checkout-form-section">
+      <form method="post" action="/mr-munch-me/checkout" class="checkout-form">
+        <input type="hidden" name="_csrf_token" value={Plug.CSRFProtection.get_csrf_token()} />
+
+        <h2 class="checkout-section-title">Your Information</h2>
+
+        <div class="checkout-field">
+          <label for="customer_name">Name *</label>
+          <input
+            type="text"
+            id="customer_name"
+            name="checkout[customer_name]"
+            required
+            placeholder="Your full name"
+          />
+          <%= if @errors[:customer_name] do %>
+            <span class="checkout-error"><%= @errors[:customer_name] %></span>
+          <% end %>
+        </div>
+
+        <div class="checkout-field">
+          <label for="customer_phone">Phone *</label>
+          <input
+            type="tel"
+            id="customer_phone"
+            name="checkout[customer_phone]"
+            required
+            placeholder="+52 55 1234 5678"
+          />
+          <%= if @errors[:customer_phone] do %>
+            <span class="checkout-error"><%= @errors[:customer_phone] %></span>
+          <% end %>
+        </div>
+
+        <div class="checkout-field">
+          <label for="customer_email">Email (optional)</label>
+          <input
+            type="email"
+            id="customer_email"
+            name="checkout[customer_email]"
+            placeholder="you@example.com"
+          />
+        </div>
+
+        <h2 class="checkout-section-title">Delivery</h2>
+
+        <div class="checkout-field">
+          <label>Delivery Type *</label>
+          <div class="checkout-radio-group">
+            <label class="checkout-radio">
+              <input type="radio" name="checkout[delivery_type]" value="pickup" required />
+              <span>Pickup</span>
+            </label>
+            <label class="checkout-radio">
+              <input
+                type="radio"
+                name="checkout[delivery_type]"
+                value="delivery"
+                onclick="document.getElementById('delivery-address-field').style.display='block'"
+              />
+              <span>Delivery</span>
+            </label>
+          </div>
+          <%= if @errors[:delivery_type] do %>
+            <span class="checkout-error"><%= @errors[:delivery_type] %></span>
+          <% end %>
+        </div>
+
+        <div class="checkout-field">
+          <label for="delivery_date">Preferred Date *</label>
+          <input type="date" id="delivery_date" name="checkout[delivery_date]" required />
+          <%= if @errors[:delivery_date] do %>
+            <span class="checkout-error"><%= @errors[:delivery_date] %></span>
+          <% end %>
+        </div>
+
+        <div class="checkout-field" id="delivery-address-field" style="display:none;">
+          <label for="delivery_address">Delivery Address</label>
+          <input
+            type="text"
+            id="delivery_address"
+            name="checkout[delivery_address]"
+            placeholder="Your delivery address"
+          />
+        </div>
+
+        <button type="submit" class="btn btn-primary checkout-submit">Place Order</button>
+      </form>
+    </div>
+
+    <%!-- Right: Order summary --%>
+    <div class="checkout-summary-section">
+      <div class="checkout-summary">
+        <h2 class="checkout-section-title">Order Summary</h2>
+        <div class="checkout-summary-items">
+          <%= for item <- @cart_items do %>
+            <div class="checkout-summary-item">
+              <span class="checkout-summary-item-name">
+                <%= item.product.name %> <span class="checkout-summary-qty">&times;<%= item.quantity %></span>
+              </span>
+              <span class="checkout-summary-item-price"><%= format_price(item.subtotal) %></span>
+            </div>
+          <% end %>
+        </div>
+        <div class="checkout-summary-total">
+          <span>Total</span>
+          <span><%= format_price(@cart_total) %></span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  // Show/hide delivery address based on radio selection
+  document.querySelectorAll('input[name="checkout[delivery_type]"]').forEach(function(radio) {
+    radio.addEventListener('change', function() {
+      var addressField = document.getElementById('delivery-address-field');
+      if (this.value === 'delivery') {
+        addressField.style.display = 'block';
+      } else {
+        addressField.style.display = 'none';
+      }
+    });
+  });
+</script>

@@ -78,6 +78,14 @@
                   <span class="storefront-brand-name"><%= domain.name() %></span>
                 <% end %>
               </a>
+              <% cart = Plug.Conn.get_session(@conn, :cart) || %{} %>
+              <% cart_count = cart |> Map.values() |> Enum.sum() %>
+              <a href={"/#{domain.slug()}/cart"} class="storefront-cart-link">
+                &#128722;
+                <%= if cart_count > 0 do %>
+                  <span class="storefront-cart-badge"><%= cart_count %></span>
+                <% end %>
+              </a>
             </div>
           </header>
           <main class="storefront-content">

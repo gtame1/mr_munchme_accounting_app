@@ -34,6 +34,16 @@ defmodule LedgrWeb.Router do
 
     get "/menu", MenuController, :index
     get "/menu/:id", MenuController, :show
+
+    # Cart
+    get "/cart", CartController, :index
+    post "/cart/add", CartController, :add
+    put "/cart/update", CartController, :update
+    post "/cart/remove", CartController, :remove
+
+    # Checkout
+    get "/checkout", CheckoutController, :new
+    post "/checkout", CheckoutController, :create
   end
 
   # ── MrMunchMe: public auth routes ──────────────────────────────────
