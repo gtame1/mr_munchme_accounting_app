@@ -28,6 +28,14 @@ defmodule LedgrWeb.Router do
     get "/", PageController, :home
   end
 
+  # ── MrMunchMe: public storefront ────────────────────────────────────
+  scope "/mr-munch-me", LedgrWeb.Storefront do
+    pipe_through :browser
+
+    get "/menu", MenuController, :index
+    get "/menu/:id", MenuController, :show
+  end
+
   # ── MrMunchMe: public auth routes ──────────────────────────────────
   scope "/app/mr-munch-me", LedgrWeb do
     pipe_through :browser
@@ -68,6 +76,8 @@ defmodule LedgrWeb.Router do
     get "/inventory/requirements", Domains.MrMunchMe.InventoryController, :requirements
 
     resources "/products", Domains.MrMunchMe.ProductController, only: [:index, :new, :create, :edit, :update, :delete]
+    post "/products/:product_id/images", Domains.MrMunchMe.ProductController, :upload_gallery_image
+    delete "/products/:product_id/images/:image_id", Domains.MrMunchMe.ProductController, :delete_gallery_image
     resources "/ingredients", Domains.MrMunchMe.IngredientController, only: [:index, :new, :create, :edit, :update, :delete]
     resources "/recipes", Domains.MrMunchMe.RecipeController, only: [:index, :new, :create, :show, :edit, :delete]
     post "/recipes/new_version/:id", Domains.MrMunchMe.RecipeController, :create_new_version

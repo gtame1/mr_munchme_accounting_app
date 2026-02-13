@@ -1,51 +1,184 @@
-<section class="card">
-  <h2 class="card-title">Edit Product</h2>
-  <p class="card-subtitle">
-    Update product details.
-  </p>
+<div class="product-edit-layout">
+  <%!-- Left Column: Main form --%>
+  <div class="product-edit-main">
+    <section class="card">
+      <h2 class="card-title">Edit Product</h2>
+      <p class="card-subtitle">
+        Update product details.
+      </p>
 
-  <.form :let={f} for={@changeset} as={:product} action={dp(@domain_path_prefix, "/products/#{@product.id}")} method="patch" class="form-grid">
-    <%= if @changeset.action do %>
-      <div class="alert alert-error">
-        <p>There were problems updating this product. Please review the fields below.</p>
-        <ul>
-          <%= for {field, {message, _}} <- @changeset.errors do %>
-            <li><%= humanize(field) %>: <%= message %></li>
-          <% end %>
-        </ul>
+      <.form :let={f} for={@changeset} as={:product} action={dp(@domain_path_prefix, "/products/#{@product.id}")} method="patch" multipart={true} class="form-grid">
+        <%= if @changeset.action do %>
+          <div class="alert alert-error">
+            <p>There were problems updating this product. Please review the fields below.</p>
+            <ul>
+              <%= for {field, {message, _}} <- @changeset.errors do %>
+                <li><%= humanize(field) %>: <%= message %></li>
+              <% end %>
+            </ul>
+          </div>
+        <% end %>
+
+        <div class="form-block">
+          <div class="field">
+            <.input field={f[:name]} type="text" label="Product Name" />
+          </div>
+
+          <div class="field">
+            <.input field={f[:sku]} type="text" label="SKU (optional)" />
+          </div>
+
+          <div class="field">
+            <.input field={f[:price_cents]} type="number" step="0.01" min="0" label="Price (MXN)" />
+          </div>
+
+          <div class="field">
+            <.input field={f[:description]} type="textarea" label="Description" placeholder="Describe this product for customers..." />
+          </div>
+
+          <div class="field">
+            <.input
+              field={f[:active]}
+              type="checkbox"
+              label="Active"
+            />
+          </div>
+        </div>
+
+        <%!-- Hidden fields for thumbnail upload/URL (controlled from sidebar) --%>
+        <div id="thumbnail-upload-field" style="display: none;">
+          <input type="file" name="product[thumbnail]" accept="image/*" id="thumbnail-file-input" />
+        </div>
+        <input type="hidden" name="product[image_url]" value={Phoenix.HTML.Form.input_value(f, :image_url)} />
+
+        <div class="actions">
+          <button class="btn primary" type="submit">
+            Save Changes
+          </button>
+          <.link navigate={dp(@domain_path_prefix, "/products")} class="btn">
+            Cancel
+          </.link>
+        </div>
+      </.form>
+    </section>
+  </div>
+
+  <%!-- Right Sidebar: Thumbnail + Media --%>
+  <div class="product-edit-sidebar">
+    <%!-- Thumbnail Card --%>
+    <section class="card product-sidebar-card">
+      <h3 class="sidebar-card-title">Thumbnail</h3>
+
+      <div class="sidebar-thumbnail-area">
+        <%= if @product.image_url do %>
+          <div class="sidebar-thumbnail-preview">
+            <img src={@product.image_url} alt={"#{@product.name} thumbnail"} />
+          </div>
+        <% else %>
+          <div class="sidebar-thumbnail-empty">
+            <span class="sidebar-thumbnail-icon">🖼️</span>
+            <span class="sidebar-thumbnail-hint">No thumbnail set</span>
+          </div>
+        <% end %>
       </div>
-    <% end %>
 
-    <div class="form-block">
-      <div class="field">
-        <.input field={f[:name]} type="text" label="Product Name" />
-      </div>
-
-      <div class="field">
-        <.input field={f[:sku]} type="text" label="SKU (optional)" />
-      </div>
-
-      <div class="field">
-        <.input field={f[:price_cents]} type="number" step="0.01" min="0" label="Price (MXN)" />
-      </div>
-
-      <div class="field">
-        <.input
-          field={f[:active]}
-          type="checkbox"
-          label="Active"
+      <div class="sidebar-thumbnail-actions">
+        <label class="btn btn-sm sidebar-btn" for="sidebar-thumbnail-input">
+          <%= if @product.image_url, do: "Change", else: "Upload" %>
+        </label>
+        <input
+          type="file"
+          id="sidebar-thumbnail-input"
+          accept="image/*"
+          style="display: none;"
+          onchange="handleThumbnailSelect(this)"
         />
       </div>
-    </div>
 
-    <div class="actions">
-      <button class="btn primary" type="submit">
-        Save Changes
-      </button>
-      <.link navigate={dp(@domain_path_prefix, "/products")} class="btn">
-        Cancel
-      </.link>
-    </div>
-  </.form>
-</section>
+      <script>
+        function handleThumbnailSelect(input) {
+          if (!input.files || input.files.length === 0) return;
 
+          // Show instant preview
+          const reader = new FileReader();
+          reader.onload = function(e) {
+            const area = document.querySelector('.sidebar-thumbnail-area');
+            area.innerHTML = '<div class="sidebar-thumbnail-preview"><img src="' + e.target.result + '" alt="New thumbnail preview" /></div>';
+          };
+          reader.readAsDataURL(input.files[0]);
+
+          // Copy file to the hidden form input and submit
+          const formInput = document.getElementById('thumbnail-file-input');
+          const dt = new DataTransfer();
+          for (const file of input.files) dt.items.add(file);
+          formInput.files = dt.files;
+          document.querySelector('.product-edit-main form').submit();
+        }
+      </script>
+    </section>
+
+    <%!-- Media / Gallery Card --%>
+    <section class="card product-sidebar-card">
+      <h3 class="sidebar-card-title">Media</h3>
+
+      <%= if Enum.any?(@product.images) do %>
+        <div class="sidebar-media-grid">
+          <%= for image <- @product.images do %>
+            <div class="sidebar-media-item">
+              <img src={image.image_url} alt={"Gallery image #{image.position + 1}"} />
+              <.link
+                href={dp(@domain_path_prefix, "/products/#{@product.id}/images/#{image.id}")}
+                method="delete"
+                data-confirm="Remove this gallery image?"
+                class="sidebar-media-delete"
+              >
+                &times;
+              </.link>
+            </div>
+          <% end %>
+        </div>
+      <% else %>
+        <div class="sidebar-media-empty">
+          <span class="sidebar-media-icon">📷</span>
+          <span class="sidebar-media-hint">No gallery images yet</span>
+        </div>
+      <% end %>
+
+      <form action={dp(@domain_path_prefix, "/products/#{@product.id}/images")} method="post" enctype="multipart/form-data" class="sidebar-media-upload">
+        <input type="hidden" name="_csrf_token" value={Plug.CSRFProtection.get_csrf_token()} />
+        <label class="btn btn-sm sidebar-btn" for="sidebar-gallery-input">
+          Add Image
+        </label>
+        <input
+          type="file"
+          id="sidebar-gallery-input"
+          name="gallery_image"
+          accept="image/*"
+          style="display: none;"
+          onchange="if (this.files.length > 0) this.closest('form').submit();"
+        />
+      </form>
+    </section>
+
+    <%!-- Preview Card (live preview of product) --%>
+    <section class="card product-sidebar-card">
+      <h3 class="sidebar-card-title">Preview</h3>
+      <div class="sidebar-preview-product">
+        <div class="sidebar-preview-img">
+          <%= if @product.image_url do %>
+            <img src={@product.image_url} alt={@product.name} />
+          <% else %>
+            <div class="sidebar-preview-placeholder">🍪</div>
+          <% end %>
+        </div>
+        <div class="sidebar-preview-info">
+          <div class="sidebar-preview-name"><%= @product.name %></div>
+          <div class="sidebar-preview-price"><%= MoneyHelper.format_price(@product.price_cents || 0) %></div>
+          <%= if @product.description do %>
+            <div class="sidebar-preview-desc"><%= String.slice(@product.description || "", 0, 80) %><%= if String.length(@product.description || "") > 80, do: "..." %></div>
+          <% end %>
+        </div>
+      </div>
+    </section>
+  </div>
+</div>

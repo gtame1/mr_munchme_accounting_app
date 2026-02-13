@@ -4,7 +4,7 @@
     Create a new product in your catalog.
   </p>
 
-  <.form :let={f} for={@changeset} as={:product} action={@action} class="form-grid">
+  <.form :let={f} for={@changeset} as={:product} action={@action} multipart={true} class="form-grid">
     <%= if @changeset.action do %>
       <div class="alert alert-error">
         <p>There were problems with your product. Please review the fields below.</p>
@@ -29,6 +29,34 @@
         <.input field={f[:price_cents]} type="number" step="0.01" min="0" label="Price (MXN)" />
       </div>
 
+      <%!-- Thumbnail image section --%>
+      <div class="field">
+        <label class="input-label">Thumbnail Image (optional)</label>
+
+        <div class="image-source-toggle">
+          <label class="toggle-option">
+            <input type="radio" name="image_source" value="upload" checked onclick="document.getElementById('thumbnail-upload').style.display='block'; document.getElementById('thumbnail-url').style.display='none';" />
+            Upload File
+          </label>
+          <label class="toggle-option">
+            <input type="radio" name="image_source" value="url" onclick="document.getElementById('thumbnail-upload').style.display='none'; document.getElementById('thumbnail-url').style.display='block';" />
+            Paste URL
+          </label>
+        </div>
+
+        <div id="thumbnail-upload">
+          <input type="file" name="product[thumbnail]" accept="image/*" class="file-input" />
+        </div>
+
+        <div id="thumbnail-url" style="display: none;">
+          <.input field={f[:image_url]} type="text" label="" placeholder="https://..." />
+        </div>
+      </div>
+
+      <div class="field">
+        <.input field={f[:description]} type="textarea" label="Description (optional)" placeholder="Describe this product for customers..." />
+      </div>
+
       <div class="field">
         <.input
           field={f[:active]}
@@ -51,10 +79,9 @@
   <%!-- Recipe reminder --%>
   <div class="alert alert-info" style="margin-top: 1.5rem; background-color: #eff6ff; border: 1px solid #bfdbfe; border-radius: 0.5rem; padding: 1rem;">
     <p style="margin: 0; color: #1e40af; font-weight: 500;">
-      💡 <strong>Remember:</strong> Don't forget to create a recipe for this product after creating it. 
-      Products need a recipe for orders to work properly. You can create a recipe from the 
+      💡 <strong>Remember:</strong> Don't forget to create a recipe for this product after creating it.
+      Products need a recipe for orders to work properly. You can create a recipe from the
       <a href={dp(@domain_path_prefix, "/recipes")} style="color: #2563eb; text-decoration: underline;">Recipes page</a>.
     </p>
   </div>
 </section>
-

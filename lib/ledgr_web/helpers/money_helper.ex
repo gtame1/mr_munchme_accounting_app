@@ -27,6 +27,16 @@ defmodule LedgrWeb.Helpers.MoneyHelper do
   def cents_to_pesos(_), do: 0.0
 
   @doc """
+  Formats cents as a MXN currency string (e.g. "$45.00 MXN").
+  """
+  def format_price(nil), do: ""
+  def format_price(cents) when is_integer(cents) do
+    pesos = cents / 100
+    "$#{:erlang.float_to_binary(pesos, decimals: 2)} MXN"
+  end
+  def format_price(_), do: ""
+
+  @doc """
   Converts a map of params, converting all fields ending in _cents from pesos to cents.
   """
   def convert_params_pesos_to_cents(params, fields) when is_map(params) do

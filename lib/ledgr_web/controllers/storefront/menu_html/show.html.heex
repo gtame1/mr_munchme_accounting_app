@@ -1,0 +1,64 @@
+<div class="product-detail">
+  <a href="/mr-munch-me/menu" class="product-detail-back">
+    &larr; Back to Menu
+  </a>
+
+  <% all_images = build_all_images(@product) %>
+
+  <div class="product-detail-grid">
+    <%!-- Left: Image gallery --%>
+    <div class="product-detail-gallery">
+      <div class="product-detail-main-image" id="main-image-container">
+        <%= if Enum.any?(all_images) do %>
+          <img src={List.first(all_images)} alt={@product.name} id="main-product-image" />
+        <% else %>
+          <div class="product-detail-placeholder">
+            <img src="/images/mr-munchme-logos/mr-munchme-icon.png" alt="MrMunchMe" class="placeholder-logo" />
+          </div>
+        <% end %>
+      </div>
+
+      <%= if length(all_images) > 1 do %>
+        <div class="product-detail-thumbstrip">
+          <%= for {url, idx} <- Enum.with_index(all_images) do %>
+            <button
+              class={"product-detail-thumb #{if idx == 0, do: "active", else: ""}"}
+              onclick={"selectThumb(this, '#{url}')"}
+              type="button"
+            >
+              <img src={url} alt={"#{@product.name} - image #{idx + 1}"} />
+            </button>
+          <% end %>
+        </div>
+
+        <script>
+          function selectThumb(btn, url) {
+            // Update main image
+            const mainImg = document.getElementById('main-product-image');
+            if (mainImg) mainImg.src = url;
+
+            // Update active state
+            document.querySelectorAll('.product-detail-thumb').forEach(t => t.classList.remove('active'));
+            btn.classList.add('active');
+          }
+        </script>
+      <% end %>
+    </div>
+
+    <%!-- Right: Product info --%>
+    <div class="product-detail-info">
+      <h1 class="product-detail-name"><%= @product.name %></h1>
+
+      <div class="product-detail-price">
+        <%= format_price(@product.price_cents) %>
+      </div>
+
+      <%= if @product.description do %>
+        <div class="product-detail-description">
+          <p><%= @product.description %></p>
+        </div>
+      <% end %>
+
+    </div>
+  </div>
+</div>

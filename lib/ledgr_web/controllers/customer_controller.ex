@@ -36,7 +36,7 @@ defmodule LedgrWeb.CustomerController do
       {:ok, customer} ->
         conn
         |> put_flash(:info, "Customer created successfully.")
-        |> redirect(to: dp(conn, "/customers/#{customer}"))
+        |> redirect(to: dp(conn, "/customers/#{customer.id}"))
 
       {:error, %Ecto.Changeset{} = changeset} ->
         changeset = Map.put(changeset, :action, :insert)
@@ -47,7 +47,7 @@ defmodule LedgrWeb.CustomerController do
   def edit(conn, %{"id" => id}) do
     customer = Customers.get_customer!(id)
     changeset = Customers.change_customer(customer)
-    render(conn, :edit, customer: customer, changeset: changeset, action: dp(conn, "/customers/#{customer}"))
+    render(conn, :edit, customer: customer, changeset: changeset, action: dp(conn, "/customers/#{customer.id}"))
   end
 
   def update(conn, %{"id" => id, "customer" => customer_params}) do
@@ -57,11 +57,11 @@ defmodule LedgrWeb.CustomerController do
       {:ok, customer} ->
         conn
         |> put_flash(:info, "Customer updated successfully.")
-        |> redirect(to: dp(conn, "/customers/#{customer}"))
+        |> redirect(to: dp(conn, "/customers/#{customer.id}"))
 
       {:error, %Ecto.Changeset{} = changeset} ->
         changeset = Map.put(changeset, :action, :update)
-        render(conn, :edit, customer: customer, changeset: changeset, action: dp(conn, "/customers/#{customer}"))
+        render(conn, :edit, customer: customer, changeset: changeset, action: dp(conn, "/customers/#{customer.id}"))
     end
   end
 

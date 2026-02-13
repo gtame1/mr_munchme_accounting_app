@@ -21,25 +21,36 @@ defmodule LedgrWeb.Plugs.DomainPlug do
   def call(conn, _opts) do
     case conn.path_info do
       ["app", slug | _rest] ->
+        set_domain_context(conn, slug)
+
+      # Public storefront routes: /<domain-slug>/menu/...
+      [slug | _rest] ->
         case Map.get(@domain_slugs, slug) do
-          nil ->
-            conn
-
-          domain_module ->
-            repo = Ledgr.Repo.repo_for_domain(domain_module)
-
-            # Set process dictionary for dynamic dispatch
-            Ledgr.Domain.put_current(domain_module)
-            Ledgr.Repo.put_active_repo(repo)
-
-            # Set conn assigns for templates
-            conn
-            |> assign(:current_domain, domain_module)
-            |> assign(:domain_path_prefix, domain_module.path_prefix())
+          nil -> conn
+          _domain_module -> set_domain_context(conn, slug)
         end
 
       _ ->
         conn
+    end
+  end
+
+  defp set_domain_context(conn, slug) do
+    case Map.get(@domain_slugs, slug) do
+      nil ->
+        conn
+
+      domain_module ->
+        repo = Ledgr.Repo.repo_for_domain(domain_module)
+
+        # Set process dictionary for dynamic dispatch
+        Ledgr.Domain.put_current(domain_module)
+        Ledgr.Repo.put_active_repo(repo)
+
+        # Set conn assigns for templates
+        conn
+        |> assign(:current_domain, domain_module)
+        |> assign(:domain_path_prefix, domain_module.path_prefix())
     end
   end
 end

@@ -4,6 +4,7 @@ defmodule LedgrWeb.Domains.MrMunchMe.ProductController do
   alias Ledgr.Domains.MrMunchMe.Orders
   alias Ledgr.Domains.MrMunchMe.Orders.Product
   alias LedgrWeb.Helpers.MoneyHelper
+  alias Ledgr.Uploads
 
   def index(conn, _params) do
     products = Orders.list_all_products()
@@ -18,9 +19,12 @@ defmodule LedgrWeb.Domains.MrMunchMe.ProductController do
     )
   end
 
-  def create(conn, %{"product" => product_params}) do
+  def create(conn, %{"product" => product_params} = params) do
     # Convert pesos to cents
     product_params = MoneyHelper.convert_params_pesos_to_cents(product_params, [:price_cents])
+
+    # Handle thumbnail upload if provided
+    product_params = handle_thumbnail_upload(product_params, params)
 
     case Orders.create_product(product_params) do
       {:ok, _product} ->
@@ -43,18 +47,21 @@ defmodule LedgrWeb.Domains.MrMunchMe.ProductController do
   end
 
   def edit(conn, %{"id" => id}) do
-    product = Orders.get_product!(id)
+    product = Orders.get_product_with_images!(id)
     # Convert cents to pesos for form display
     attrs = %{"price_cents" => MoneyHelper.cents_to_pesos(product.price_cents || 0)}
     changeset = Orders.change_product(product, attrs)
-    render(conn, :edit, product: product, changeset: changeset, action: dp(conn, "/products/#{product}"))
+    render(conn, :edit, product: product, changeset: changeset, action: dp(conn, "/products/#{product.id}"))
   end
 
-  def update(conn, %{"id" => id, "product" => product_params}) do
-    product = Orders.get_product!(id)
+  def update(conn, %{"id" => id, "product" => product_params} = params) do
+    product = Orders.get_product_with_images!(id)
 
     # Convert pesos to cents
     product_params = MoneyHelper.convert_params_pesos_to_cents(product_params, [:price_cents])
+
+    # Handle thumbnail upload if provided
+    product_params = handle_thumbnail_upload(product_params, params)
 
     case Orders.update_product(product, product_params) do
       {:ok, _product} ->
@@ -69,7 +76,7 @@ defmodule LedgrWeb.Domains.MrMunchMe.ProductController do
           |> Map.put(:action, :update)
           |> Ecto.Changeset.put_change(:price_cents, MoneyHelper.cents_to_pesos(Ecto.Changeset.get_field(changeset, :price_cents)))
 
-        render(conn, :edit, product: product, changeset: changeset, action: dp(conn, "/products/#{product}"))
+        render(conn, :edit, product: product, changeset: changeset, action: dp(conn, "/products/#{product.id}"))
     end
   end
 
@@ -82,6 +89,74 @@ defmodule LedgrWeb.Domains.MrMunchMe.ProductController do
     |> put_flash(:info, "Product deleted successfully.")
     |> redirect(to: dp(conn, "/products"))
   end
+
+  def upload_gallery_image(conn, %{"product_id" => product_id, "gallery_image" => %Plug.Upload{} = upload}) do
+    product = Orders.get_product!(product_id)
+
+    case Uploads.save(upload) do
+      {:ok, url_path} ->
+        # Determine next position
+        existing_images = Orders.list_product_images(product.id)
+        next_position = length(existing_images)
+
+        case Orders.create_product_image(%{
+          product_id: product.id,
+          image_url: url_path,
+          position: next_position
+        }) do
+          {:ok, _image} ->
+            conn
+            |> put_flash(:info, "Gallery image uploaded successfully.")
+            |> redirect(to: dp(conn, "/products/#{product.id}/edit"))
+
+          {:error, _changeset} ->
+            # Clean up the uploaded file if DB insert fails
+            Uploads.delete(url_path)
+
+            conn
+            |> put_flash(:error, "Failed to save gallery image.")
+            |> redirect(to: dp(conn, "/products/#{product.id}/edit"))
+        end
+
+      {:error, _reason} ->
+        conn
+        |> put_flash(:error, "Failed to upload image file.")
+        |> redirect(to: dp(conn, "/products/#{product.id}/edit"))
+    end
+  end
+
+  def upload_gallery_image(conn, %{"product_id" => product_id}) do
+    conn
+    |> put_flash(:error, "Please select an image file to upload.")
+    |> redirect(to: dp(conn, "/products/#{product_id}/edit"))
+  end
+
+  def delete_gallery_image(conn, %{"product_id" => product_id, "image_id" => image_id}) do
+    image = Orders.get_product_image!(image_id)
+    {:ok, _} = Orders.delete_product_image(image)
+
+    conn
+    |> put_flash(:info, "Gallery image removed.")
+    |> redirect(to: dp(conn, "/products/#{product_id}/edit"))
+  end
+
+  # Private helpers
+
+  defp handle_thumbnail_upload(product_params, %{"product" => %{"thumbnail" => %Plug.Upload{} = upload}}) do
+    case Uploads.save(upload) do
+      {:ok, url_path} ->
+        # Delete old uploaded thumbnail if it was a local upload
+        old_url = product_params["image_url"]
+        if old_url, do: Uploads.delete(old_url)
+
+        Map.put(product_params, "image_url", url_path)
+
+      {:error, _reason} ->
+        product_params
+    end
+  end
+
+  defp handle_thumbnail_upload(product_params, _params), do: product_params
 end
 
 defmodule LedgrWeb.Domains.MrMunchMe.ProductHTML do

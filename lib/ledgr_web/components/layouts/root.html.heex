@@ -65,6 +65,29 @@
       <% domain = assigns[:current_domain] %>
       <% prefix = domain.path_prefix() %>
       <% theme = domain.theme() %>
+      <%= if assigns[:storefront] do %>
+        <!-- Public storefront: branded but no sidebar/auth -->
+        <div class="storefront-layout">
+          <header class="storefront-header">
+            <div class="storefront-header-inner">
+              <a href={"/#{domain.slug()}/menu"} class="storefront-logo-link">
+                <%= if theme[:sidebar_logo] do %>
+                  <img src={theme[:sidebar_logo]} alt={domain.name()} class="storefront-logo-img" />
+                <% else %>
+                  <span class="storefront-logo-emoji"><%= domain.logo() %></span>
+                  <span class="storefront-brand-name"><%= domain.name() %></span>
+                <% end %>
+              </a>
+            </div>
+          </header>
+          <main class="storefront-content">
+            <%= @inner_content %>
+          </main>
+          <footer class="storefront-footer">
+            <p>&copy; <%= Date.utc_today().year %> <%= domain.name() %></p>
+          </footer>
+        </div>
+      <% else %>
       <%= if assigns[:hide_sidebar] do %>
         <!-- Auth pages: clean centered layout, no sidebar -->
         <main class="login-layout">
@@ -171,6 +194,7 @@
           </section>
         </main>
       </div>
+      <% end %>
       <% end %>
     <% else %>
       <!-- No domain context (landing page, etc.) -->

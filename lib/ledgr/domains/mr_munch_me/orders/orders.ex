@@ -2,7 +2,7 @@ defmodule Ledgr.Domains.MrMunchMe.Orders do
   import Ecto.Query, warn: false
   alias Ledgr.Repo
 
-  alias Ledgr.Domains.MrMunchMe.Orders.{Order, Product, OrderPayment, OrderIngredient}
+  alias Ledgr.Domains.MrMunchMe.Orders.{Order, Product, ProductImage, OrderPayment, OrderIngredient}
   alias Ledgr.Domains.MrMunchMe.OrderAccounting
   alias Ledgr.Core.Customers
   alias Ledgr.Repo
@@ -38,6 +38,36 @@ defmodule Ledgr.Domains.MrMunchMe.Orders do
 
   def delete_product(%Product{} = product) do
     Repo.delete(product)
+  end
+
+  def get_product_with_images!(id) do
+    Product
+    |> Repo.get!(id)
+    |> Repo.preload(:images)
+  end
+
+  # PRODUCT IMAGES (Gallery)
+
+  def list_product_images(product_id) do
+    Repo.all(
+      from pi in ProductImage,
+        where: pi.product_id == ^product_id,
+        order_by: [asc: pi.position]
+    )
+  end
+
+  def get_product_image!(id), do: Repo.get!(ProductImage, id)
+
+  def create_product_image(attrs) do
+    %ProductImage{}
+    |> ProductImage.changeset(attrs)
+    |> Repo.insert()
+  end
+
+  def delete_product_image(%ProductImage{} = image) do
+    # Delete the file from disk if it's a local upload
+    Ledgr.Uploads.delete(image.image_url)
+    Repo.delete(image)
   end
 
   def product_select_options do
