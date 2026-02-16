@@ -81,7 +81,7 @@ defmodule LedgrWeb.Domains.MrMunchMe.IngredientController do
     render(conn, :edit,
       ingredient: ingredient,
       changeset: changeset,
-      action: dp(conn, "/ingredients/#{ingredient}"),
+      action: dp(conn, "/ingredients/#{ingredient.id}"),
       inventory_type_options: inventory_type_options
     )
   end
@@ -108,7 +108,7 @@ defmodule LedgrWeb.Domains.MrMunchMe.IngredientController do
         render(conn, :edit,
           ingredient: ingredient,
           changeset: changeset,
-          action: dp(conn, "/ingredients/#{ingredient}"),
+          action: dp(conn, "/ingredients/#{ingredient.id}"),
           inventory_type_options: inventory_type_options
         )
     end
