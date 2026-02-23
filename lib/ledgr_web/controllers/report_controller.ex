@@ -361,6 +361,39 @@ defmodule LedgrWeb.ReportController do
     start_of_month = %Date{today | day: 1}
     {start_of_month, today}
   end
+
+  def ap_summary(conn, _params) do
+    ap_accounts = Accounting.get_ap_accounts_with_balances()
+
+    ap_accounts_with_detail =
+      Enum.map(ap_accounts, fn entry ->
+        all_lines = Accounting.list_journal_lines_by_account(entry.account.id)
+
+        detail =
+          if entry.account.code == "2000" do
+            payee_groups =
+              all_lines
+              |> Enum.group_by(fn line -> line.journal_entry.payee || "(No payee)" end)
+              |> Enum.map(fn {payee, lines} ->
+                balance = Enum.reduce(lines, 0, fn l, acc -> acc + l.credit_cents - l.debit_cents end)
+                %{payee: payee, balance_cents: balance, lines: Enum.take(lines, 10)}
+              end)
+              |> Enum.sort_by(& -&1.balance_cents)
+            {:general, payee_groups}
+          else
+            {:named, Enum.take(all_lines, 10)}
+          end
+
+        Map.put(entry, :detail, detail)
+      end)
+
+    total_ap_cents = Enum.sum(Enum.map(ap_accounts_with_detail, & &1.balance_cents))
+
+    render(conn, :ap_summary,
+      ap_accounts: ap_accounts_with_detail,
+      total_ap_cents: total_ap_cents
+    )
+  end
 end
 
 

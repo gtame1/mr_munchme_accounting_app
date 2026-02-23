@@ -10,6 +10,7 @@ defmodule Ledgr.Core.Expenses.Expense do
     field :amount_cents, :integer
     field :category, :string
     field :iva_cents, :integer, default: 0
+    field :payee, :string
 
     belongs_to :expense_account, Account
     belongs_to :paid_from_account, Account
@@ -18,7 +19,7 @@ defmodule Ledgr.Core.Expenses.Expense do
   end
 
   @required_fields ~w(date description amount_cents expense_account_id paid_from_account_id)a
-  @optional_fields ~w(category iva_cents)a
+  @optional_fields ~w(category iva_cents payee)a
 
   def changeset(expense, attrs) do
     expense

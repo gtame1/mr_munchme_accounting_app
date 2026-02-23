@@ -9,6 +9,7 @@ defmodule Ledgr.Core.Accounting.JournalEntry do
     field :description, :string
     field :reference, :string
     field :entry_type, :string
+    field :payee, :string
 
     has_many :journal_lines, JournalLine, on_replace: :delete
 
@@ -52,7 +53,7 @@ defmodule Ledgr.Core.Accounting.JournalEntry do
 
   def changeset(entry, attrs) do
     entry
-    |> cast(attrs, [:date, :description, :reference, :entry_type])
+    |> cast(attrs, [:date, :description, :reference, :entry_type, :payee])
     |> validate_required([:date, :description, :entry_type])
     |> validate_inclusion(:entry_type, types())
     |> cast_assoc(:journal_lines, with: &JournalLine.changeset/2)

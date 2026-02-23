@@ -43,6 +43,16 @@
 
       <div class="field">
         <.input
+          field={f[:payee]}
+          type="text"
+          label="Payee"
+          placeholder="Who are you paying?"
+        />
+        <p class="form-hint">Required when using General AP (account 2000).</p>
+      </div>
+
+      <div class="field">
+        <.input
           field={f[:paid_from_account_id]}
           type="select"
           label="Paid from"

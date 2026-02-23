@@ -461,6 +461,43 @@ defmodule Ledgr.Core.Accounting do
     end
   end
 
+  @doc """
+  Returns all vendor AP accounts (codes 2000-2009) with their current balance.
+  Excludes credit cards (2011-2014), Sales Tax Payable (2100), and Customer Deposits (2200).
+
+  Returns a list of maps: %{account: %Account{}, balance_cents: integer}
+  Positive balance means money is still owed.
+  """
+  def get_ap_accounts_with_balances do
+    ap_accounts =
+      Repo.all(
+        from a in Account,
+          where: a.code >= "2000" and a.code <= "2009",
+          order_by: [asc: a.code]
+      )
+
+    Enum.map(ap_accounts, fn account ->
+      result =
+        Repo.one(
+          from jl in JournalLine,
+            where: jl.account_id == ^account.id,
+            select: %{
+              debits: coalesce(sum(jl.debit_cents), 0),
+              credits: coalesce(sum(jl.credit_cents), 0)
+            }
+        )
+
+      balance_cents =
+        case account.normal_balance do
+          "credit" -> (result.credits || 0) - (result.debits || 0)
+          "debit"  -> (result.debits || 0) - (result.credits || 0)
+          _        -> 0
+        end
+
+      %{account: account, balance_cents: balance_cents}
+    end)
+  end
+
   def create_account(attrs \\ %{}) do
     %Account{}
     |> Account.changeset(attrs)
@@ -670,7 +707,8 @@ defmodule Ledgr.Core.Accounting do
       date: expense.date,
       entry_type: "expense",
       reference: "Expense ##{expense.id}",
-      description: expense.description
+      description: expense.description,
+      payee: expense.payee
     }
 
     create_journal_entry_with_lines(entry_attrs, lines)
