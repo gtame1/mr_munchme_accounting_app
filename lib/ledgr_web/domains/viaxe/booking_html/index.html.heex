@@ -30,9 +30,9 @@
         <tr>
           <th>#</th>
           <th>Customer</th>
+          <th>Type</th>
           <th>Destination</th>
           <th>Travel Date</th>
-          <th>Pax</th>
           <th>Total Price</th>
           <th>Commission</th>
           <th>Status</th>
@@ -53,9 +53,9 @@
                 </.link>
               </td>
               <td><%= booking.customer_name %></td>
+              <td><%= booking_type_label(booking.booking_type) %></td>
               <td><%= booking.destination || "—" %></td>
               <td><%= booking.travel_date || "—" %></td>
-              <td><%= booking.passengers %></td>
               <td><%= format_currency(booking.total_price_cents) %></td>
               <td><%= format_currency(booking.commission_cents) %></td>
               <td>
@@ -64,11 +64,9 @@
                 </span>
               </td>
               <td>
-                <div style="display: flex; gap: 0.5rem;">
-                  <.link navigate={dp(@domain_path_prefix, "/bookings/#{booking.id}")} class="btn btn-sm">
-                    View
-                  </.link>
-                </div>
+                <.link navigate={dp(@domain_path_prefix, "/bookings/#{booking.id}")} class="btn btn-sm">
+                  View
+                </.link>
               </td>
             </tr>
           <% end %>

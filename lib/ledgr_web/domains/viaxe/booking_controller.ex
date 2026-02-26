@@ -3,7 +3,8 @@ defmodule LedgrWeb.Domains.Viaxe.BookingController do
 
   alias Ledgr.Domains.Viaxe.Bookings
   alias Ledgr.Domains.Viaxe.Bookings.Booking
-  alias Ledgr.Core.Customers
+  alias Ledgr.Domains.Viaxe.Customers
+  alias Ledgr.Domains.Viaxe.Trips
   alias LedgrWeb.Helpers.MoneyHelper
 
   def index(conn, params) do
@@ -20,11 +21,13 @@ defmodule LedgrWeb.Domains.Viaxe.BookingController do
 
   def new(conn, _params) do
     changeset = Bookings.change_booking(%Booking{booking_date: Date.utc_today()})
-    customers = Customers.list_customers() |> Enum.map(&{&1.name, &1.id})
+    customers = Customers.customer_select_options()
+    trips = Trips.trip_select_options()
 
     render(conn, :new,
       changeset: changeset,
       customers: customers,
+      trips: trips,
       action: dp(conn, "/bookings")
     )
   end
@@ -40,11 +43,13 @@ defmodule LedgrWeb.Domains.Viaxe.BookingController do
         |> redirect(to: dp(conn, "/bookings/#{booking.id}"))
 
       {:error, %Ecto.Changeset{} = changeset} ->
-        customers = Customers.list_customers() |> Enum.map(&{&1.name, &1.id})
+        customers = Customers.customer_select_options()
+        trips = Trips.trip_select_options()
 
         render(conn, :new,
           changeset: changeset,
           customers: customers,
+          trips: trips,
           action: dp(conn, "/bookings")
         )
     end
@@ -63,12 +68,14 @@ defmodule LedgrWeb.Domains.Viaxe.BookingController do
   def edit(conn, %{"id" => id}) do
     booking = Bookings.get_booking!(id)
     changeset = Bookings.change_booking(booking)
-    customers = Customers.list_customers() |> Enum.map(&{&1.name, &1.id})
+    customers = Customers.customer_select_options()
+    trips = Trips.trip_select_options()
 
     render(conn, :edit,
       booking: booking,
       changeset: changeset,
       customers: customers,
+      trips: trips,
       action: dp(conn, "/bookings/#{id}")
     )
   end
@@ -83,12 +90,14 @@ defmodule LedgrWeb.Domains.Viaxe.BookingController do
         |> redirect(to: dp(conn, "/bookings/#{id}"))
 
       {:error, %Ecto.Changeset{} = changeset} ->
-        customers = Customers.list_customers() |> Enum.map(&{&1.name, &1.id})
+        customers = Customers.customer_select_options()
+        trips = Trips.trip_select_options()
 
         render(conn, :edit,
           booking: booking,
           changeset: changeset,
           customers: customers,
+          trips: trips,
           action: dp(conn, "/bookings/#{id}")
         )
     end
@@ -131,4 +140,15 @@ defmodule LedgrWeb.Domains.Viaxe.BookingHTML do
   def status_class("completed"), do: "status-paid"
   def status_class("canceled"), do: "status-unpaid"
   def status_class(_), do: ""
+
+  def booking_type_label("flight"), do: "✈️ Flight"
+  def booking_type_label("hotel"), do: "🏨 Hotel"
+  def booking_type_label("tour"), do: "🗺 Tour"
+  def booking_type_label("transfer"), do: "🚌 Transfer"
+  def booking_type_label("car_rental"), do: "🚗 Car Rental"
+  def booking_type_label("cruise"), do: "🚢 Cruise"
+  def booking_type_label("insurance"), do: "🛡 Insurance"
+  def booking_type_label("other"), do: "📋 Other"
+  def booking_type_label(nil), do: "—"
+  def booking_type_label(t), do: String.capitalize(t)
 end

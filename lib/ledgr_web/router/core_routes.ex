@@ -16,7 +16,25 @@ defmodule LedgrWeb.Router.CoreRoutes do
       end
   """
 
+  @doc """
+  Same as `core_routes/0` but skips the customers resource.
+  Use in domain scopes that manage their own customer controller.
+  """
+  defmacro core_routes_no_customers do
+    quote do
+      unquote(shared_routes())
+    end
+  end
+
   defmacro core_routes do
+    quote do
+      unquote(shared_routes())
+      # Customers
+      resources "/customers", CustomerController
+    end
+  end
+
+  defp shared_routes do
     quote do
       # Dashboard (root of each domain scope)
       get "/", ReportController, :dashboard
@@ -45,9 +63,6 @@ defmodule LedgrWeb.Router.CoreRoutes do
       post "/reconciliation/inventory/adjust", ReconciliationController, :inventory_adjust
       post "/reconciliation/inventory/reconcile_all", ReconciliationController, :inventory_reconcile_all
       post "/reconciliation/inventory/quick_transfer", ReconciliationController, :inventory_quick_transfer
-
-      # Customers
-      resources "/customers", CustomerController
 
       # Investments
       get "/investments", InvestmentController, :index

@@ -5,7 +5,8 @@ defmodule Ledgr.Domains.Viaxe.Bookings do
 
   import Ecto.Query
   alias Ledgr.Repo
-  alias Ledgr.Domains.Viaxe.Bookings.{Booking, BookingItem, BookingPayment}
+  alias Ledgr.Domains.Viaxe.Bookings.{Booking, BookingItem, BookingPassenger, BookingPayment}
+  alias Ledgr.Domains.Viaxe.Customers.Customer
 
   # ── Bookings ───────────────────────────────────────────────
 
@@ -15,14 +16,20 @@ defmodule Ledgr.Domains.Viaxe.Bookings do
     Booking
     |> maybe_filter_status(status)
     |> order_by(desc: :booking_date)
-    |> preload([:customer, :booking_items, :booking_payments])
+    |> preload([:customer, :trip, :booking_items, :booking_payments])
     |> Repo.all()
     |> Enum.map(&put_customer_name/1)
   end
 
   def get_booking!(id) do
     Booking
-    |> preload([:customer, booking_items: [:service, :supplier], booking_payments: [:cash_account, :partner]])
+    |> preload([
+      :customer,
+      :trip,
+      booking_items: [:service, :supplier],
+      booking_payments: [:cash_account, :partner],
+      booking_passengers: [:customer]
+    ])
     |> Repo.get!(id)
     |> put_customer_name()
   end
@@ -51,6 +58,21 @@ defmodule Ledgr.Domains.Viaxe.Bookings do
     booking
     |> Booking.changeset(%{status: new_status})
     |> Repo.update()
+  end
+
+  # ── Booking Passengers ─────────────────────────────────────
+
+  def add_booking_passenger(booking_id, customer_id) do
+    %BookingPassenger{}
+    |> BookingPassenger.changeset(%{booking_id: booking_id, customer_id: customer_id})
+    |> Repo.insert()
+  end
+
+  def remove_booking_passenger(booking_id, customer_id) do
+    case Repo.get_by(BookingPassenger, booking_id: booking_id, customer_id: customer_id) do
+      nil -> {:error, :not_found}
+      bp -> Repo.delete(bp)
+    end
   end
 
   # ── Booking Items ──────────────────────────────────────────
@@ -133,18 +155,30 @@ defmodule Ledgr.Domains.Viaxe.Bookings do
   defp maybe_filter_status(query, ""), do: query
   defp maybe_filter_status(query, status), do: where(query, status: ^status)
 
-  defp put_customer_name(%Booking{customer: %{name: name}} = booking) do
-    %{booking | customer_name: name}
+  defp put_customer_name(%Booking{customer: %Customer{} = customer} = booking) do
+    %{booking | customer_name: Customer.full_name(customer)}
   end
 
   defp put_customer_name(booking), do: %{booking | customer_name: "Unknown"}
 
   defp recalculate_booking_totals(booking_id) do
+    booking = Repo.get!(Booking, booking_id)
     items = BookingItem |> where(booking_id: ^booking_id) |> Repo.all()
 
     total_cost = Enum.reduce(items, 0, fn i, acc -> acc + i.cost_cents * i.quantity end)
     total_price = Enum.reduce(items, 0, fn i, acc -> acc + i.price_cents * i.quantity end)
-    commission = total_price - total_cost
+
+    commission =
+      cond do
+        booking.commission_type == "fixed" && booking.commission_value ->
+          booking.commission_value
+
+        booking.commission_type == "percentage" && booking.commission_value && total_price > 0 ->
+          div(total_price * booking.commission_value, 10_000)
+
+        true ->
+          total_price - total_cost
+      end
 
     Booking
     |> where(id: ^booking_id)
@@ -152,7 +186,7 @@ defmodule Ledgr.Domains.Viaxe.Bookings do
       set: [
         total_cost_cents: total_cost,
         total_price_cents: total_price,
-        commission_cents: commission
+        commission_cents: max(commission, 0)
       ]
     )
   end

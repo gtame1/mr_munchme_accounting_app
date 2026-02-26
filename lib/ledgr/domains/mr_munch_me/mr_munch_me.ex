@@ -198,4 +198,18 @@ defmodule Ledgr.Domains.MrMunchMe do
   def repairable_checks do
     Ledgr.Domains.MrMunchMe.Inventory.Verification.repairable_checks()
   end
+
+  @impl Ledgr.Domain.DashboardProvider
+  def delivered_order_count(start_date, end_date) do
+    import Ecto.Query
+
+    from(o in "orders",
+      where:
+        o.status == "delivered" and
+          fragment("COALESCE(?, ?)", o.actual_delivery_date, o.delivery_date) >= ^start_date and
+          fragment("COALESCE(?, ?)", o.actual_delivery_date, o.delivery_date) <= ^end_date,
+      select: count(o.id)
+    )
+    |> Ledgr.Repo.one() || 0
+  end
 end

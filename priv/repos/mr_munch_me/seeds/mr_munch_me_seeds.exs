@@ -92,6 +92,8 @@ accounts = [
   %{code: "1010", name: "NuBank Ana Gaby Account", type: "asset", normal_balance: "debit", is_cash: true},
   %{code: "1011", name: "Banco Fer", type: "asset", normal_balance: "debit", is_cash: true},
   %{code: "1100", name: "Accounts Receivable (Unpaid Orders)", type: "asset", normal_balance: "debit"},
+  %{code: "1101", name: "Accounts Receivable - Intermex", type: "asset", normal_balance: "debit"},
+  %{code: "1102", name: "Accounts Receivable - Archer", type: "asset", normal_balance: "debit"},
 
   # Inventory
   %{code: "1200", name: "Ingredients Inventory", type: "asset", normal_balance: "debit"},

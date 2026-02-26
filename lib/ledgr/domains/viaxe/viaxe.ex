@@ -91,9 +91,11 @@ defmodule Ledgr.Domains.Viaxe do
         %{label: "Expenses", path: "#{prefix}/expenses", icon: :expenses}
       ]},
       %{group: "Travel", items: [
+        %{label: "Trips", path: "#{prefix}/trips", icon: :trips},
         %{label: "Bookings", path: "#{prefix}/bookings", icon: :bookings},
         %{label: "Services", path: "#{prefix}/services", icon: :services},
-        %{label: "Suppliers", path: "#{prefix}/suppliers", icon: :suppliers}
+        %{label: "Suppliers", path: "#{prefix}/suppliers", icon: :suppliers},
+        %{label: "Recommendations", path: "#{prefix}/recommendations", icon: :recommendations}
       ]}
     ]
   end
@@ -160,4 +162,7 @@ defmodule Ledgr.Domains.Viaxe do
 
   @impl Ledgr.Domain.DashboardProvider
   def repairable_checks, do: MapSet.new()
+
+  @impl Ledgr.Domain.DashboardProvider
+  def delivered_order_count(_start_date, _end_date), do: 0
 end

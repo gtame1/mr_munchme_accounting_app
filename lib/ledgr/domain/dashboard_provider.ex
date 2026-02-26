@@ -9,6 +9,9 @@ defmodule Ledgr.Domain.DashboardProvider do
   @doc "Returns domain-specific metrics for the dashboard within a date range."
   @callback dashboard_metrics(Date.t(), Date.t()) :: map()
 
+  @doc "Count of delivered orders within a date range. Domains without orders return 0."
+  @callback delivered_order_count(Date.t(), Date.t()) :: integer()
+
   @doc "Unit economics for a single product/service."
   @callback unit_economics(integer(), Date.t(), Date.t()) :: map() | nil
 

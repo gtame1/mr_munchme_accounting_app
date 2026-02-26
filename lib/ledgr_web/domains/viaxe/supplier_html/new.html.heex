@@ -4,45 +4,77 @@
   </div>
 
   <.form for={@changeset} action={@action} as={:supplier} :let={f}>
-    <div class="form-grid">
-      <div class="form-block">
-        <div class="field">
-          <label>Name *</label>
-          <.input type="text" field={f[:name]} />
-        </div>
+    <div class="form-section">
+      <div class="form-section-title">Basic Info</div>
+      <div class="form-grid">
+        <div class="form-block">
+          <div class="field">
+            <label>Name *</label>
+            <.input type="text" field={f[:name]} />
+          </div>
 
-        <div class="field">
-          <label>Category</label>
-          <.input type="select" field={f[:category]} options={[
-            {"Select category...", ""},
-            {"Airline", "airline"},
-            {"Hotel", "hotel"},
-            {"Tour Operator", "tour_operator"},
-            {"Transfer", "transfer"},
-            {"Insurance", "insurance"},
-            {"Other", "other"}
-          ]} />
-        </div>
+          <div class="field">
+            <label>Category</label>
+            <.input type="select" field={f[:category]} options={[
+              {"Select category...", ""},
+              {"Airline", "airline"},
+              {"Hotel", "hotel"},
+              {"Tour Operator", "tour_operator"},
+              {"Transfer", "transfer"},
+              {"Insurance", "insurance"},
+              {"Other", "other"}
+            ]} />
+          </div>
 
-        <div class="field">
-          <label>Contact Name</label>
-          <.input type="text" field={f[:contact_name]} />
-        </div>
+          <div class="field">
+            <label>Contact Name</label>
+            <.input type="text" field={f[:contact_name]} />
+          </div>
 
-        <div class="field">
-          <label>Email</label>
-          <.input type="email" field={f[:email]} />
-        </div>
+          <div class="field">
+            <label>Email</label>
+            <.input type="email" field={f[:email]} />
+          </div>
 
-        <div class="field">
-          <label>Phone</label>
-          <.input type="text" field={f[:phone]} />
-        </div>
+          <div class="field">
+            <label>Phone</label>
+            <.input type="text" field={f[:phone]} />
+          </div>
 
-        <div class="field" style="grid-column: 1 / -1;">
-          <label>Notes</label>
-          <.input type="textarea" field={f[:notes]} />
+          <div class="field">
+            <label>Website</label>
+            <.input type="text" field={f[:website]} />
+          </div>
         </div>
+      </div>
+    </div>
+
+    <div class="form-section">
+      <div class="form-section-title">Location</div>
+      <div class="form-grid">
+        <div class="form-block">
+          <div class="field">
+            <label>Country</label>
+            <.input type="text" field={f[:country]} />
+          </div>
+
+          <div class="field">
+            <label>City</label>
+            <.input type="text" field={f[:city]} />
+          </div>
+
+          <div class="field" style="grid-column: 1 / -1;">
+            <label>Address</label>
+            <.input type="textarea" field={f[:address]} />
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="form-section">
+      <div class="form-section-title">Notes</div>
+      <div class="field">
+        <.input type="textarea" field={f[:notes]} />
       </div>
     </div>
 

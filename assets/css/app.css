@@ -497,6 +497,52 @@
     color: var(--text-muted);
   }
 
+  .form-section-title {
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--primary);
+    margin-bottom: 0.75rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--border-subtle);
+  }
+
+  .field-hint {
+    display: block;
+    margin-top: 0.25rem;
+    font-size: 0.78rem;
+    color: var(--text-muted);
+    line-height: 1.4;
+  }
+
+  .passenger-option:hover {
+    background: var(--primary-soft, #e8f0fe);
+  }
+
+  .passenger-option:has(input:checked) {
+    background: var(--primary-soft, #e8f0fe);
+    font-weight: 500;
+  }
+
+  .tag-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .tag-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.25rem 0.6rem;
+    background: var(--primary-soft, #e8f0fe);
+    border: 1px solid var(--primary-border, #c5d8fb);
+    border-radius: 9999px;
+    font-size: 0.8rem;
+    color: var(--text-main);
+  }
+
   /* Purchase form specific styles */
   #purchase-items-container {
     display: flex;

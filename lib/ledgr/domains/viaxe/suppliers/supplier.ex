@@ -8,13 +8,17 @@ defmodule Ledgr.Domains.Viaxe.Suppliers.Supplier do
     field :email, :string
     field :phone, :string
     field :category, :string
+    field :country, :string
+    field :city, :string
+    field :website, :string
+    field :address, :string
     field :notes, :string
 
     timestamps(type: :utc_datetime)
   end
 
   @required_fields [:name]
-  @optional_fields [:contact_name, :email, :phone, :category, :notes]
+  @optional_fields [:contact_name, :email, :phone, :category, :country, :city, :website, :address, :notes]
 
   def changeset(supplier, attrs) do
     supplier

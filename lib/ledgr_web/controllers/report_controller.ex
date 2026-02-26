@@ -272,7 +272,7 @@ defmodule LedgrWeb.ReportController do
 
     # Gather domain-specific enrichment data
     inventory_value_cents = get_inventory_value()
-    delivered_order_count = count_delivered_orders(start_date, end_date)
+    delivered_order_count = domain.delivered_order_count(start_date, end_date)
 
     analysis =
       Reporting.financial_analysis(start_date, end_date,
@@ -297,20 +297,6 @@ defmodule LedgrWeb.ReportController do
     rescue
       _ -> nil
     end
-  end
-
-  defp count_delivered_orders(start_date, end_date) do
-    import Ecto.Query
-
-    # Use same COALESCE pattern as MrMunchMe.Reporting.dashboard_metrics/2
-    from(o in "orders",
-      where:
-        o.status == "delivered" and
-          fragment("COALESCE(?, ?)", o.actual_delivery_date, o.delivery_date) >= ^start_date and
-          fragment("COALESCE(?, ?)", o.actual_delivery_date, o.delivery_date) <= ^end_date,
-      select: count(o.id)
-    )
-    |> Ledgr.Repo.one() || 0
   end
 
   defp resolve_period(%{"period" => "last_7_days"}) do
