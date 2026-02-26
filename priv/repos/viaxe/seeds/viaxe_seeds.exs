@@ -115,13 +115,13 @@ IO.puts("✅ Seeded #{length(suppliers_data)} suppliers")
 # ── Services ────────────────────────────────────────────────
 
 services_data = [
-  %{name: "Economy Air Ticket", description: "Economy class airfare", price_cents: 1_200_000},
-  %{name: "Business Air Ticket", description: "Business class airfare", price_cents: 4_500_000},
-  %{name: "Hotel Night (Standard)", description: "Standard double room per night", price_cents: 250_000},
-  %{name: "Hotel Night (Suite)", description: "Junior suite per night", price_cents: 450_000},
-  %{name: "Private Transfer", description: "Airport-to-hotel private transfer", price_cents: 120_000},
-  %{name: "City Tour (Half Day)", description: "4-hour guided city tour", price_cents: 80_000},
-  %{name: "Travel Insurance", description: "Comprehensive travel insurance per person/day", price_cents: 25_000},
+  %{name: "Economy Air Ticket",  category: "flight",    description: "Economy class airfare", price_cents: 1_200_000},
+  %{name: "Business Air Ticket", category: "flight",    description: "Business class airfare", price_cents: 4_500_000},
+  %{name: "Hotel Night (Standard)", category: "hotel",  description: "Standard double room per night", price_cents: 250_000},
+  %{name: "Hotel Night (Suite)",    category: "hotel",  description: "Junior suite per night", price_cents: 450_000},
+  %{name: "Private Transfer",    category: "transfer",  description: "Airport-to-hotel private transfer", price_cents: 120_000},
+  %{name: "City Tour (Half Day)", category: "tour",     description: "4-hour guided city tour", price_cents: 80_000},
+  %{name: "Travel Insurance",    category: "insurance", description: "Comprehensive travel insurance per person/day", price_cents: 25_000},
 ]
 
 for attrs <- services_data do
