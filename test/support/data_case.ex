@@ -36,11 +36,15 @@ defmodule Ledgr.DataCase do
   Sets up the sandbox based on the test tags.
   """
   def setup_sandbox(tags) do
-    # Set up sandbox for the MrMunchMe repo (default for tests)
-    pid = Ecto.Adapters.SQL.Sandbox.start_owner!(Ledgr.Repos.MrMunchMe, shared: not tags[:async])
-    on_exit(fn -> Ecto.Adapters.SQL.Sandbox.stop_owner(pid) end)
+    pid1 = Ecto.Adapters.SQL.Sandbox.start_owner!(Ledgr.Repos.MrMunchMe, shared: not tags[:async])
+    pid2 = Ecto.Adapters.SQL.Sandbox.start_owner!(Ledgr.Repos.Viaxe, shared: not tags[:async])
 
-    # Set the active repo in process dictionary so Ledgr.Repo delegates correctly
+    on_exit(fn ->
+      Ecto.Adapters.SQL.Sandbox.stop_owner(pid1)
+      Ecto.Adapters.SQL.Sandbox.stop_owner(pid2)
+    end)
+
+    # Default to MrMunchMe; Viaxe tests override this in their own setup
     Ledgr.Repo.put_active_repo(Ledgr.Repos.MrMunchMe)
   end
 

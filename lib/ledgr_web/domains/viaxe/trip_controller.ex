@@ -150,7 +150,7 @@ defmodule LedgrWeb.Domains.Viaxe.TripHTML do
     dates =
       [trip.start_date, trip.end_date | booking_dates]
       |> Enum.reject(&is_nil/1)
-      |> Enum.sort()
+      |> Enum.sort({:asc, Date})
 
     case dates do
       [] ->
