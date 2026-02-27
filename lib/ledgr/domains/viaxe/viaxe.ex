@@ -60,12 +60,10 @@ defmodule Ledgr.Domains.Viaxe do
   @impl Ledgr.Domain.DomainConfig
   def account_codes do
     %{
-      ar: "1100",
       cash: "1000",
-      supplier_payables: "2100",
-      customer_deposits: "2200",
+      commission_receivable: "1100",
+      advance_commission: "2200",
       commission_revenue: "4000",
-      booking_cogs: "5000",
       owners_equity: "3000",
       retained_earnings: "3050",
       owners_drawings: "3100"
@@ -75,7 +73,6 @@ defmodule Ledgr.Domains.Viaxe do
   @impl Ledgr.Domain.DomainConfig
   def journal_entry_types do
     [
-      {"Booking Created", "booking_created"},
       {"Booking Payment", "booking_payment"},
       {"Booking Completed", "booking_completed"},
       {"Booking Canceled", "booking_canceled"}

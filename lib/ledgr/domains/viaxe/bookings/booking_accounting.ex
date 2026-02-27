@@ -2,22 +2,31 @@ defmodule Ledgr.Domains.Viaxe.Bookings.BookingAccounting do
   @moduledoc """
   Accounting integration for the Viaxe booking lifecycle.
 
-  Records double-entry journal entries for each billable event using a
-  deferred-revenue model:
+  Viaxe is a **pure travel agency**: customers pay service providers directly.
+  Viaxe only earns a net commission from parent companies (Archer / Intermex)
+  after a trip completes.
 
-    - Confirmed  → DR AR (1100)               / CR Customer Deposits (2200)
-    - Payment    → DR Cash (1000 or linked)   / CR AR (1100)
-    - Completed  → DR Customer Deposits (2200) / CR Commission Revenue (4000)
-                                              + CR Supplier Payables (2100)
-    - Canceled   → DR Customer Deposits (2200) / CR AR (1100)
+  Double-entry model:
 
-  Revenue is only recognised (account 4000) when the trip is completed,
-  limited to the agency's commission (`commission_cents`).  The supplier
-  cost (`total_cost_cents`) flows to Supplier Payables (2100).
+    - Advance payment (before completion)
+        DR Cash (1000)                / CR Advance Commission (2200)
 
-  All functions are idempotent: calling the same function twice for the same
-  booking / payment will return the existing entry rather than creating a
-  duplicate.
+    - Post-completion payment (settles receivable)
+        DR Cash (1000)                / CR Commission Receivable (1100)
+
+    - Booking completed
+        DR Commission Receivable 1100  (net_comm - total_advances)
+        DR Advance Commission    2200  (total_advances)
+        CR Commission Revenue    4000  (commission_cents — Viaxe net)
+
+    - Booking canceled (after completion only — reverses revenue)
+        DR Commission Revenue    4000  / CR Commission Receivable (1100)
+
+  Revenue (4000) is recognised only when the trip completes, limited to
+  `commission_cents` (Viaxe's net after the parent-company deduction).
+
+  All functions are idempotent: a second call with the same booking / payment
+  returns the existing entry rather than creating a duplicate.
   """
 
   import Ecto.Query, warn: false
@@ -25,120 +34,93 @@ defmodule Ledgr.Domains.Viaxe.Bookings.BookingAccounting do
   alias Ledgr.Repo
   alias Ledgr.Core.Accounting
   alias Ledgr.Core.Accounting.{JournalEntry, Account}
+  alias Ledgr.Domains.Viaxe.Bookings.BookingPayment
 
-  @cash_code             "1000"
-  @ar_code               "1100"
-  @supplier_payables_code "2100"
-  @customer_deposits_code "2200"
+  @cash_code               "1000"
+  @commission_receivable   "1100"
+  @advance_commission_code "2200"
   @commission_revenue_code "4000"
 
   # ── Status-change dispatcher ─────────────────────────────────────────────
 
-  def handle_status_change(booking, "confirmed"), do: record_booking_confirmed(booking)
   def handle_status_change(booking, "completed"), do: record_booking_completed(booking)
   def handle_status_change(booking, "canceled"),  do: record_booking_canceled(booking)
   def handle_status_change(_booking, _status),    do: {:ok, nil}
 
-  # ── Booking Confirmed ────────────────────────────────────────────────────
-  # DR AR (1100)  /  CR Customer Deposits (2200)  →  total_price_cents
-
-  def record_booking_confirmed(%{id: id, total_price_cents: price}) do
-    reference  = "viaxe_booking_#{id}_confirmed"
-    entry_type = "booking_created"
-
-    existing =
-      from(je in JournalEntry,
-        where: je.entry_type == ^entry_type and je.reference == ^reference
-      )
-      |> Repo.one()
-
-    if existing do
-      {:ok, existing}
-    else
-      ar      = Accounting.get_account_by_code!(@ar_code)
-      deposit = Accounting.get_account_by_code!(@customer_deposits_code)
-
-      Accounting.create_journal_entry_with_lines(
-        %{
-          date:        Date.utc_today(),
-          description: "Booking ##{id} confirmed",
-          reference:   reference,
-          entry_type:  entry_type
-        },
-        [
-          %{account_id: ar.id,      debit_cents: price, credit_cents: 0,
-            description: "AR — booking #{id}"},
-          %{account_id: deposit.id, debit_cents: 0,     credit_cents: price,
-            description: "Customer deposit — booking #{id}"}
-        ]
-      )
-    end
-  end
-
-  # ── Payment Received ─────────────────────────────────────────────────────
-  # DR Cash (1000 or linked account)  /  CR AR (1100)  →  amount_cents
+  # ── Payment ──────────────────────────────────────────────────────────────
+  # Routes to the correct credit account based on is_advance:
+  #   advance=true  → DR Cash / CR Advance Commission (2200)
+  #   advance=false → DR Cash / CR Commission Receivable (1100)
 
   def record_booking_payment(%{id: pay_id, booking_id: b_id, amount_cents: amt,
-                                cash_account_id: cash_account_id}) do
+                                is_advance: is_advance, cash_account_id: cash_acct_id}) do
     reference  = "viaxe_payment_#{pay_id}"
     entry_type = "booking_payment"
+    cr_code    = if is_advance, do: @advance_commission_code, else: @commission_receivable
 
-    existing =
-      from(je in JournalEntry,
-        where: je.entry_type == ^entry_type and je.reference == ^reference
-      )
-      |> Repo.one()
-
-    if existing do
-      {:ok, existing}
-    else
+    idempotent(reference, entry_type, fn ->
       cash =
-        if cash_account_id,
-          do:   Repo.get!(Account, cash_account_id),
+        if cash_acct_id,
+          do:   Repo.get!(Account, cash_acct_id),
           else: Accounting.get_account_by_code!(@cash_code)
 
-      ar = Accounting.get_account_by_code!(@ar_code)
+      cr_acct  = Accounting.get_account_by_code!(cr_code)
+      label    = if is_advance, do: "advance", else: "settlement"
+      cr_label = if is_advance, do: "Advance commission", else: "Commission receivable"
 
       Accounting.create_journal_entry_with_lines(
         %{
           date:        Date.utc_today(),
-          description: "Payment on booking ##{b_id}",
+          description: "Payment on booking ##{b_id} (#{label})",
           reference:   reference,
           entry_type:  entry_type
         },
         [
-          %{account_id: cash.id, debit_cents: amt, credit_cents: 0,
+          %{account_id: cash.id,    debit_cents: amt, credit_cents: 0,
             description: "Cash received — booking #{b_id}"},
-          %{account_id: ar.id,   debit_cents: 0,   credit_cents: amt,
-            description: "Reduce AR — booking #{b_id}"}
+          %{account_id: cr_acct.id, debit_cents: 0,   credit_cents: amt,
+            description: "#{cr_label} — booking #{b_id}"}
         ]
       )
-    end
+    end)
   end
 
   # ── Booking Completed ────────────────────────────────────────────────────
-  # DR Customer Deposits (2200)  /  CR Commission Revenue (4000, commission_cents)
-  #                              +  CR Supplier Payables  (2100, total_cost_cents)
+  # Recognises net commission; absorbs any advance payments already received.
   #
-  # Invariant: total_price_cents = commission_cents + total_cost_cents
+  # Entry always balances:
+  #   DR Commission Receivable (net_comm - advances)
+  #   DR Advance Commission    (advances)
+  #   CR Commission Revenue    (net_comm = commission_cents)
 
-  def record_booking_completed(%{id: id, total_price_cents: price,
-                                  commission_cents: comm, total_cost_cents: cost}) do
+  def record_booking_completed(%{id: id, commission_cents: net_comm}) do
     reference  = "viaxe_booking_#{id}_completed"
     entry_type = "booking_completed"
 
-    existing =
-      from(je in JournalEntry,
-        where: je.entry_type == ^entry_type and je.reference == ^reference
-      )
-      |> Repo.one()
+    idempotent(reference, entry_type, fn ->
+      total_advances =
+        from(p in BookingPayment,
+          where: p.booking_id == ^id and p.is_advance == true,
+          select: sum(p.amount_cents)
+        )
+        |> Repo.one()
+        |> Kernel.||(0)
 
-    if existing do
-      {:ok, existing}
-    else
-      deposit = Accounting.get_account_by_code!(@customer_deposits_code)
+      receivable_dr = max(net_comm - total_advances, 0)
+
+      recv    = Accounting.get_account_by_code!(@commission_receivable)
+      advance = Accounting.get_account_by_code!(@advance_commission_code)
       revenue = Accounting.get_account_by_code!(@commission_revenue_code)
-      payable = Accounting.get_account_by_code!(@supplier_payables_code)
+
+      lines =
+        [%{account_id: revenue.id, debit_cents: 0, credit_cents: net_comm,
+           description: "Commission revenue — booking #{id}"}]
+        |> prepend_if(total_advances > 0,
+             %{account_id: advance.id, debit_cents: total_advances, credit_cents: 0,
+               description: "Clear advance commission — booking #{id}"})
+        |> prepend_if(receivable_dr > 0,
+             %{account_id: recv.id, debit_cents: receivable_dr, credit_cents: 0,
+               description: "Commission receivable — booking #{id}"})
 
       Accounting.create_journal_entry_with_lines(
         %{
@@ -147,52 +129,59 @@ defmodule Ledgr.Domains.Viaxe.Bookings.BookingAccounting do
           reference:   reference,
           entry_type:  entry_type
         },
-        [
-          %{account_id: deposit.id, debit_cents: price, credit_cents: 0,
-            description: "Release customer deposit — booking #{id}"},
-          %{account_id: revenue.id, debit_cents: 0,     credit_cents: comm,
-            description: "Commission revenue — booking #{id}"},
-          %{account_id: payable.id, debit_cents: 0,     credit_cents: cost,
-            description: "Supplier payable — booking #{id}"}
-        ]
+        lines
       )
-    end
+    end)
   end
 
   # ── Booking Canceled ─────────────────────────────────────────────────────
-  # DR Customer Deposits (2200)  /  CR AR (1100)  →  total_price_cents
-  # Reverses the original confirmation entry.
+  # Only records an entry when the booking was already completed (revenue was
+  # recognised). Cancellations before completion have no accounting impact.
+  #
+  # Reversal:
+  #   DR Commission Revenue    (net_comm)
+  #   CR Commission Receivable (net_comm)
 
-  def record_booking_canceled(%{id: id, total_price_cents: price}) do
+  def record_booking_canceled(%{id: id, commission_cents: net_comm, status: "completed"}) do
     reference  = "viaxe_booking_#{id}_canceled"
     entry_type = "booking_canceled"
 
-    existing =
-      from(je in JournalEntry,
-        where: je.entry_type == ^entry_type and je.reference == ^reference
-      )
-      |> Repo.one()
-
-    if existing do
-      {:ok, existing}
-    else
-      deposit = Accounting.get_account_by_code!(@customer_deposits_code)
-      ar      = Accounting.get_account_by_code!(@ar_code)
+    idempotent(reference, entry_type, fn ->
+      revenue = Accounting.get_account_by_code!(@commission_revenue_code)
+      recv    = Accounting.get_account_by_code!(@commission_receivable)
 
       Accounting.create_journal_entry_with_lines(
         %{
           date:        Date.utc_today(),
-          description: "Booking ##{id} canceled",
+          description: "Booking ##{id} canceled (reverse revenue)",
           reference:   reference,
           entry_type:  entry_type
         },
         [
-          %{account_id: deposit.id, debit_cents: price, credit_cents: 0,
-            description: "Reverse deposit — booking #{id}"},
-          %{account_id: ar.id,      debit_cents: 0,     credit_cents: price,
-            description: "Reverse AR — booking #{id}"}
+          %{account_id: revenue.id, debit_cents: net_comm, credit_cents: 0,
+            description: "Reverse commission revenue — booking #{id}"},
+          %{account_id: recv.id,    debit_cents: 0,        credit_cents: net_comm,
+            description: "Reverse commission receivable — booking #{id}"}
         ]
       )
-    end
+    end)
   end
+
+  # Canceled before completion → no revenue was recognised; no entry needed.
+  def record_booking_canceled(_booking), do: {:ok, nil}
+
+  # ── Private helpers ──────────────────────────────────────────────────────
+
+  defp idempotent(reference, entry_type, fun) do
+    existing =
+      from(je in JournalEntry,
+        where: je.reference == ^reference and je.entry_type == ^entry_type
+      )
+      |> Repo.one()
+
+    if existing, do: {:ok, existing}, else: fun.()
+  end
+
+  defp prepend_if(list, true,  item), do: [item | list]
+  defp prepend_if(list, false, _item), do: list
 end

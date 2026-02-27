@@ -15,12 +15,17 @@ defmodule Ledgr.Domains.Viaxe.Bookings.BookingPayment do
     field :amount_cents, :integer
     field :payment_method, :string
     field :note, :string
+    # true  → received BEFORE booking completion (advance commission)
+    #         DR Cash / CR Advance Commission (2200)
+    # false → received AFTER booking completion (settles receivable)
+    #         DR Cash / CR Commission Receivable (1100)
+    field :is_advance, :boolean, default: false
 
     timestamps(type: :utc_datetime)
   end
 
   @required_fields [:booking_id, :date, :amount_cents]
-  @optional_fields [:payment_method, :cash_account_id, :partner_id, :note]
+  @optional_fields [:payment_method, :cash_account_id, :partner_id, :note, :is_advance]
 
   def changeset(payment, attrs) do
     payment

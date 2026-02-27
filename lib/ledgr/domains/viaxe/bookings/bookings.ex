@@ -118,6 +118,14 @@ defmodule Ledgr.Domains.Viaxe.Bookings do
   # ── Booking Payments ───────────────────────────────────────
 
   def create_booking_payment(attrs \\ %{}) do
+    # Determine whether this is an advance commission payment (before completion)
+    # or a post-completion settlement. The is_advance flag drives which account
+    # is credited: Advance Commission (2200) vs Commission Receivable (1100).
+    booking_id = attrs[:booking_id] || attrs["booking_id"]
+    booking    = Repo.get!(Booking, booking_id)
+    is_advance = booking.status != "completed"
+    attrs      = Map.put(attrs, :is_advance, is_advance)
+
     with {:ok, payment} <-
            %BookingPayment{}
            |> BookingPayment.changeset(attrs)
@@ -136,7 +144,7 @@ defmodule Ledgr.Domains.Viaxe.Bookings do
 
   def payment_summary(booking) do
     paid = total_paid(booking.id)
-    total = booking.total_price_cents
+    total = booking.commission_cents
 
     %{
       total_cents: total,
@@ -173,10 +181,10 @@ defmodule Ledgr.Domains.Viaxe.Bookings do
     booking = Repo.get!(Booking, booking_id)
     items = BookingItem |> where(booking_id: ^booking_id) |> Repo.all()
 
-    total_cost = Enum.reduce(items, 0, fn i, acc -> acc + i.cost_cents * i.quantity end)
     total_price = Enum.reduce(items, 0, fn i, acc -> acc + i.price_cents * i.quantity end)
+    partner_fee_rate = booking.partner_fee_rate || 0
 
-    commission =
+    gross =
       cond do
         booking.commission_type == "fixed" && booking.commission_value ->
           booking.commission_value
@@ -185,16 +193,20 @@ defmodule Ledgr.Domains.Viaxe.Bookings do
           div(total_price * booking.commission_value, 10_000)
 
         true ->
-          total_price - total_cost
+          0
       end
+
+    partner_fee = if gross > 0 && partner_fee_rate > 0,
+      do: div(gross * partner_fee_rate, 10_000), else: 0
 
     Booking
     |> where(id: ^booking_id)
     |> Repo.update_all(
       set: [
-        total_cost_cents: total_cost,
         total_price_cents: total_price,
-        commission_cents: max(commission, 0)
+        gross_commission_cents: gross,
+        partner_fee_cents: partner_fee,
+        commission_cents: max(gross - partner_fee, 0)
       ]
     )
   end

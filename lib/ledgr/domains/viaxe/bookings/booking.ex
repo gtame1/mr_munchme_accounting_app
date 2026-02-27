@@ -5,10 +5,12 @@ defmodule Ledgr.Domains.Viaxe.Bookings.Booking do
   alias Ledgr.Domains.Viaxe.Customers.Customer
   alias Ledgr.Domains.Viaxe.Trips.Trip
   alias Ledgr.Domains.Viaxe.Bookings.{BookingItem, BookingPayment, BookingPassenger}
+  alias Ledgr.Core.Partners.Partner
 
   schema "bookings" do
     belongs_to :customer, Customer
     belongs_to :trip, Trip
+    belongs_to :partner, Partner
     has_many :booking_items, BookingItem
     has_many :booking_payments, BookingPayment
     has_many :booking_passengers, BookingPassenger
@@ -23,9 +25,12 @@ defmodule Ledgr.Domains.Viaxe.Bookings.Booking do
     field :booking_details, :map        # JSONB with type-specific structured fields
     field :commission_type, :string     # fixed, percentage
     field :commission_value, :integer   # cents if fixed; basis points (×100) if percentage
-    field :total_cost_cents, :integer, default: 0
     field :total_price_cents, :integer, default: 0
-    field :commission_cents, :integer, default: 0
+    # Commission breakdown (pure agency — no cost/COGS)
+    field :gross_commission_cents, :integer, default: 0  # before partner deduction
+    field :partner_fee_cents, :integer, default: 0       # Archer/Intermex cut
+    field :partner_fee_rate, :integer, default: 0        # basis points stored per-booking
+    field :commission_cents, :integer, default: 0        # Viaxe net = gross - partner_fee
     field :notes, :string
 
     # Virtual fields
@@ -36,9 +41,10 @@ defmodule Ledgr.Domains.Viaxe.Bookings.Booking do
 
   @required_fields [:customer_id, :booking_date, :status]
   @optional_fields [
-    :trip_id, :travel_date, :return_date, :destination,
+    :trip_id, :partner_id, :travel_date, :return_date, :destination,
     :booking_type, :booking_details, :commission_type, :commission_value,
-    :total_cost_cents, :total_price_cents, :commission_cents, :notes
+    :partner_fee_rate, :total_price_cents,
+    :gross_commission_cents, :partner_fee_cents, :commission_cents, :notes
   ]
 
   @valid_booking_types ~w(flight hotel tour transfer car_rental cruise insurance other)
@@ -50,33 +56,30 @@ defmodule Ledgr.Domains.Viaxe.Bookings.Booking do
     |> validate_inclusion(:status, ~w(draft confirmed in_progress completed canceled))
     |> validate_inclusion(:booking_type, @valid_booking_types)
     |> validate_inclusion(:commission_type, ~w(fixed percentage))
-    |> validate_number(:total_cost_cents, greater_than_or_equal_to: 0)
     |> validate_number(:total_price_cents, greater_than_or_equal_to: 0)
     |> foreign_key_constraint(:customer_id)
     |> foreign_key_constraint(:trip_id)
+    |> foreign_key_constraint(:partner_id)
     |> calculate_commission()
   end
 
-  @doc "Recalculates totals from booking items; preserves commission type/value"
+  @doc "Recalculates totals from booking items; preserves commission type/value and partner_fee_rate"
   def recalculate_totals(booking, items) do
-    total_cost = Enum.reduce(items, 0, fn item, acc -> acc + item.cost_cents * item.quantity end)
     total_price = Enum.reduce(items, 0, fn item, acc -> acc + item.price_cents * item.quantity end)
 
     booking
-    |> Ecto.Changeset.change(%{
-      total_cost_cents: total_cost,
-      total_price_cents: total_price
-    })
+    |> Ecto.Changeset.change(%{total_price_cents: total_price})
     |> calculate_commission()
   end
 
-  # Calculates commission_cents from commission_type/value or falls back to price - cost
+  # Calculates gross commission and splits into partner_fee + net commission_cents.
   defp calculate_commission(changeset) do
-    commission_type = get_field(changeset, :commission_type)
+    commission_type  = get_field(changeset, :commission_type)
     commission_value = get_field(changeset, :commission_value)
-    total_price = get_field(changeset, :total_price_cents) || 0
+    total_price      = get_field(changeset, :total_price_cents) || 0
+    partner_fee_rate = get_field(changeset, :partner_fee_rate) || 0
 
-    commission =
+    gross =
       cond do
         commission_type == "fixed" && commission_value ->
           commission_value
@@ -85,11 +88,15 @@ defmodule Ledgr.Domains.Viaxe.Bookings.Booking do
           div(total_price * commission_value, 10_000)
 
         true ->
-          # Fallback: price - cost (legacy behavior)
-          total_cost = get_field(changeset, :total_cost_cents) || 0
-          total_price - total_cost
+          0
       end
 
-    put_change(changeset, :commission_cents, max(commission, 0))
+    partner_fee = if gross > 0 && partner_fee_rate > 0,
+      do: div(gross * partner_fee_rate, 10_000), else: 0
+
+    changeset
+    |> put_change(:gross_commission_cents, gross)
+    |> put_change(:partner_fee_cents, partner_fee)
+    |> put_change(:commission_cents, max(gross - partner_fee, 0))
   end
 end
