@@ -5,11 +5,15 @@ defmodule Ledgr.Application do
 
   use Application
 
+  # Mix is not available at runtime in compiled releases; capture the env at
+  # compile time so the dev-only branch is evaluated as a constant.
+  @mix_env Mix.env()
+
   @impl true
   def start(_type, _args) do
     # Inject dev-only endpoint config (watchers, live_reload) at runtime so
     # config files stay serializable and Mix can read them (e.g. mix release).
-    if Mix.env() == :dev do
+    if @mix_env == :dev do
       endpoint_config = Application.get_env(:ledgr, LedgrWeb.Endpoint) || []
       watchers = [
         esbuild: {Esbuild, :install_and_run, [:ledgr, ~w(--sourcemap=inline --watch)]},
