@@ -64,12 +64,18 @@ defmodule LedgrWeb.Domains.Viaxe.CustomerController do
     changeset = Customers.change_customer(customer)
     travel_profile = Customers.get_or_build_travel_profile(customer)
     profile_changeset = Customers.change_travel_profile(travel_profile)
+    passport_changeset = TravelDocuments.change_passport(%Ledgr.Domains.Viaxe.TravelDocuments.Passport{customer_id: customer.id})
+    visa_changeset = TravelDocuments.change_visa(%Ledgr.Domains.Viaxe.TravelDocuments.Visa{customer_id: customer.id})
+    loyalty_changeset = TravelDocuments.change_loyalty_program(%Ledgr.Domains.Viaxe.TravelDocuments.LoyaltyProgram{customer_id: customer.id})
 
     render(conn, :edit,
       customer: customer,
       changeset: changeset,
       travel_profile: travel_profile,
       profile_changeset: profile_changeset,
+      passport_changeset: passport_changeset,
+      visa_changeset: visa_changeset,
+      loyalty_changeset: loyalty_changeset,
       action: dp(conn, "/customers/#{id}")
     )
   end
@@ -91,12 +97,18 @@ defmodule LedgrWeb.Domains.Viaxe.CustomerController do
       {:error, %Ecto.Changeset{} = changeset} ->
         travel_profile = Customers.get_or_build_travel_profile(customer)
         profile_changeset = Customers.change_travel_profile(travel_profile)
+        passport_changeset = TravelDocuments.change_passport(%Ledgr.Domains.Viaxe.TravelDocuments.Passport{customer_id: customer.id})
+        visa_changeset = TravelDocuments.change_visa(%Ledgr.Domains.Viaxe.TravelDocuments.Visa{customer_id: customer.id})
+        loyalty_changeset = TravelDocuments.change_loyalty_program(%Ledgr.Domains.Viaxe.TravelDocuments.LoyaltyProgram{customer_id: customer.id})
 
         render(conn, :edit,
           customer: customer,
           changeset: changeset,
           travel_profile: travel_profile,
           profile_changeset: profile_changeset,
+          passport_changeset: passport_changeset,
+          visa_changeset: visa_changeset,
+          loyalty_changeset: loyalty_changeset,
           action: dp(conn, "/customers/#{id}")
         )
     end

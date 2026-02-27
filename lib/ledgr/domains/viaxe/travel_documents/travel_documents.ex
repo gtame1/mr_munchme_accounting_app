@@ -3,8 +3,33 @@ defmodule Ledgr.Domains.Viaxe.TravelDocuments do
   Context for managing travel documents: passports, visas, and loyalty programs.
   """
 
+  import Ecto.Query
+
   alias Ledgr.Repo
   alias Ledgr.Domains.Viaxe.TravelDocuments.{Passport, Visa, LoyaltyProgram}
+
+  # ── Listing (all customers) ─────────────────────────────────────────
+
+  def list_passports do
+    Passport
+    |> order_by([p], asc_nulls_last: p.expiry_date)
+    |> preload(:customer)
+    |> Repo.all()
+  end
+
+  def list_visas do
+    Visa
+    |> order_by([v], asc_nulls_last: v.expiry_date)
+    |> preload(:customer)
+    |> Repo.all()
+  end
+
+  def list_loyalty_programs do
+    LoyaltyProgram
+    |> order_by([l], asc: l.program_name)
+    |> preload(:customer)
+    |> Repo.all()
+  end
 
   # ── Passports ──────────────────────────────────────────────────────
 

@@ -27,6 +27,9 @@ config :ledgr, Ledgr.Repos.Viaxe,
 # The watchers configuration can be used to run external
 # watchers to your application. For example, we can use it
 # to bundle .js and .css sources.
+# Endpoint options that are serializable only (no MFAs or regexes).
+# Watchers and live_reload are injected at runtime in Application.start/2
+# so Mix can read the config (e.g. for releases or config tasks).
 config :ledgr, LedgrWeb.Endpoint,
   # Binding to loopback ipv4 address prevents access from other machines.
   # Change to `ip: {0, 0, 0, 0}` to allow access from other machines.
@@ -34,12 +37,7 @@ config :ledgr, LedgrWeb.Endpoint,
   check_origin: false,
   code_reloader: true,
   debug_errors: true,
-  secret_key_base: "ByMeRIHNLQ3/aXlSPaJMGjooT9XPLGes39Tqnbyy4WO2j8aHR2PPXsFQA8R5Eocj",
-  watchers: [
-    esbuild:
-      {Esbuild, :install_and_run, [:ledgr, ~w(--sourcemap=inline --watch)]},
-    tailwind: {Tailwind, :install_and_run, [:ledgr, ~w(--watch)]}
-  ]
+  secret_key_base: "ByMeRIHNLQ3/aXlSPaJMGjooT9XPLGes39Tqnbyy4WO2j8aHR2PPXsFQA8R5Eocj"
 
 # ## SSL Support
 #
@@ -63,17 +61,6 @@ config :ledgr, LedgrWeb.Endpoint,
 # If desired, both `http:` and `https:` keys can be
 # configured to run both http and https servers on
 # different ports.
-
-# Watch static and templates for browser reloading.
-config :ledgr, LedgrWeb.Endpoint,
-  live_reload: [
-    web_console_logger: true,
-    patterns: [
-      ~r"priv/static/(?!uploads/).*(js|css|png|jpeg|jpg|gif|svg)$",
-      ~r"priv/gettext/.*(po)$",
-      ~r"lib/ledgr_web/(?:controllers|live|components|router)/?.*\.(ex|heex)$"
-    ]
-  ]
 
 # Enable dev routes for dashboard and mailbox
 config :ledgr, dev_routes: true

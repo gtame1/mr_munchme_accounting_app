@@ -7,6 +7,27 @@ defmodule Ledgr.Application do
 
   @impl true
   def start(_type, _args) do
+    # Inject dev-only endpoint config (watchers, live_reload) at runtime so
+    # config files stay serializable and Mix can read them (e.g. mix release).
+    if Mix.env() == :dev do
+      endpoint_config = Application.get_env(:ledgr, LedgrWeb.Endpoint) || []
+      watchers = [
+        esbuild: {Esbuild, :install_and_run, [:ledgr, ~w(--sourcemap=inline --watch)]},
+        tailwind: {Tailwind, :install_and_run, [:ledgr, ~w(--watch)]}
+      ]
+      live_reload = [
+        web_console_logger: true,
+        patterns: [
+          ~r"priv/static/(?!uploads/).*(js|css|png|jpeg|jpg|gif|svg)$",
+          ~r"priv/gettext/.*(po)$",
+          ~r"lib/ledgr_web/(?:controllers|live|components|router)/?.*\.(ex|heex)$"
+        ]
+      ]
+      Application.put_env(:ledgr, LedgrWeb.Endpoint,
+        Keyword.merge(endpoint_config, watchers: watchers, live_reload: live_reload)
+      )
+    end
+
     children = [
       LedgrWeb.Telemetry,
       Ledgr.Repos.MrMunchMe,

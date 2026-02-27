@@ -125,7 +125,7 @@
           <nav class="nav">
             <!-- Domain-specific menu groups -->
             <%= for group <- domain.menu_items() do %>
-              <div class="nav-dropdown" data-default-open={if group.group == "Main Menu", do: "true"}>
+              <div class="nav-dropdown" data-default-open={if group.group in ["Main Menu", "Travel"], do: "true"}>
                 <button type="button" class="nav-dropdown-toggle" onclick="toggleDropdown(this)">
                   <span><%= group.group %></span>
                   <.icon name="hero-chevron-down" class="dropdown-icon" />
@@ -139,7 +139,7 @@
             <% end %>
 
             <!-- Core menu groups (shared across all domains) -->
-            <div class="nav-dropdown" data-default-open="true">
+            <div class="nav-dropdown">
               <button type="button" class="nav-dropdown-toggle" onclick="toggleDropdown(this)">
                 <span>Reports</span>
                 <.icon name="hero-chevron-down" class="dropdown-icon" />
@@ -167,13 +167,16 @@
               </div>
             </div>
 
+            <% domain_has_customers = domain.menu_items() |> Enum.flat_map(& &1.items) |> Enum.any?(& &1.path == "#{prefix}/customers") %>
             <div class="nav-dropdown">
               <button type="button" class="nav-dropdown-toggle" onclick="toggleDropdown(this)">
                 <span>Other</span>
                 <.icon name="hero-chevron-down" class="dropdown-icon" />
               </button>
               <div class="nav-dropdown-menu">
-                <.link navigate={"#{prefix}/customers"} class="nav-link">Customers</.link>
+                <%= unless domain_has_customers do %>
+                  <.link navigate={"#{prefix}/customers"} class="nav-link">Customers</.link>
+                <% end %>
                 <.link navigate={"#{prefix}/investments"} class="nav-link">Investments</.link>
                 <.link navigate={"#{prefix}/transfers"} class="nav-link">Money Transfers</.link>
                 <.link navigate={"#{prefix}/transactions"} class="nav-link">All Transactions</.link>

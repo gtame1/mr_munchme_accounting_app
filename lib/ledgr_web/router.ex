@@ -133,6 +133,9 @@ defmodule LedgrWeb.Router do
 
     # Recommendations (curated reference by city)
     resources "/recommendations", Domains.Viaxe.RecommendationController
+
+    # Travel documents overview (all passports, visas, loyalty programs)
+    get "/documents", Domains.Viaxe.DocumentController, :index
   end
 
   # ── API endpoints (core) ─────────────────────────────────────────────
