@@ -1,7 +1,13 @@
 <section class="card">
   <div class="card-header">
-    <h2 class="card-title"><%= @supplier.name %></h2>
-    <p class="card-subtitle">Supplier details</p>
+    <div>
+      <h2 class="card-title"><%= @supplier.name %></h2>
+      <p class="card-subtitle">Supplier details</p>
+    </div>
+    <div style="display: flex; gap: 0.5rem;">
+      <.link navigate={dp(@domain_path_prefix, "/suppliers/#{@supplier.id}/edit")} class="btn primary">Edit</.link>
+      <.link navigate={dp(@domain_path_prefix, "/suppliers")} class="btn">← Back</.link>
+    </div>
   </div>
 
   <div class="detail-grid" style="display: grid; grid-template-columns: auto 1fr auto 1fr; gap: 0.5rem 1.5rem; margin-bottom: 1.5rem;">
@@ -45,8 +51,4 @@
     <span style="grid-column: span 3;"><%= @supplier.notes || "—" %></span>
   </div>
 
-  <div class="actions">
-    <.link navigate={dp(@domain_path_prefix, "/suppliers/#{@supplier.id}/edit")} class="btn primary">Edit</.link>
-    <.link navigate={dp(@domain_path_prefix, "/suppliers")} class="btn">Back to Suppliers</.link>
-  </div>
 </section>

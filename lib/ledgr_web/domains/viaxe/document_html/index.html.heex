@@ -52,6 +52,49 @@
       </tbody>
     </table>
   <% end %>
+
+  <details style="margin-top: 1rem;">
+    <summary class="btn btn-sm" style="cursor: pointer; list-style: none; display: inline-block;">+ Add Passport</summary>
+    <.form for={@passport_changeset} id="new-passport-form" action="#" as={:passport} style="margin-top: 0.75rem;" :let={f}>
+      <div class="form-grid">
+        <div class="form-block">
+          <div class="field">
+            <label>Customer *</label>
+            <select class="input" required
+              onchange={"document.getElementById('new-passport-form').action = '#{@domain_path_prefix}/customers/' + this.value + '/passports'"}>
+              <option value="">Select customer...</option>
+              <%= for c <- @customers do %>
+                <option value={c.id}><%= full_name(c) %></option>
+              <% end %>
+            </select>
+          </div>
+          <div class="field">
+            <label>Country *</label>
+            <.input type="text" field={f[:country]} placeholder="e.g. Mexico" />
+          </div>
+          <div class="field">
+            <label>Passport Number *</label>
+            <.input type="text" field={f[:number]} />
+          </div>
+          <div class="field">
+            <label>Issue Date</label>
+            <.input type="date" field={f[:issue_date]} />
+          </div>
+          <div class="field">
+            <label>Expiry Date</label>
+            <.input type="date" field={f[:expiry_date]} />
+          </div>
+          <div class="field">
+            <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+              <.input type="checkbox" field={f[:is_primary]} />
+              Primary passport
+            </label>
+          </div>
+        </div>
+      </div>
+      <button type="submit" class="btn primary" style="margin-top: 0.5rem;">Add Passport</button>
+    </.form>
+  </details>
 </section>
 
 <!-- Visas -->
@@ -103,6 +146,50 @@
       </tbody>
     </table>
   <% end %>
+
+  <details style="margin-top: 1rem;">
+    <summary class="btn btn-sm" style="cursor: pointer; list-style: none; display: inline-block;">+ Add Visa</summary>
+    <.form for={@visa_changeset} id="new-visa-form" action="#" as={:visa} style="margin-top: 0.75rem;" :let={f}>
+      <div class="form-grid">
+        <div class="form-block">
+          <div class="field">
+            <label>Customer *</label>
+            <select class="input" required
+              onchange={"document.getElementById('new-visa-form').action = '#{@domain_path_prefix}/customers/' + this.value + '/visas'"}>
+              <option value="">Select customer...</option>
+              <%= for c <- @customers do %>
+                <option value={c.id}><%= full_name(c) %></option>
+              <% end %>
+            </select>
+          </div>
+          <div class="field">
+            <label>Destination Country *</label>
+            <.input type="text" field={f[:country]} placeholder="e.g. United States" />
+          </div>
+          <div class="field">
+            <label>Visa Type</label>
+            <.input type="select" field={f[:visa_type]} options={[
+              {"Select type...", ""},
+              {"Tourist", "tourist"},
+              {"Work", "work"},
+              {"Student", "student"},
+              {"Transit", "transit"},
+              {"Multiple Entry", "multiple_entry"}
+            ]} />
+          </div>
+          <div class="field">
+            <label>Visa Number</label>
+            <.input type="text" field={f[:visa_number]} />
+          </div>
+          <div class="field">
+            <label>Expiry Date</label>
+            <.input type="date" field={f[:expiry_date]} />
+          </div>
+        </div>
+      </div>
+      <button type="submit" class="btn primary" style="margin-top: 0.5rem;">Add Visa</button>
+    </.form>
+  </details>
 </section>
 
 <!-- Loyalty Programs -->
@@ -146,4 +233,47 @@
       </tbody>
     </table>
   <% end %>
+
+  <details style="margin-top: 1rem;">
+    <summary class="btn btn-sm" style="cursor: pointer; list-style: none; display: inline-block;">+ Add Loyalty Program</summary>
+    <.form for={@loyalty_changeset} id="new-loyalty-form" action="#" as={:loyalty_program} style="margin-top: 0.75rem;" :let={f}>
+      <div class="form-grid">
+        <div class="form-block">
+          <div class="field">
+            <label>Customer *</label>
+            <select class="input" required
+              onchange={"document.getElementById('new-loyalty-form').action = '#{@domain_path_prefix}/customers/' + this.value + '/loyalty_programs'"}>
+              <option value="">Select customer...</option>
+              <%= for c <- @customers do %>
+                <option value={c.id}><%= full_name(c) %></option>
+              <% end %>
+            </select>
+          </div>
+          <div class="field">
+            <label>Program Name *</label>
+            <.input type="text" field={f[:program_name]} placeholder="e.g. AAdvantage" />
+          </div>
+          <div class="field">
+            <label>Type</label>
+            <.input type="select" field={f[:program_type]} options={[
+              {"Select type...", ""},
+              {"Airline", "airline"},
+              {"Hotel", "hotel"},
+              {"Car Rental", "car_rental"},
+              {"Other", "other"}
+            ]} />
+          </div>
+          <div class="field">
+            <label>Member Number *</label>
+            <.input type="text" field={f[:member_number]} />
+          </div>
+          <div class="field">
+            <label>Tier</label>
+            <.input type="text" field={f[:tier]} placeholder="e.g. Gold, Platinum" />
+          </div>
+        </div>
+      </div>
+      <button type="submit" class="btn primary" style="margin-top: 0.5rem;">Add Program</button>
+    </.form>
+  </details>
 </section>

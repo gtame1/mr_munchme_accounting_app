@@ -289,6 +289,20 @@
     color: var(--text-muted);
   }
 
+  .card-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 1rem;
+  }
+
+  .card-header .btn {
+    padding: 0.35rem 0.8rem;
+    font-size: 0.82rem;
+    flex-shrink: 0;
+  }
+
   /* Dashboard metrics */
 
   .dashboard-metrics {

@@ -1,12 +1,18 @@
 <section class="card">
   <div class="card-header">
-    <h2 class="card-title">Booking #<%= @booking.id %></h2>
-    <p class="card-subtitle">
-      <span class={"status-badge #{status_class(@booking.status)}"}>
-        <%= String.capitalize(String.replace(@booking.status, "_", " ")) %>
-      </span>
-      &nbsp;<%= booking_type_label(@booking.booking_type) %>
-    </p>
+    <div>
+      <h2 class="card-title">Booking #<%= @booking.id %></h2>
+      <p class="card-subtitle">
+        <span class={"status-badge #{status_class(@booking.status)}"}>
+          <%= String.capitalize(String.replace(@booking.status, "_", " ")) %>
+        </span>
+        &nbsp;<%= booking_type_label(@booking.booking_type) %>
+      </p>
+    </div>
+    <div style="display: flex; gap: 0.5rem;">
+      <.link navigate={dp(@domain_path_prefix, "/bookings/#{@booking.id}/edit")} class="btn">Edit</.link>
+      <.link navigate={dp(@domain_path_prefix, "/bookings")} class="btn">← Back</.link>
+    </div>
   </div>
 
   <!-- Booking Details -->
@@ -104,7 +110,6 @@
       </.form>
     <% end %>
 
-    <.link navigate={dp(@domain_path_prefix, "/bookings/#{@booking.id}/edit")} class="btn">Edit</.link>
   </div>
 </section>
 
@@ -213,6 +218,3 @@
   <% end %>
 </section>
 
-<div class="actions" style="margin-top: 1.5rem;">
-  <.link navigate={dp(@domain_path_prefix, "/bookings")} class="btn">← Back to Bookings</.link>
-</div>
