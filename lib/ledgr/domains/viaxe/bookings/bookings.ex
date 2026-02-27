@@ -5,7 +5,7 @@ defmodule Ledgr.Domains.Viaxe.Bookings do
 
   import Ecto.Query
   alias Ledgr.Repo
-  alias Ledgr.Domains.Viaxe.Bookings.{Booking, BookingItem, BookingPassenger, BookingPayment}
+  alias Ledgr.Domains.Viaxe.Bookings.{Booking, BookingAccounting, BookingItem, BookingPassenger, BookingPayment}
   alias Ledgr.Domains.Viaxe.Customers.Customer
 
   # ── Bookings ───────────────────────────────────────────────
@@ -55,9 +55,13 @@ defmodule Ledgr.Domains.Viaxe.Bookings do
   end
 
   def update_booking_status(%Booking{} = booking, new_status) do
-    booking
-    |> Booking.changeset(%{status: new_status})
-    |> Repo.update()
+    with {:ok, updated} <-
+           booking
+           |> Booking.changeset(%{status: new_status})
+           |> Repo.update() do
+      BookingAccounting.handle_status_change(updated, new_status)
+      {:ok, updated}
+    end
   end
 
   # ── Booking Passengers ─────────────────────────────────────
@@ -114,9 +118,13 @@ defmodule Ledgr.Domains.Viaxe.Bookings do
   # ── Booking Payments ───────────────────────────────────────
 
   def create_booking_payment(attrs \\ %{}) do
-    %BookingPayment{}
-    |> BookingPayment.changeset(attrs)
-    |> Repo.insert()
+    with {:ok, payment} <-
+           %BookingPayment{}
+           |> BookingPayment.changeset(attrs)
+           |> Repo.insert() do
+      BookingAccounting.record_booking_payment(payment)
+      {:ok, payment}
+    end
   end
 
   def total_paid(booking_id) do

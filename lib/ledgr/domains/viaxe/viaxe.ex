@@ -77,7 +77,8 @@ defmodule Ledgr.Domains.Viaxe do
     [
       {"Booking Created", "booking_created"},
       {"Booking Payment", "booking_payment"},
-      {"Booking Completed", "booking_completed"}
+      {"Booking Completed", "booking_completed"},
+      {"Booking Canceled", "booking_canceled"}
     ]
   end
 
@@ -110,13 +111,16 @@ defmodule Ledgr.Domains.Viaxe do
   @impl Ledgr.Domain.DomainConfig
   def has_active_dependencies?(_customer_id), do: false
 
-  # ── RevenueHandler callbacks (stubs) ──────────────────────────────
+  # ── RevenueHandler callbacks ───────────────────────────────────────
+
+  alias Ledgr.Domains.Viaxe.Bookings.BookingAccounting
 
   @impl Ledgr.Domain.RevenueHandler
-  def handle_status_change(_entity, _new_status), do: {:ok, nil}
+  def handle_status_change(booking, new_status),
+    do: BookingAccounting.handle_status_change(booking, new_status)
 
   @impl Ledgr.Domain.RevenueHandler
-  def record_payment(_payment), do: {:ok, nil}
+  def record_payment(payment), do: BookingAccounting.record_booking_payment(payment)
 
   @impl Ledgr.Domain.RevenueHandler
   def revenue_breakdown(_start_date, _end_date), do: []
