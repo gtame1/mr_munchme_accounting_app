@@ -147,28 +147,28 @@
 
   <details style="margin-top: 1rem;">
     <summary class="btn btn-sm" style="cursor: pointer; list-style: none; display: inline-block;">+ Add Passport</summary>
-    <.form for={@passport_changeset} action={dp(@domain_path_prefix, "/customers/#{@customer.id}/passports")} as={:passport} style="margin-top: 0.75rem;">
+    <.form for={@passport_changeset} action={dp(@domain_path_prefix, "/customers/#{@customer.id}/passports")} as={:passport} style="margin-top: 0.75rem;" :let={f}>
       <div class="form-grid">
         <div class="form-block">
           <div class="field">
             <label>Country *</label>
-            <.input type="text" field={@passport_changeset[:country]} placeholder="e.g. Mexico" />
+            <.input type="text" field={f[:country]} placeholder="e.g. Mexico" />
           </div>
           <div class="field">
             <label>Passport Number *</label>
-            <.input type="text" field={@passport_changeset[:number]} />
+            <.input type="text" field={f[:number]} />
           </div>
           <div class="field">
             <label>Issue Date</label>
-            <.input type="date" field={@passport_changeset[:issue_date]} />
+            <.input type="date" field={f[:issue_date]} />
           </div>
           <div class="field">
             <label>Expiry Date</label>
-            <.input type="date" field={@passport_changeset[:expiry_date]} />
+            <.input type="date" field={f[:expiry_date]} />
           </div>
           <div class="field">
             <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
-              <.input type="checkbox" field={@passport_changeset[:is_primary]} />
+              <.input type="checkbox" field={f[:is_primary]} />
               Primary passport
             </label>
           </div>
@@ -206,16 +206,16 @@
 
   <details style="margin-top: 1rem;">
     <summary class="btn btn-sm" style="cursor: pointer; list-style: none; display: inline-block;">+ Add Visa</summary>
-    <.form for={@visa_changeset} action={dp(@domain_path_prefix, "/customers/#{@customer.id}/visas")} as={:visa} style="margin-top: 0.75rem;">
+    <.form for={@visa_changeset} action={dp(@domain_path_prefix, "/customers/#{@customer.id}/visas")} as={:visa} style="margin-top: 0.75rem;" :let={f}>
       <div class="form-grid">
         <div class="form-block">
           <div class="field">
             <label>Destination Country *</label>
-            <.input type="text" field={@visa_changeset[:country]} placeholder="e.g. United States" />
+            <.input type="text" field={f[:country]} placeholder="e.g. United States" />
           </div>
           <div class="field">
             <label>Visa Type</label>
-            <.input type="select" field={@visa_changeset[:visa_type]} options={[
+            <.input type="select" field={f[:visa_type]} options={[
               {"Select type...", ""},
               {"Tourist", "tourist"},
               {"Work", "work"},
@@ -226,11 +226,11 @@
           </div>
           <div class="field">
             <label>Visa Number</label>
-            <.input type="text" field={@visa_changeset[:visa_number]} />
+            <.input type="text" field={f[:visa_number]} />
           </div>
           <div class="field">
             <label>Expiry Date</label>
-            <.input type="date" field={@visa_changeset[:expiry_date]} />
+            <.input type="date" field={f[:expiry_date]} />
           </div>
         </div>
       </div>
@@ -265,16 +265,16 @@
 
   <details style="margin-top: 1rem;">
     <summary class="btn btn-sm" style="cursor: pointer; list-style: none; display: inline-block;">+ Add Loyalty Program</summary>
-    <.form for={@loyalty_changeset} action={dp(@domain_path_prefix, "/customers/#{@customer.id}/loyalty_programs")} as={:loyalty_program} style="margin-top: 0.75rem;">
+    <.form for={@loyalty_changeset} action={dp(@domain_path_prefix, "/customers/#{@customer.id}/loyalty_programs")} as={:loyalty_program} style="margin-top: 0.75rem;" :let={f}>
       <div class="form-grid">
         <div class="form-block">
           <div class="field">
             <label>Program Name *</label>
-            <.input type="text" field={@loyalty_changeset[:program_name]} placeholder="e.g. AAdvantage" />
+            <.input type="text" field={f[:program_name]} placeholder="e.g. AAdvantage" />
           </div>
           <div class="field">
             <label>Type</label>
-            <.input type="select" field={@loyalty_changeset[:program_type]} options={[
+            <.input type="select" field={f[:program_type]} options={[
               {"Select type...", ""},
               {"Airline", "airline"},
               {"Hotel", "hotel"},
@@ -284,11 +284,11 @@
           </div>
           <div class="field">
             <label>Member Number *</label>
-            <.input type="text" field={@loyalty_changeset[:member_number]} />
+            <.input type="text" field={f[:member_number]} />
           </div>
           <div class="field">
             <label>Tier</label>
-            <.input type="text" field={@loyalty_changeset[:tier]} placeholder="e.g. Gold, Platinum" />
+            <.input type="text" field={f[:tier]} placeholder="e.g. Gold, Platinum" />
           </div>
         </div>
       </div>
