@@ -12,6 +12,7 @@
       </p>
     </div>
     <div style="display: flex; gap: 0.5rem;">
+      <.link navigate={dp(@domain_path_prefix, "/trips/#{@trip.id}/calendar")} class="btn">📅 Calendar</.link>
       <.link navigate={dp(@domain_path_prefix, "/trips/#{@trip.id}/edit")} class="btn">Edit</.link>
       <.link navigate={dp(@domain_path_prefix, "/trips")} class="btn">← Back</.link>
     </div>

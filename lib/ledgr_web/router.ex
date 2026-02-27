@@ -120,6 +120,7 @@ defmodule LedgrWeb.Router do
 
     # Trips (umbrella container for related bookings)
     resources "/trips", Domains.Viaxe.TripController
+    get "/trips/:id/calendar", Domains.Viaxe.TripController, :calendar
 
     # Bookings (with type-specific details)
     resources "/bookings", Domains.Viaxe.BookingController, only: [:index, :show, :new, :create, :edit, :update, :delete]

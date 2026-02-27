@@ -3558,3 +3558,156 @@
       grid-template-columns: repeat(3, 1fr);
     }
   }
+
+  /* ==============================
+     Calendar (Trip calendar view)
+     ============================== */
+
+  .calendar-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem 1rem;
+    margin: 0.75rem 0 0.25rem;
+    padding: 0.5rem 0;
+  }
+
+  .legend-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    font-weight: 500;
+  }
+
+  .cal-dot {
+    width: 0.55rem;
+    height: 0.55rem;
+    border-radius: 50%;
+    display: inline-block;
+    flex-shrink: 0;
+  }
+
+  .calendar-month-header {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text-main);
+    margin-bottom: 0.75rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--border-subtle);
+  }
+
+  .calendar-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    border-top: 1px solid var(--border-subtle);
+    border-left: 1px solid var(--border-subtle);
+    border-radius: 0.5rem;
+    overflow: hidden;
+  }
+
+  .cal-day-header {
+    background: var(--bg-surface);
+    text-align: center;
+    font-size: 0.68rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    padding: 0.4rem 0;
+    border-right: 1px solid var(--border-subtle);
+    border-bottom: 1px solid var(--border-subtle);
+  }
+
+  .cal-cell {
+    min-height: 5rem;
+    padding: 0.3rem 0.35rem;
+    border-right: 1px solid var(--border-subtle);
+    border-bottom: 1px solid var(--border-subtle);
+    background: var(--bg-card);
+    vertical-align: top;
+  }
+
+  .cal-cell.cal-empty {
+    background: var(--bg-surface);
+  }
+
+  .cal-day-num {
+    font-size: 0.72rem;
+    font-weight: 500;
+    color: var(--text-muted);
+    margin-bottom: 0.2rem;
+    width: 1.4rem;
+    height: 1.4rem;
+    line-height: 1.4rem;
+    text-align: center;
+    display: inline-block;
+    border-radius: 50%;
+  }
+
+  .cal-cell.cal-today .cal-day-num {
+    background: var(--primary);
+    color: #fff;
+  }
+
+  .cal-event {
+    display: block;
+    font-size: 0.65rem;
+    line-height: 1.35;
+    padding: 0.13rem 0.3rem;
+    border-radius: 3px;
+    margin-bottom: 0.15rem;
+    color: #fff;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    text-decoration: none;
+    font-weight: 500;
+    cursor: pointer;
+    transition: opacity 0.12s;
+  }
+
+  .cal-event:hover {
+    opacity: 0.82;
+    color: #fff;
+    text-decoration: none;
+  }
+
+  /* Booking type colours */
+  .cal-flight     { background: #3b82f6; }
+  .cal-hotel      { background: #7c3aed; }
+  .cal-tour       { background: #059669; }
+  .cal-transfer   { background: #d97706; }
+  .cal-car_rental { background: #ea580c; }
+  .cal-cruise     { background: #0891b2; }
+  .cal-insurance  { background: #64748b; }
+  .cal-other      { background: #8b5cf6; }
+
+  /* Legend dot colours */
+  .cal-dot.cal-flight     { background: #3b82f6; }
+  .cal-dot.cal-hotel      { background: #7c3aed; }
+  .cal-dot.cal-tour       { background: #059669; }
+  .cal-dot.cal-transfer   { background: #d97706; }
+  .cal-dot.cal-car_rental { background: #ea580c; }
+  .cal-dot.cal-cruise     { background: #0891b2; }
+  .cal-dot.cal-insurance  { background: #64748b; }
+  .cal-dot.cal-other      { background: #8b5cf6; }
+
+  @media (max-width: 640px) {
+    .cal-cell {
+      min-height: 3.5rem;
+      padding: 0.2rem;
+    }
+
+    .cal-day-num {
+      font-size: 0.65rem;
+      width: 1.2rem;
+      height: 1.2rem;
+      line-height: 1.2rem;
+    }
+
+    .cal-event {
+      font-size: 0.55rem;
+      padding: 0.1rem 0.2rem;
+    }
+  }
