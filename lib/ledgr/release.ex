@@ -13,6 +13,7 @@ defmodule Ledgr.Release do
       # Or via the named release commands (defined in mix.exs):
       bin/ledgr migrate
       bin/ledgr seed
+      bin/ledgr rollback_seeds
   """
 
   @app :ledgr
@@ -68,7 +69,77 @@ defmodule Ledgr.Release do
     IO.puts("==> Seeds complete.")
   end
 
+  @doc """
+  Removes all seeded master data from both repos, leaving the chart of
+  accounts untouched.
+
+  ⚠️  This deletes ALL records in the affected tables — including any
+  real data created on top of the seeds (orders, inventory movements, etc.).
+  Only run this when you want a full reset before re-seeding.
+
+  Deletion follows FK dependency order (children before parents).
+  """
+  def rollback_seeds do
+    IO.puts("==> Rolling back production seeds (chart of accounts retained)...")
+    {:ok, _} = Application.ensure_all_started(@app)
+
+    rollback_mr_munch_me()
+    rollback_viaxe()
+
+    IO.puts("==> Rollback complete. Run `bin/ledgr seed` to re-seed.")
+  end
+
   # ── Private ──────────────────────────────────────────────
+
+  defp rollback_mr_munch_me do
+    IO.puts("    Clearing MrMunchMe seed data...")
+    Ledgr.Repo.put_active_repo(Ledgr.Repos.MrMunchMe)
+    repo = Ledgr.Repos.MrMunchMe
+
+    deletes = [
+      # Order children
+      {Ledgr.Domains.MrMunchMe.Orders.OrderIngredient, "order ingredients"},
+      {Ledgr.Domains.MrMunchMe.Orders.OrderPayment,    "order payments"},
+      {Ledgr.Domains.MrMunchMe.Orders.Order,           "orders"},
+      # Recipe children
+      {Ledgr.Domains.MrMunchMe.Inventory.RecipeLine,   "recipe lines"},
+      {Ledgr.Domains.MrMunchMe.Inventory.Recipe,       "recipes"},
+      # Inventory children
+      {Ledgr.Domains.MrMunchMe.Inventory.InventoryMovement, "inventory movements"},
+      {Ledgr.Domains.MrMunchMe.Inventory.InventoryItem,     "inventory items"},
+      # Product children
+      {Ledgr.Domains.MrMunchMe.Orders.ProductImage, "product images"},
+      # Master data (parents)
+      {Ledgr.Domains.MrMunchMe.Orders.Product,          "products"},
+      {Ledgr.Domains.MrMunchMe.Inventory.Ingredient,    "ingredients"},
+      {Ledgr.Domains.MrMunchMe.Inventory.Location,      "inventory locations"},
+      {Ledgr.Core.Partners.CapitalContribution,         "capital contributions"},
+      {Ledgr.Core.Partners.Partner,                     "partners"},
+      {Ledgr.Core.Accounts.User,                        "users"}
+    ]
+
+    for {schema, label} <- deletes do
+      {n, _} = repo.delete_all(schema)
+      IO.puts("      #{n} #{label} deleted")
+    end
+  end
+
+  defp rollback_viaxe do
+    IO.puts("    Clearing Viaxe seed data...")
+    Ledgr.Repo.put_active_repo(Ledgr.Repos.Viaxe)
+    repo = Ledgr.Repos.Viaxe
+
+    deletes = [
+      {Ledgr.Domains.Viaxe.Services.Service,   "services"},
+      {Ledgr.Domains.Viaxe.Suppliers.Supplier, "suppliers"},
+      {Ledgr.Core.Accounts.User,               "users"}
+    ]
+
+    for {schema, label} <- deletes do
+      {n, _} = repo.delete_all(schema)
+      IO.puts("      #{n} #{label} deleted")
+    end
+  end
 
   defp repos do
     Application.fetch_env!(@app, :ecto_repos)

@@ -24,7 +24,8 @@ defmodule Ledgr.MixProject do
           applications: [runtime_tools: :permanent],
           commands: [
             migrate: "rel/commands/migrate.sh",
-            seed: "rel/commands/seed.sh"
+            seed: "rel/commands/seed.sh",
+            rollback_seeds: "rel/commands/rollback_seeds.sh"
           ]
         ]
       ]
