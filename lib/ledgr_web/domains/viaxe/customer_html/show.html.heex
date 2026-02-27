@@ -146,7 +146,13 @@
           </div>
         </div>
       </div>
-      <button type="submit" class="btn primary" style="margin-top: 0.5rem;">Add Passport</button>
+      <div style="display: flex; gap: 0.5rem; margin-top: 0.5rem;">
+        <button type="submit" class="btn primary">Add Passport</button>
+        <button type="button" class="btn"
+          onclick="this.closest('details').open = false; this.closest('form').reset()">
+          Cancel
+        </button>
+      </div>
     </.form>
   </details>
 </section>
@@ -221,7 +227,13 @@
           </div>
         </div>
       </div>
-      <button type="submit" class="btn primary" style="margin-top: 0.5rem;">Add Visa</button>
+      <div style="display: flex; gap: 0.5rem; margin-top: 0.5rem;">
+        <button type="submit" class="btn primary">Add Visa</button>
+        <button type="button" class="btn"
+          onclick="this.closest('details').open = false; this.closest('form').reset()">
+          Cancel
+        </button>
+      </div>
     </.form>
   </details>
 </section>
@@ -299,7 +311,13 @@
           </div>
         </div>
       </div>
-      <button type="submit" class="btn primary" style="margin-top: 0.5rem;">Add Program</button>
+      <div style="display: flex; gap: 0.5rem; margin-top: 0.5rem;">
+        <button type="submit" class="btn primary">Add Program</button>
+        <button type="button" class="btn"
+          onclick="this.closest('details').open = false; this.closest('form').reset()">
+          Cancel
+        </button>
+      </div>
     </.form>
   </details>
 </section>
