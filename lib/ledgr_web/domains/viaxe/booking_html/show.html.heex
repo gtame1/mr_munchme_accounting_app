@@ -127,15 +127,13 @@
           <th>Service</th>
           <th>Supplier</th>
           <th>Qty</th>
-          <th>Cost</th>
           <th>Price</th>
-          <th>Margin</th>
         </tr>
       </thead>
       <tbody>
         <%= if Enum.empty?(@booking.booking_items) do %>
           <tr>
-            <td colspan="7">No items yet.</td>
+            <td colspan="5">No items yet.</td>
           </tr>
         <% else %>
           <%= for item <- @booking.booking_items do %>
@@ -144,9 +142,7 @@
               <td><%= if item.service, do: item.service.name, else: "—" %></td>
               <td><%= if item.supplier, do: item.supplier.name, else: "—" %></td>
               <td><%= item.quantity %></td>
-              <td><%= format_currency(item.cost_cents) %></td>
               <td><%= format_currency(item.price_cents) %></td>
-              <td><%= format_currency((item.price_cents - item.cost_cents) * item.quantity) %></td>
             </tr>
           <% end %>
         <% end %>
@@ -154,9 +150,7 @@
       <tfoot>
         <tr style="font-weight: bold;">
           <td colspan="4">Totals</td>
-          <td><%= format_currency(@booking.total_cost_cents) %></td>
           <td><%= format_currency(@booking.total_price_cents) %></td>
-          <td><%= format_currency(@booking.commission_cents) %></td>
         </tr>
       </tfoot>
     </table>

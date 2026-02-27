@@ -34,7 +34,7 @@ defmodule LedgrWeb.Domains.Viaxe.BookingController do
 
   def create(conn, %{"booking" => booking_params}) do
     booking_params =
-      MoneyHelper.convert_params_pesos_to_cents(booking_params, [:total_cost_cents, :total_price_cents])
+      MoneyHelper.convert_params_pesos_to_cents(booking_params, [:total_price_cents])
 
     case Bookings.create_booking(booking_params) do
       {:ok, booking} ->
