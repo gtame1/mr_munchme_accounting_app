@@ -23,7 +23,8 @@ defmodule Ledgr.MixProject do
           include_executables_for: [:unix],
           applications: [runtime_tools: :permanent],
           commands: [
-            migrate: "rel/commands/migrate.sh"
+            migrate: "rel/commands/migrate.sh",
+            seed: "rel/commands/seed.sh"
           ]
         ]
       ]
