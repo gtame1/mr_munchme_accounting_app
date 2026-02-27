@@ -30,11 +30,13 @@
     <strong>Booking Date:</strong>
     <span><%= @booking.booking_date %></span>
 
-    <strong>Travel Date:</strong>
-    <span><%= @booking.travel_date || "—" %></span>
+    <%= unless @booking.trip_id do %>
+      <strong>Departure Date:</strong>
+      <span><%= @booking.travel_date || "—" %></span>
 
-    <strong>Return Date:</strong>
-    <span><%= @booking.return_date || "—" %></span>
+      <strong>Return Date:</strong>
+      <span><%= @booking.return_date || "—" %></span>
+    <% end %>
 
     <%= if @booking.trip do %>
       <strong>Trip:</strong>
