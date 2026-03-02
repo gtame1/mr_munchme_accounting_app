@@ -441,6 +441,149 @@ window.addEventListener('load', initHamburgerMenu)
 // Re-initialize after LiveView navigation
 window.addEventListener('phx:page-loading-stop', initHamburgerMenu)
 
+// ==============================
+// Calendar detail panel + tooltip
+// ==============================
+
+const statusLabels = {
+  new_order: 'New',
+  in_prep: 'In Prep',
+  ready: 'Ready',
+  delivered: 'Delivered',
+  canceled: 'Canceled'
+}
+
+const statusColors = {
+  new_order: '#3b82f6',
+  in_prep: '#f59e0b',
+  ready: '#10b981',
+  delivered: '#6b7280',
+  canceled: '#ef4444'
+}
+
+function escapeHtml(str) {
+  if (str == null) return ''
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+}
+
+const initCalendarDetailPanel = () => {
+  const panel = document.getElementById('calendar-detail-panel')
+  if (!panel) return
+
+  const backdrop = panel.querySelector('.calendar-detail-backdrop')
+  const titleEl = document.getElementById('calendar-detail-title')
+  const ordersEl = document.getElementById('calendar-detail-orders')
+  const closeBtn = document.getElementById('calendar-detail-close')
+
+  const openPanel = (dayEl) => {
+    const label = dayEl.dataset.dayLabel
+    const ordersJson = dayEl.dataset.orders
+    if (!ordersJson) return
+
+    let orders
+    try {
+      orders = JSON.parse(ordersJson)
+    } catch (e) {
+      return
+    }
+
+    if (!orders || orders.length === 0) return
+
+    titleEl.textContent = label
+    ordersEl.innerHTML = orders.map(o => {
+      const product = o.product || '—'
+      const qty = o.quantity > 1 ? ` ×${o.quantity}` : ''
+      const time = o.delivery_time ? ` · ${escapeHtml(o.delivery_time)}` : ''
+      const status = statusLabels[o.status] || o.status
+      const color = statusColors[o.status] || '#6b7280'
+
+      return `
+        <a href="${escapeHtml(o.url)}" class="cdp-order-item">
+          <span class="cdp-order-dot" style="background:${color};"></span>
+          <div class="cdp-order-info">
+            <span class="cdp-order-name">${escapeHtml(o.customer_name)}</span>
+            <span class="cdp-order-meta">${escapeHtml(product)}${escapeHtml(qty)} · ${escapeHtml(status)}${time}</span>
+          </div>
+        </a>
+      `
+    }).join('')
+
+    panel.classList.add('is-open')
+    panel.setAttribute('aria-hidden', 'false')
+    document.body.style.overflow = 'hidden'
+  }
+
+  const closePanel = () => {
+    panel.classList.remove('is-open')
+    panel.setAttribute('aria-hidden', 'true')
+    document.body.style.overflow = ''
+  }
+
+  // Count badge click: opens panel on all devices
+  document.querySelectorAll('.calendar-orders-count').forEach(countEl => {
+    countEl.addEventListener('click', (e) => {
+      const dayEl = e.currentTarget.closest('.calendar-day')
+      if (dayEl) openPanel(dayEl)
+    })
+  })
+
+  // "+N more" button click: opens panel (desktop)
+  document.querySelectorAll('.calendar-order-more').forEach(moreBtn => {
+    moreBtn.addEventListener('click', (e) => {
+      const dayEl = e.currentTarget.closest('.calendar-day')
+      if (dayEl) openPanel(dayEl)
+    })
+  })
+
+  if (backdrop) backdrop.addEventListener('click', closePanel)
+  if (closeBtn) closeBtn.addEventListener('click', closePanel)
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && panel.classList.contains('is-open')) {
+      closePanel()
+    }
+  })
+}
+
+const initCalendarTooltip = () => {
+  const tooltip = document.getElementById('calendar-tooltip')
+  if (!tooltip) return
+
+  document.querySelectorAll('.calendar-order-item[data-tooltip-content]').forEach(item => {
+    item.addEventListener('mouseenter', (e) => {
+      const content = e.currentTarget.dataset.tooltipContent
+      if (!content) return
+      tooltip.textContent = content
+      tooltip.classList.add('is-visible')
+    })
+
+    item.addEventListener('mousemove', (e) => {
+      const x = e.clientX + 14
+      const y = e.clientY - 8
+      const tw = tooltip.offsetWidth
+      const th = tooltip.offsetHeight
+      tooltip.style.left = Math.min(x, window.innerWidth - tw - 12) + 'px'
+      tooltip.style.top = Math.max(8, Math.min(y, window.innerHeight - th - 12)) + 'px'
+    })
+
+    item.addEventListener('mouseleave', () => {
+      tooltip.classList.remove('is-visible')
+    })
+  })
+}
+
+const initCalendar = () => {
+  initCalendarDetailPanel()
+  initCalendarTooltip()
+}
+
+window.addEventListener('load', initCalendar)
+window.addEventListener('phx:page-loading-stop', initCalendar)
+
 // The lines below enable quality of life phoenix_live_reload
 // development features:
 //

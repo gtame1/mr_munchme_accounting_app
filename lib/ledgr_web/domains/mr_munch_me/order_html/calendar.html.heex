@@ -5,19 +5,19 @@
       <p class="calendar-subtitle">View all orders scheduled for delivery by date</p>
     </div>
     <div class="calendar-header-actions">
-      <.link 
+      <.link
         navigate={dp(@domain_path_prefix, "/orders/calendar?year=#{prev_month(@year, @month).year}&month=#{prev_month(@year, @month).month}")}
         class="btn btn-sm"
       >
         ← Previous
       </.link>
-      <.link 
+      <.link
         navigate={dp(@domain_path_prefix, "/orders/calendar?year=#{Date.utc_today().year}&month=#{Date.utc_today().month}")}
         class="btn btn-sm"
       >
         Today
       </.link>
-      <.link 
+      <.link
         navigate={dp(@domain_path_prefix, "/orders/calendar?year=#{next_month(@year, @month).year}&month=#{next_month(@year, @month).month}")}
         class="btn btn-sm"
       >
@@ -43,41 +43,65 @@
     <div class="calendar-weekday">S</div>
 
     <%= for date <- Date.range(@calendar_start, @calendar_end) do %>
+      <%
+        day_orders = Map.get(@orders_by_date, date, [])
+        visible_orders = Enum.take(day_orders, 3)
+        overflow_count = max(0, length(day_orders) - 3)
+        orders_json = Jason.encode!(Enum.map(day_orders, fn o ->
+          %{
+            id: o.id,
+            customer_name: o.customer_name,
+            product: (o.product && o.product.name) || "",
+            quantity: o.quantity || 1,
+            status: o.status,
+            delivery_time: o.delivery_time,
+            url: dp(@domain_path_prefix, "/orders/#{o.id}")
+          }
+        end))
+        day_label = Calendar.strftime(date, "%A, %B %-d")
+      %>
       <div class={
         [
           "calendar-day",
           if(Date.compare(date, @first_day) == :lt or Date.compare(date, @last_day) == :gt, do: "calendar-day-other-month"),
           if(Date.compare(date, @today) == :eq, do: "calendar-day-today")
         ]
-      }>
+      }
+        data-day-label={day_label}
+        data-orders={orders_json}
+      >
         <div class="calendar-day-number">
           <%= date.day %>
         </div>
         <div class="calendar-day-orders">
-          <%= if orders = Map.get(@orders_by_date, date) do %>
-            <%= if length(orders) > 0 do %>
-              <div class="calendar-orders-count">
-                <strong><%= length(orders) %></strong> <%= if length(orders) == 1, do: "order", else: "orders" %>
-              </div>
-              <div class="calendar-orders-list">
-                <%= for order <- orders do %>
-                  <div class="calendar-order-item">
-                    <span class={
-                      cond do
-                        order.status == "new_order" -> "calendar-order-status-new_order"
-                        order.status == "in_prep" -> "calendar-order-status-in_prep"
-                        order.status == "ready" -> "calendar-order-status-ready"
-                        order.status == "delivered" -> "calendar-order-status-delivered"
-                        true -> ""
-                      end
-                    }></span>
-                    <.link navigate={dp(@domain_path_prefix, "/orders/#{order.id}")} class="calendar-order-link">
-                      <%= order.customer_name %> - <%= order.product && order.product.name %><%= if (order.quantity || 1) > 1, do: " x#{order.quantity}" %>
-                    </.link>
-                  </div>
-                <% end %>
-              </div>
-            <% end %>
+          <%= if length(day_orders) > 0 do %>
+            <div class="calendar-orders-count">
+              <strong><%= length(day_orders) %></strong> <%= if length(day_orders) == 1, do: "order", else: "orders" %>
+            </div>
+            <div class="calendar-orders-list">
+              <%= for order <- visible_orders do %>
+                <div class="calendar-order-item"
+                     data-tooltip-content={"#{order.customer_name} · #{(order.product && order.product.name) || "—"}#{if (order.quantity || 1) > 1, do: " ×#{order.quantity}", else: ""}#{if order.delivery_time, do: " · #{order.delivery_time}", else: ""}"}>
+                  <span class={
+                    cond do
+                      order.status == "new_order" -> "calendar-order-status-new_order"
+                      order.status == "in_prep" -> "calendar-order-status-in_prep"
+                      order.status == "ready" -> "calendar-order-status-ready"
+                      order.status == "delivered" -> "calendar-order-status-delivered"
+                      true -> ""
+                    end
+                  }></span>
+                  <.link navigate={dp(@domain_path_prefix, "/orders/#{order.id}")} class="calendar-order-link">
+                    <%= order.customer_name %> - <%= order.product && order.product.name %><%= if (order.quantity || 1) > 1, do: " x#{order.quantity}" %>
+                  </.link>
+                </div>
+              <% end %>
+              <%= if overflow_count > 0 do %>
+                <button class="calendar-order-more" type="button">
+                  +<%= overflow_count %> more
+                </button>
+              <% end %>
+            </div>
           <% end %>
         </div>
       </div>
@@ -105,3 +129,18 @@
     </div>
   </div>
 </div>
+
+<%!-- Shared detail panel: bottom drawer on mobile, centered modal on desktop --%>
+<div id="calendar-detail-panel" class="calendar-detail-panel" aria-hidden="true">
+  <div class="calendar-detail-backdrop"></div>
+  <div class="calendar-detail-content">
+    <div class="calendar-detail-header">
+      <h3 id="calendar-detail-title" class="calendar-detail-title"></h3>
+      <button id="calendar-detail-close" type="button" class="calendar-detail-close">✕</button>
+    </div>
+    <div id="calendar-detail-orders" class="calendar-detail-orders"></div>
+  </div>
+</div>
+
+<%!-- Floating tooltip for desktop hover --%>
+<div id="calendar-tooltip" class="calendar-tooltip" aria-hidden="true"></div>
