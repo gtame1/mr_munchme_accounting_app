@@ -323,7 +323,7 @@ function initCartAnimations() {
       const rect = btn.getBoundingClientRect()
       const bubble = document.createElement('div')
       bubble.className = 'cart-added-bubble'
-      bubble.textContent = 'Added to cart ✓'
+      bubble.textContent = '¡Agregado! ✓'
       bubble.style.left = (rect.left + rect.width / 2) + 'px'
       bubble.style.top  = rect.top + 'px'
       document.body.appendChild(bubble)
@@ -331,11 +331,34 @@ function initCartAnimations() {
       // Trigger CSS transition on next frame
       requestAnimationFrame(() => bubble.classList.add('visible'))
 
-      // Submit for real after animation completes
-      setTimeout(() => {
-        document.body.removeChild(bubble)
+      // Use fetch so the page doesn't scroll to the top on reload
+      fetch(form.action, {
+        method: 'POST',
+        body: new FormData(form),
+        redirect: 'manual'  // silently follow the redirect, stay on page
+      }).then(() => {
+        // Update cart badge count in the header without a page reload
+        const cartLink = document.querySelector('.storefront-cart-link')
+        if (cartLink) {
+          let badge = cartLink.querySelector('.storefront-cart-badge')
+          if (badge) {
+            badge.textContent = parseInt(badge.textContent, 10) + 1
+          } else {
+            badge = document.createElement('span')
+            badge.className = 'storefront-cart-badge'
+            badge.textContent = '1'
+            cartLink.appendChild(badge)
+          }
+        }
+      }).catch(() => {
+        // Network error fallback — submit normally
         form.submit()
-      }, 620)
+      }).finally(() => {
+        setTimeout(() => {
+          document.body.removeChild(bubble)
+          btn.classList.remove('cart-adding')
+        }, 580)
+      })
     })
   })
 }

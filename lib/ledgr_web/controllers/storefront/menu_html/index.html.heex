@@ -1,7 +1,7 @@
 <div class="menu-page">
   <div class="menu-hero">
-    <h1 class="menu-title">Our Menu</h1>
-    <p class="menu-subtitle">Freshly baked with love. Browse our selection of handcrafted treats.</p>
+    <h1 class="menu-title">Nuestro Menú</h1>
+    <p class="menu-subtitle">Horneado con amor. Descubre nuestra selección de delicias artesanales.</p>
   </div>
 
   <div class="menu-filters">
@@ -10,12 +10,12 @@
         type="text"
         name="q"
         value={@current_q}
-        placeholder="Search products..."
+        placeholder="Buscar productos..."
         class="menu-search-input"
       />
-      <button type="submit" class="btn menu-filter-btn">Search</button>
+      <button type="submit" class="btn menu-filter-btn">Buscar</button>
       <%= if @current_q != "" do %>
-        <a href="/mr-munch-me/menu" class="menu-filter-clear">Clear</a>
+        <a href="/mr-munch-me/menu" class="menu-filter-clear">Limpiar</a>
       <% end %>
     </form>
   </div>
@@ -23,9 +23,9 @@
   <%= if Enum.empty?(@products) do %>
     <div class="menu-empty">
       <%= if @current_q != "" do %>
-        <p>No products found for "<%= @current_q %>". <a href="/mr-munch-me/menu">View all products</a></p>
+        <p>No encontramos productos para "<%= @current_q %>". <a href="/mr-munch-me/menu">Ver todos los productos</a></p>
       <% else %>
-        <p>Our menu is being updated. Check back soon!</p>
+        <p>Estamos actualizando nuestro menú. ¡Vuelve pronto!</p>
       <% end %>
     </div>
   <% else %>
@@ -56,7 +56,7 @@
                 <input type="hidden" name="_csrf_token" value={Plug.CSRFProtection.get_csrf_token()} />
                 <input type="hidden" name="product_id" value={product.id} />
                 <input type="hidden" name="quantity" value="1" />
-                <button type="submit" class="btn-add-to-cart">+ Cart</button>
+                <button type="submit" class="btn-add-to-cart">+ Carrito</button>
               </form>
             </div>
           </div>

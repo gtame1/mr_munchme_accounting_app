@@ -1,6 +1,6 @@
 <div class="product-detail">
   <a href="/mr-munch-me/menu" class="product-detail-back">
-    &larr; Back to Menu
+    &larr; Volver al Menú
   </a>
 
   <% all_images = build_all_images(@product) %>
@@ -26,7 +26,7 @@
               onclick={"selectThumb(this, '#{url}')"}
               type="button"
             >
-              <img src={url} alt={"#{@product.name} - image #{idx + 1}"} />
+              <img src={url} alt={"#{@product.name} - imagen #{idx + 1}"} />
             </button>
           <% end %>
         </div>
@@ -63,10 +63,10 @@
         <input type="hidden" name="_csrf_token" value={Plug.CSRFProtection.get_csrf_token()} />
         <input type="hidden" name="product_id" value={@product.id} />
         <div class="product-detail-quantity">
-          <label for="quantity">Quantity:</label>
+          <label for="quantity">Cantidad:</label>
           <input type="number" name="quantity" id="quantity" value="1" min="1" max="50" class="qty-input" />
         </div>
-        <button type="submit" class="btn btn-primary btn-add-to-cart-lg">Add to Cart</button>
+        <button type="submit" class="btn btn-primary btn-add-to-cart-lg">Agregar al carrito</button>
       </form>
 
     </div>

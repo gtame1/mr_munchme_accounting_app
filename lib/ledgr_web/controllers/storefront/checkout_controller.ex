@@ -12,7 +12,7 @@ defmodule LedgrWeb.Storefront.CheckoutController do
 
     if map_size(cart) == 0 do
       conn
-      |> put_flash(:error, "Your cart is empty.")
+      |> put_flash(:error, "Tu carrito está vacío.")
       |> redirect(to: "/mr-munch-me/menu")
     else
       {cart_items, cart_total} = load_cart_items(cart)
@@ -29,7 +29,7 @@ defmodule LedgrWeb.Storefront.CheckoutController do
 
     if map_size(cart) == 0 do
       conn
-      |> put_flash(:error, "Your cart is empty.")
+      |> put_flash(:error, "Tu carrito está vacío.")
       |> redirect(to: "/mr-munch-me/menu")
     else
       {cart_items, cart_total} = load_cart_items(cart)
@@ -42,24 +42,24 @@ defmodule LedgrWeb.Storefront.CheckoutController do
       # Basic validation
       errors =
         %{}
-        |> maybe_add_error(customer_name == "", :customer_name, "Name is required")
-        |> maybe_add_error(customer_phone == "", :customer_phone, "Phone is required")
+        |> maybe_add_error(customer_name == "", :customer_name, "El nombre es requerido")
+        |> maybe_add_error(customer_phone == "", :customer_phone, "El teléfono es requerido")
         |> maybe_add_error(
           String.trim(checkout_params["delivery_type"] || "") == "",
           :delivery_type,
-          "Please select pickup or delivery"
+          "Por favor selecciona recoger o envío a domicilio"
         )
         |> maybe_add_error(
           String.trim(checkout_params["delivery_date"] || "") == "",
           :delivery_date,
-          "Please select a date"
+          "Por favor selecciona una fecha"
         )
 
       if map_size(errors) > 0 do
         conn
         |> assign(:storefront, true)
         |> assign(:page_title, "Checkout")
-        |> put_flash(:error, "Please fix the errors below.")
+        |> put_flash(:error, "Por favor corrige los errores a continuación.")
         |> render(:new, cart_items: cart_items, cart_total: cart_total, errors: errors)
       else
         # Find or create customer
@@ -77,11 +77,11 @@ defmodule LedgrWeb.Storefront.CheckoutController do
             conn
             |> assign(:storefront, true)
             |> assign(:page_title, "Checkout")
-            |> put_flash(:error, "There was a problem with your customer information.")
+            |> put_flash(:error, "Hubo un problema con tu información. Intenta de nuevo.")
             |> render(:new,
               cart_items: cart_items,
               cart_total: cart_total,
-              errors: %{customer_phone: "Invalid phone number"}
+              errors: %{customer_phone: "Número de teléfono inválido"}
             )
         end
       end
@@ -137,7 +137,7 @@ defmodule LedgrWeb.Storefront.CheckoutController do
       conn
       |> assign(:storefront, true)
       |> assign(:page_title, "Checkout")
-      |> put_flash(:error, "There was a problem placing your order. Please try again.")
+      |> put_flash(:error, "Hubo un problema al realizar tu pedido. Por favor intenta de nuevo.")
       |> render(:new, cart_items: cart_items, cart_total: cart_total, errors: %{})
     end
   end
@@ -162,23 +162,23 @@ defmodule LedgrWeb.Storefront.CheckoutController do
 
     delivery_type =
       case checkout_params["delivery_type"] do
-        "pickup" -> "Pickup"
-        "delivery" -> "Delivery"
+        "pickup" -> "Recoger (coordinar por WhatsApp)"
+        "delivery" -> "Envío a domicilio"
         _ -> "N/A"
       end
 
     """
-    Hi! I just placed an order on the MrMunchMe store.
+    ¡Hola! Acabo de realizar un pedido en la tienda MrMunchMe.
 
-    Name: #{customer.name}
-    Phone: #{customer.phone}
+    Nombre: #{customer.name}
+    Teléfono: #{customer.phone}
 
-    Order:
+    Pedido:
     #{items_text}
 
     Total: #{total_text}
     #{delivery_type}: #{checkout_params["delivery_date"]}
-    #{if checkout_params["delivery_type"] == "delivery", do: "Address: #{checkout_params["delivery_address"]}", else: ""}
+    #{if checkout_params["delivery_type"] == "delivery", do: "Dirección: #{checkout_params["delivery_address"]}", else: ""}
     """
     |> String.trim()
   end

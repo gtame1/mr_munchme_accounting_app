@@ -1,10 +1,10 @@
 <div class="cart-page">
-  <h1 class="cart-title">Your Cart</h1>
+  <h1 class="cart-title">Tu Carrito</h1>
 
   <%= if Enum.empty?(@cart_items) do %>
     <div class="cart-empty">
-      <p>Your cart is empty.</p>
-      <a href="/mr-munch-me/menu" class="btn btn-primary">Browse Menu</a>
+      <p>Tu carrito está vacío.</p>
+      <a href="/mr-munch-me/menu" class="btn btn-primary">Ver Menú</a>
     </div>
   <% else %>
     <div class="cart-items">
@@ -23,7 +23,7 @@
             <a href={"/mr-munch-me/menu/#{item.product.id}"} class="cart-item-name">
               <%= item.product.name %>
             </a>
-            <div class="cart-item-price"><%= format_price(item.product.price_cents) %> each</div>
+            <div class="cart-item-price"><%= format_price(item.product.price_cents) %> c/u</div>
           </div>
           <div class="cart-item-quantity">
             <form method="post" action="/mr-munch-me/cart/update">
@@ -48,7 +48,7 @@
             <form method="post" action="/mr-munch-me/cart/remove">
               <input type="hidden" name="_csrf_token" value={Plug.CSRFProtection.get_csrf_token()} />
               <input type="hidden" name="product_id" value={item.product.id} />
-              <button type="submit" class="btn-remove" title="Remove item">&times;</button>
+              <button type="submit" class="btn-remove" title="Quitar">&times;</button>
             </form>
           </div>
         </div>
@@ -63,8 +63,8 @@
     </div>
 
     <div class="cart-actions">
-      <a href="/mr-munch-me/menu" class="btn btn-secondary">Continue Shopping</a>
-      <a href="/mr-munch-me/checkout" class="btn btn-primary">Proceed to Checkout</a>
+      <a href="/mr-munch-me/menu" class="btn btn-secondary">Seguir comprando</a>
+      <a href="/mr-munch-me/checkout" class="btn btn-primary">Proceder a pedido</a>
     </div>
   <% end %>
 </div>

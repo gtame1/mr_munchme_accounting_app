@@ -1,6 +1,6 @@
 <div class="checkout-page">
-  <a href="/mr-munch-me/cart" class="checkout-back">&larr; Back to Cart</a>
-  <h1 class="checkout-title">Checkout</h1>
+  <a href="/mr-munch-me/cart" class="checkout-back">&larr; Volver al carrito</a>
+  <h1 class="checkout-title">Finalizar pedido</h1>
 
   <div class="checkout-layout">
     <%!-- Left: Checkout form --%>
@@ -8,16 +8,16 @@
       <form method="post" action="/mr-munch-me/checkout" class="checkout-form">
         <input type="hidden" name="_csrf_token" value={Plug.CSRFProtection.get_csrf_token()} />
 
-        <h2 class="checkout-section-title">Your Information</h2>
+        <h2 class="checkout-section-title">Tus datos</h2>
 
         <div class="checkout-field">
-          <label for="customer_name">Name *</label>
+          <label for="customer_name">Nombre *</label>
           <input
             type="text"
             id="customer_name"
             name="checkout[customer_name]"
             required
-            placeholder="Your full name"
+            placeholder="Tu nombre completo"
           />
           <%= if @errors[:customer_name] do %>
             <span class="checkout-error"><%= @errors[:customer_name] %></span>
@@ -25,7 +25,7 @@
         </div>
 
         <div class="checkout-field">
-          <label for="customer_phone">Phone *</label>
+          <label for="customer_phone">Teléfono *</label>
           <input
             type="tel"
             id="customer_phone"
@@ -39,7 +39,7 @@
         </div>
 
         <div class="checkout-field">
-          <label for="customer_email">Email (optional)</label>
+          <label for="customer_email">Email (opcional)</label>
           <input
             type="email"
             id="customer_email"
@@ -48,14 +48,14 @@
           />
         </div>
 
-        <h2 class="checkout-section-title">Delivery</h2>
+        <h2 class="checkout-section-title">Entrega</h2>
 
         <div class="checkout-field">
-          <label>Delivery Type *</label>
+          <label>Tipo de entrega *</label>
           <div class="checkout-radio-group">
             <label class="checkout-radio">
               <input type="radio" name="checkout[delivery_type]" value="pickup" required />
-              <span>Pickup</span>
+              <span>Recoger (coordinar por WhatsApp)</span>
             </label>
             <label class="checkout-radio">
               <input
@@ -64,16 +64,19 @@
                 value="delivery"
                 onclick="document.getElementById('delivery-address-field').style.display='block'"
               />
-              <span>Delivery</span>
+              <span>Envío a domicilio</span>
             </label>
           </div>
           <%= if @errors[:delivery_type] do %>
             <span class="checkout-error"><%= @errors[:delivery_type] %></span>
           <% end %>
+          <p class="checkout-delivery-note">
+            ⚠️ Por el momento solo realizamos envíos dentro de la Ciudad de México. Los envíos a zonas alejadas de la zona de preparación (Bosques de las Lomas) pueden tener un costo adicional. Te avisaremos al confirmar tu pedido por WhatsApp!
+          </p>
         </div>
 
         <div class="checkout-field">
-          <label for="delivery_date">Preferred Date *</label>
+          <label for="delivery_date">Fecha preferida *</label>
           <input type="date" id="delivery_date" name="checkout[delivery_date]" required />
           <%= if @errors[:delivery_date] do %>
             <span class="checkout-error"><%= @errors[:delivery_date] %></span>
@@ -81,23 +84,23 @@
         </div>
 
         <div class="checkout-field" id="delivery-address-field" style="display:none;">
-          <label for="delivery_address">Delivery Address</label>
+          <label for="delivery_address">Dirección de entrega</label>
           <input
             type="text"
             id="delivery_address"
             name="checkout[delivery_address]"
-            placeholder="Your delivery address"
+            placeholder="Tu dirección de entrega"
           />
         </div>
 
-        <button type="submit" class="btn btn-primary checkout-submit">Place Order</button>
+        <button type="submit" class="btn btn-primary checkout-submit">Realizar pedido</button>
       </form>
     </div>
 
     <%!-- Right: Order summary --%>
     <div class="checkout-summary-section">
       <div class="checkout-summary">
-        <h2 class="checkout-section-title">Order Summary</h2>
+        <h2 class="checkout-section-title">Resumen del pedido</h2>
         <div class="checkout-summary-items">
           <%= for item <- @cart_items do %>
             <div class="checkout-summary-item">
