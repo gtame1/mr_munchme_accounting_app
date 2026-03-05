@@ -333,7 +333,7 @@ defmodule Ledgr.Domains.MrMunchMe.Inventory do
         custom_location = order_ingredient.location_code || location_code
 
         cost_cents =
-          case record_usage(code, custom_location, qty_int, order.delivery_date, "order", order.id) do
+          case record_usage(code, custom_location, qty_int, Date.utc_today(), "order", order.id) do
             {:ok, {:ok, result}} -> result.movement.total_cost_cents
             {:ok, movement} -> movement.total_cost_cents
             {:error, reason} ->
@@ -355,7 +355,7 @@ defmodule Ledgr.Domains.MrMunchMe.Inventory do
         qty_int = round(qty * order_qty)
 
         cost_cents =
-          case record_usage(code, location_code, qty_int, order.delivery_date, "order", order.id) do
+          case record_usage(code, location_code, qty_int, Date.utc_today(), "order", order.id) do
             {:ok, {:ok, result}} -> result.movement.total_cost_cents
             {:ok, movement} -> movement.total_cost_cents
             {:error, reason} ->
@@ -381,30 +381,32 @@ defmodule Ledgr.Domains.MrMunchMe.Inventory do
       )
       |> Repo.all()
 
-    Enum.each(movements, fn movement ->
-      stock = get_or_create_stock!(movement.ingredient_id, movement.from_location_id)
-      new_qty = stock.quantity_on_hand + movement.quantity
+    Repo.transaction(fn ->
+      Enum.each(movements, fn movement ->
+        stock = get_or_create_stock!(movement.ingredient_id, movement.from_location_id)
+        new_qty = stock.quantity_on_hand + movement.quantity
 
-      stock
-      |> InventoryItem.changeset(%{quantity_on_hand: new_qty})
-      |> Repo.update!()
+        stock
+        |> InventoryItem.changeset(%{quantity_on_hand: new_qty})
+        |> Repo.update!()
 
-      # Record a return movement for audit trail
-      %InventoryMovement{}
-      |> InventoryMovement.changeset(%{
-        ingredient_id: movement.ingredient_id,
-        to_location_id: movement.from_location_id,
-        from_location_id: nil,
-        quantity: movement.quantity,
-        movement_type: "return",
-        unit_cost_cents: movement.unit_cost_cents,
-        total_cost_cents: movement.total_cost_cents,
-        source_type: "order",
-        source_id: order_id,
-        note: "Return from canceled order ##{order_id}",
-        movement_date: Date.utc_today()
-      })
-      |> Repo.insert!()
+        # Record a return movement for audit trail
+        %InventoryMovement{}
+        |> InventoryMovement.changeset(%{
+          ingredient_id: movement.ingredient_id,
+          to_location_id: movement.from_location_id,
+          from_location_id: nil,
+          quantity: movement.quantity,
+          movement_type: "return",
+          unit_cost_cents: movement.unit_cost_cents,
+          total_cost_cents: movement.total_cost_cents,
+          source_type: "order",
+          source_id: order_id,
+          note: "Return from canceled order ##{order_id}",
+          movement_date: Date.utc_today()
+        })
+        |> Repo.insert!()
+      end)
     end)
   end
 

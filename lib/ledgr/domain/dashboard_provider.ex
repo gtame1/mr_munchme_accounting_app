@@ -27,9 +27,4 @@ defmodule Ledgr.Domain.DashboardProvider do
   @doc "Run all diagnostic verification checks. Returns a map of check results."
   @callback verification_checks() :: map()
 
-  @doc "Run a specific repair. Returns {:ok, list} or {:error, reason}."
-  @callback run_repair(String.t()) :: {:ok, list()} | {:error, any()}
-
-  @doc "Returns a MapSet of check names that support automated repair."
-  @callback repairable_checks() :: MapSet.t()
 end

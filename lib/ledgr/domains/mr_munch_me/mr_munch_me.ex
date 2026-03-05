@@ -190,16 +190,6 @@ defmodule Ledgr.Domains.MrMunchMe do
   end
 
   @impl Ledgr.Domain.DashboardProvider
-  def run_repair(repair_type) do
-    Ledgr.Domains.MrMunchMe.Inventory.Verification.run_repair(repair_type)
-  end
-
-  @impl Ledgr.Domain.DashboardProvider
-  def repairable_checks do
-    Ledgr.Domains.MrMunchMe.Inventory.Verification.repairable_checks()
-  end
-
-  @impl Ledgr.Domain.DashboardProvider
   def delivered_order_count(start_date, end_date) do
     import Ecto.Query
 

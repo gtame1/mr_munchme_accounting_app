@@ -163,11 +163,5 @@ defmodule Ledgr.Domains.Viaxe do
   def verification_checks, do: %{}
 
   @impl Ledgr.Domain.DashboardProvider
-  def run_repair(_repair_type), do: {:error, :not_supported}
-
-  @impl Ledgr.Domain.DashboardProvider
-  def repairable_checks, do: MapSet.new()
-
-  @impl Ledgr.Domain.DashboardProvider
   def delivered_order_count(_start_date, _end_date), do: 0
 end

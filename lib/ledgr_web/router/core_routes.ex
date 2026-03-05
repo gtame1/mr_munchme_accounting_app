@@ -51,8 +51,6 @@ defmodule LedgrWeb.Router.CoreRoutes do
       get "/reports/unit_economics_list", ReportController, :unit_economics_list
       get "/reports/cash_flow", ReportController, :cash_flow
       get "/reports/financial_analysis", ReportController, :financial_analysis
-      get "/reports/diagnostics", ReportController, :diagnostics
-      post "/reports/diagnostics", ReportController, :diagnostics
       get "/reports/ap_summary", ReportController, :ap_summary
 
       # Reconciliation

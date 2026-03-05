@@ -30,14 +30,17 @@ defmodule Ledgr.Domains.MrMunchMe.OrderAccounting do
   @samples_gifts_code "6070"
 
   @shipping_product_sku "ENVIO"
+  @production_location_code "CASA_AG"
 
   # ── Order status change dispatcher ────────────────────────────────────
 
   def handle_order_status_change(%Order{} = order, new_status) do
     case new_status do
       "in_prep" ->
-        cost_breakdown = Inventory.consume_for_order(order)
-        record_order_in_prep(order, cost_breakdown)
+        with :ok <- validate_ingredient_costs(order) do
+          cost_breakdown = Inventory.consume_for_order(order)
+          record_order_in_prep(order, cost_breakdown)
+        end
       "delivered" -> record_order_delivered(order)
       "new_order" -> record_order_created(order)
       "canceled" -> record_order_canceled(order)
@@ -474,11 +477,11 @@ defmodule Ledgr.Domains.MrMunchMe.OrderAccounting do
       description: "Delivered order ##{order.id}"
     }
 
-    # Calculate total payments received before delivery
+    # Collect deposits received on or before delivery date — these created a 2200 liability
+    # that must be cleared at delivery (Dr 2200 / Cr AR via deposit_transfer_lines below).
     delivery_date = order.actual_delivery_date || order.delivery_date || Date.utc_today()
 
-    # Deposits are payments where is_deposit == true
-    # Use customer_amount_cents if set, otherwise use amount_cents
+    # Use customer_amount_cents for split payments (partner portion doesn't touch AR/2200)
     deposit_total_cents =
       from(p in OrderPayment,
         where: p.order_id == ^order.id and p.is_deposit == true,
@@ -491,22 +494,11 @@ defmodule Ledgr.Domains.MrMunchMe.OrderAccounting do
         total -> total
       end
 
-    # Non-deposit payments received before delivery
-    # These already credited AR, so we need to account for them
-    non_deposit_payments_before_delivery_cents =
-      from(p in OrderPayment,
-        where: p.order_id == ^order.id and p.is_deposit == false,
-        where: p.payment_date <= ^delivery_date,
-        select: sum(fragment("COALESCE(?, ?)", p.customer_amount_cents, p.amount_cents))
-      )
-      |> Repo.one()
-      |> case do
-        nil -> 0
-        total -> total
-      end
-
-    # Net AR to recognize = net revenue (after discount) - deposits - pre-delivery payments
-    net_ar_cents = net_revenue_cents - deposit_total_cents - non_deposit_payments_before_delivery_cents
+    # Net AR = full net revenue (after discount). Pre-delivery payments (deposits and non-deposits)
+    # are handled by their own journal entries and must NOT be subtracted here:
+    #   - Deposits: cleared via deposit_transfer_lines below (Dr 2200 / Cr AR)
+    #   - Non-deposit pre-delivery payments: already credit AR directly (Dr Cash / Cr AR)
+    net_ar_cents = net_revenue_cents
 
     # 1) Revenue recognition:
     #    CR Sales (4000) for gross revenue (full product price + shipping)
@@ -522,7 +514,7 @@ defmodule Ledgr.Domains.MrMunchMe.OrderAccounting do
             account_id: ar.id,
             debit_cents: net_ar_cents,
             credit_cents: 0,
-            description: "Recognize AR for order ##{order.id} (net of discounts & pre-delivery payments)"
+            description: "Recognize AR for order ##{order.id} (net of discounts)"
           },
           %{
             account_id: sales.id,
@@ -729,5 +721,59 @@ defmodule Ledgr.Domains.MrMunchMe.OrderAccounting do
       packing: Map.get(credit_lines, packing_account.id, 0),
       kitchen: Map.get(credit_lines, kitchen_account.id, 0)
     }
+  end
+
+  # ── Ingredient cost validation ─────────────────────────────────────────
+
+  # Returns :ok if every ingredient for this order has a positive effective unit
+  # cost, or {:error, message} listing the zero-cost ingredients.
+  #
+  # The "effective" cost mirrors the fallback chain in Inventory.record_usage/6:
+  #   1. inventories.avg_cost_per_unit_cents for the order's prep location
+  #   2. ingredients.cost_per_unit_cents (catalog fallback)
+  #   → if both are 0/nil the resulting movement will be $0 COGS
+  defp validate_ingredient_costs(%Order{} = order) do
+    order = Repo.preload(order, [:product, :order_ingredients, :prep_location])
+
+    location_code =
+      case order.prep_location do
+        %{code: code} when is_binary(code) -> code
+        _ -> @production_location_code
+      end
+
+    ingredient_codes =
+      if order.order_ingredients != [] do
+        Enum.map(order.order_ingredients, & &1.ingredient_code)
+      else
+        recipe_date = order.delivery_date || Date.utc_today()
+        order.product
+        |> Inventory.Recepies.recipe_for_product(recipe_date)
+        |> Enum.map(& &1.ingredient_code)
+      end
+
+    if ingredient_codes == [] do
+      :ok
+    else
+      zero_cost_names =
+        from(ing in "ingredients",
+          where: ing.code in ^ingredient_codes,
+          left_join: loc in "inventory_locations", on: loc.code == ^location_code,
+          left_join: inv in "inventories",
+            on: inv.ingredient_id == ing.id and inv.location_id == loc.id,
+          where:
+            (is_nil(inv.avg_cost_per_unit_cents) or inv.avg_cost_per_unit_cents == 0) and
+            (is_nil(ing.cost_per_unit_cents) or ing.cost_per_unit_cents == 0),
+          select: ing.name
+        )
+        |> Repo.all()
+
+      if zero_cost_names == [] do
+        :ok
+      else
+        verb = if length(zero_cost_names) == 1, do: "has", else: "have"
+        names = Enum.join(zero_cost_names, ", ")
+        {:error, "Cannot move to in_prep: #{names} #{verb} no unit cost set. Update the ingredient cost in Inventory before processing this order."}
+      end
+    end
   end
 end
