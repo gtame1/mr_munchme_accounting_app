@@ -304,6 +304,44 @@ window.addEventListener("phx:page-loading-stop", _info => topbar.hide())
 // connect if there are any LiveViews on the page
 liveSocket.connect()
 
+// ==============================
+// Add-to-Cart Button Animation
+// ==============================
+
+function initCartAnimations() {
+  document.querySelectorAll('form[action*="/cart/add"]').forEach(form => {
+    form.addEventListener('submit', e => {
+      e.preventDefault()
+
+      const btn = form.querySelector('button[type="submit"]')
+      if (!btn || btn.classList.contains('cart-adding')) return
+
+      // Animate button
+      btn.classList.add('cart-adding')
+
+      // Create bubble positioned relative to viewport (avoids overflow:hidden clip)
+      const rect = btn.getBoundingClientRect()
+      const bubble = document.createElement('div')
+      bubble.className = 'cart-added-bubble'
+      bubble.textContent = 'Added to cart ✓'
+      bubble.style.left = (rect.left + rect.width / 2) + 'px'
+      bubble.style.top  = rect.top + 'px'
+      document.body.appendChild(bubble)
+
+      // Trigger CSS transition on next frame
+      requestAnimationFrame(() => bubble.classList.add('visible'))
+
+      // Submit for real after animation completes
+      setTimeout(() => {
+        document.body.removeChild(bubble)
+        form.submit()
+      }, 620)
+    })
+  })
+}
+
+document.addEventListener('DOMContentLoaded', initCartAnimations)
+
 // expose liveSocket on window for web console debug logs and latency simulation:
 // >> liveSocket.enableDebug()
 // >> liveSocket.enableLatencySim(1000)  // enabled for duration of browser session

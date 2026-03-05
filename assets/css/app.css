@@ -2845,6 +2845,47 @@
   }
 
   /* ==============================
+     Add-to-Cart Animation
+     ============================== */
+
+  @keyframes cart-btn-pop {
+    0%   { transform: scale(1);    background: var(--primary, #6b2d2d); }
+    25%  { transform: scale(0.92); background: var(--primary, #6b2d2d); }
+    55%  { transform: scale(1.11); background: #2a7d3e; }
+    80%  { transform: scale(0.97); background: #2a7d3e; }
+    100% { transform: scale(1);    background: var(--primary, #6b2d2d); }
+  }
+
+  .btn-add-to-cart.cart-adding,
+  .btn-add-to-cart-lg.cart-adding {
+    animation: cart-btn-pop 0.5s ease forwards;
+    pointer-events: none;
+  }
+
+  .cart-added-bubble {
+    position: fixed;
+    transform: translateX(-50%) translateY(-100%);
+    background: #2a7d3e;
+    color: #fff;
+    padding: 0.3rem 0.8rem;
+    border-radius: 1rem;
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.01em;
+    pointer-events: none;
+    white-space: nowrap;
+    opacity: 0;
+    transition: opacity 0.18s ease, transform 0.18s ease;
+    z-index: 9999;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
+  }
+
+  .cart-added-bubble.visible {
+    opacity: 1;
+    transform: translateX(-50%) translateY(calc(-100% - 10px));
+  }
+
+  /* ==============================
      Storefront: Cart Page
      ============================== */
 
