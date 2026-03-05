@@ -35,7 +35,9 @@ end
 
 if volume = System.get_env("UPLOAD_VOLUME") do
   config :ledgr, :upload_dir, "#{volume}/uploads/products"
-  config :ledgr, :upload_serve_dir, volume
+  # Plug.Static strips the `at:` prefix ("/uploads") then looks in `from:`.
+  # So `from:` must be the parent of the "uploads" directory on disk.
+  config :ledgr, :upload_serve_dir, "#{volume}/uploads"
 end
 
 if config_env() == :prod do
