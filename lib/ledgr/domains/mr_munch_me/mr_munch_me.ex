@@ -53,7 +53,8 @@ defmodule Ledgr.Domains.MrMunchMe do
       sidebar_logo: "/images/mr-munchme-logos/mr-munchme-logo-alt-colors.png",
       card_logo: "/images/mr-munchme-logos/mr-munchme-logo.jpg",
       tab_title: "MrMunchMe App",
-      favicon: "/images/mr-munchme-logos/mr-munchme-icon.png"
+      favicon: "/images/mr-munchme-logos/mr-munchme-icon.png",
+      og_description: "Pasteles, brownies y snacks artesanales. ¡Haz tu pedido en línea! · Delivery en CDMX 🍪"
     }
   end
 

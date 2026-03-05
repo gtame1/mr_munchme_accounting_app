@@ -3329,6 +3329,18 @@
     font-size: 1.1rem;
   }
 
+  .confirmation-next-step {
+    background: var(--primary-soft, #f5e0dc);
+    border: 1px solid var(--border-strong, #e0c7c0);
+    border-radius: var(--radius-md, 0.5rem);
+    padding: 1rem 1.25rem;
+    margin-bottom: 1.25rem;
+    text-align: left;
+    font-size: 0.95rem;
+    color: var(--text-main, #3d2318);
+    line-height: 1.5;
+  }
+
   .confirmation-actions {
     display: flex;
     flex-direction: column;

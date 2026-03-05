@@ -1,7 +1,7 @@
 <div class="confirmation-page">
   <div class="confirmation-icon">&#10003;</div>
   <h1 class="confirmation-title">¡Gracias, <%= @customer_name %>!</h1>
-  <p class="confirmation-subtitle">Tu pedido ha sido realizado con éxito.</p>
+  <p class="confirmation-subtitle">Tu pedido ha sido registrado con éxito.</p>
 
   <div class="confirmation-details">
     <div class="confirmation-info">
@@ -9,6 +9,10 @@
         <%= if @delivery_type == "delivery", do: "Envío", else: "Recoger (coordinar por WhatsApp)" %>:
       </span>
       <span><%= @delivery_date %></span>
+    </div>
+    <div class="confirmation-info">
+      <span class="confirmation-label">Referencia:</span>
+      <span><%= @orders |> Enum.map(fn o -> "##{o.id}" end) |> Enum.join(", ") %></span>
     </div>
   </div>
 
@@ -24,6 +28,14 @@
       <span>Total</span>
       <span><%= format_price(@cart_total) %></span>
     </div>
+  </div>
+
+  <div class="confirmation-next-step">
+    <p>
+      📲 <strong>Último paso:</strong> Toca el botón de abajo para enviarnos tu pedido por
+      WhatsApp y coordinar la entrega contigo. Tu pedido quedará confirmado una vez que
+      lo recibamos.
+    </p>
   </div>
 
   <div class="confirmation-actions">
