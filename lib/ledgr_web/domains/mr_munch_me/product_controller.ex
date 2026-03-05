@@ -69,7 +69,7 @@ defmodule LedgrWeb.Domains.MrMunchMe.ProductController do
       {:ok, _product} ->
         conn
         |> put_flash(:info, "Product updated successfully.")
-        |> redirect(to: dp(conn, "/products"))
+        |> redirect(to: dp(conn, "/products/#{id}/edit"))
 
       {:error, %Ecto.Changeset{} = changeset} ->
         # Convert price_cents back to pesos for form re-display
