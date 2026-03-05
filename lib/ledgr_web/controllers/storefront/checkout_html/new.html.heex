@@ -62,7 +62,6 @@
                 type="radio"
                 name="checkout[delivery_type]"
                 value="delivery"
-                onclick="document.getElementById('delivery-address-field').style.display='block'"
               />
               <span>Envío a domicilio</span>
             </label>
@@ -70,13 +69,13 @@
           <%= if @errors[:delivery_type] do %>
             <span class="checkout-error"><%= @errors[:delivery_type] %></span>
           <% end %>
-          <p class="checkout-delivery-note">
-            ⚠️ Por el momento solo realizamos envíos dentro de la Ciudad de México. Los envíos a zonas alejadas de la zona de preparación (Bosques de las Lomas) pueden tener un costo adicional. Te avisaremos al confirmar tu pedido por WhatsApp!
+          <p id="delivery-note" class="checkout-delivery-note" style="display:none;">
+            ⚠️ Solo hacemos envíos dentro de la Ciudad de México. Zonas alejadas de Bosques de las Lomas pueden tener un costo adicional — te avisaremos al confirmarlo por WhatsApp.
           </p>
         </div>
 
         <div class="checkout-field">
-          <label for="delivery_date">Fecha preferida *</label>
+          <label for="delivery_date">Fecha de entrega *</label>
           <input type="date" id="delivery_date" name="checkout[delivery_date]" required />
           <%= if @errors[:delivery_date] do %>
             <span class="checkout-error"><%= @errors[:delivery_date] %></span>
@@ -121,15 +120,14 @@
 </div>
 
 <script>
-  // Show/hide delivery address based on radio selection
+  // Show/hide delivery address and warning note based on delivery type selection
   document.querySelectorAll('input[name="checkout[delivery_type]"]').forEach(function(radio) {
     radio.addEventListener('change', function() {
       var addressField = document.getElementById('delivery-address-field');
-      if (this.value === 'delivery') {
-        addressField.style.display = 'block';
-      } else {
-        addressField.style.display = 'none';
-      }
+      var deliveryNote = document.getElementById('delivery-note');
+      var isDelivery = this.value === 'delivery';
+      addressField.style.display = isDelivery ? 'block' : 'none';
+      deliveryNote.style.display = isDelivery ? 'block' : 'none';
     });
   });
 </script>
