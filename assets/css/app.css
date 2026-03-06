@@ -3151,15 +3151,24 @@
   .checkout-field input[type="tel"],
   .checkout-field input[type="email"],
   .checkout-field input[type="date"],
-  .checkout-field select {
+  .checkout-field select,
+  .checkout-field textarea {
     padding: 0.6rem 1rem;
     border: 1px solid var(--border-subtle, #e5e7eb);
     border-radius: var(--radius-md, 0.5rem);
     font-size: 1rem;
     color: var(--text-main, #3d2318);
+    width: 100%;
+    box-sizing: border-box;
   }
 
-  .checkout-field input:focus {
+  .checkout-field textarea {
+    resize: vertical;
+    line-height: 1.5;
+  }
+
+  .checkout-field input:focus,
+  .checkout-field textarea:focus {
     outline: none;
     border-color: var(--primary, #6b2d2d);
     box-shadow: 0 0 0 2px rgba(107, 45, 45, 0.1);
