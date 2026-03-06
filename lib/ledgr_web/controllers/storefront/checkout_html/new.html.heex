@@ -93,13 +93,12 @@
         <div class="checkout-field" id="delivery-address-field"
              style={if @form_values["delivery_type"] == "delivery", do: "", else: "display:none;"}>
           <label for="delivery_address">Dirección de entrega</label>
-          <input
-            type="text"
+          <textarea
             id="delivery_address"
             name="checkout[delivery_address]"
-            placeholder="Tu dirección de entrega"
-            value={@form_values["delivery_address"]}
-          />
+            rows="3"
+            placeholder="Calle, número, colonia, alcaldía / municipio"
+          ><%= @form_values["delivery_address"] %></textarea>
         </div>
 
         <button type="submit" class="btn btn-primary checkout-submit">Realizar pedido</button>
