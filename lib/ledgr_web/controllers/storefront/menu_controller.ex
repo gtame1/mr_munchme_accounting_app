@@ -4,7 +4,21 @@ defmodule LedgrWeb.Storefront.MenuController do
   alias Ledgr.Domains.MrMunchMe.Orders
 
   def index(conn, params) do
-    products = Orders.list_products_filtered(params)
+    products = Orders.list_products_with_variants()
+
+    products =
+      case params["q"] do
+        q when is_binary(q) and q != "" ->
+          q_lower = String.downcase(q)
+
+          Enum.filter(products, fn p ->
+            String.contains?(String.downcase(p.name), q_lower) ||
+              (p.description && String.contains?(String.downcase(p.description), q_lower))
+          end)
+
+        _ ->
+          products
+      end
 
     conn
     |> assign(:storefront, true)

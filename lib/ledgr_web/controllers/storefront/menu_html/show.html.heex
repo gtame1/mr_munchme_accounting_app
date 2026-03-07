@@ -4,6 +4,8 @@
   </a>
 
   <% all_images = build_all_images(@product) %>
+  <% active_variants = Enum.filter(@product.variants, & &1.active) %>
+  <% first_variant = List.first(active_variants) %>
 
   <div class="product-detail-grid">
     <%!-- Left: Image gallery --%>
@@ -49,8 +51,8 @@
     <div class="product-detail-info">
       <h1 class="product-detail-name"><%= @product.name %></h1>
 
-      <div class="product-detail-price">
-        <%= format_price(@product.price_cents) %>
+      <div class="product-detail-price" id="selected-variant-price">
+        <%= if first_variant, do: format_price(first_variant.price_cents) %>
       </div>
 
       <%= if @product.description do %>
@@ -61,14 +63,51 @@
 
       <form method="post" action="/mr-munch-me/cart/add" class="product-detail-cart-form">
         <input type="hidden" name="_csrf_token" value={Plug.CSRFProtection.get_csrf_token()} />
-        <input type="hidden" name="product_id" value={@product.id} />
-        <div class="product-detail-quantity">
-          <label for="quantity">Cantidad:</label>
-          <input type="number" name="quantity" id="quantity" value="1" min="1" max="50" class="qty-input" />
+
+        <%= if length(active_variants) > 1 do %>
+          <div class="variant-selector">
+            <p class="variant-selector-label">Tamaño:</p>
+            <%= for {variant, idx} <- Enum.with_index(active_variants) do %>
+              <label class="variant-option">
+                <input
+                  type="radio"
+                  name="variant_id"
+                  value={variant.id}
+                  checked={idx == 0}
+                  data-price-formatted={format_price(variant.price_cents)}
+                />
+                <span class="variant-name"><%= variant.name %></span>
+                <span class="variant-price"><%= format_price(variant.price_cents) %></span>
+              </label>
+            <% end %>
+          </div>
+        <% else %>
+          <%= if first_variant do %>
+            <input type="hidden" name="variant_id" value={first_variant.id} />
+          <% end %>
+        <% end %>
+
+        <div class="product-detail-add-row">
+          <div class="product-detail-quantity">
+            <label for="quantity">Cantidad:</label>
+            <input type="number" name="quantity" id="quantity" value="1" min="1" max="50" class="qty-input" />
+          </div>
+          <button type="submit" class="btn btn-primary btn-add-to-cart-lg">Agregar al carrito</button>
         </div>
-        <button type="submit" class="btn btn-primary btn-add-to-cart-lg">Agregar al carrito</button>
       </form>
 
     </div>
   </div>
 </div>
+
+<script>
+  // Update the displayed price when a variant radio is selected
+  document.querySelectorAll('.variant-option input[type="radio"]').forEach(function(radio) {
+    radio.addEventListener('change', function() {
+      var priceEl = document.getElementById('selected-variant-price');
+      if (priceEl && this.dataset.priceFormatted) {
+        priceEl.textContent = this.dataset.priceFormatted;
+      }
+    });
+  });
+</script>

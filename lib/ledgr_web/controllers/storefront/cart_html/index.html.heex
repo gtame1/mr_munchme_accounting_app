@@ -21,20 +21,20 @@
           </div>
           <div class="cart-item-info">
             <a href={"/mr-munch-me/menu/#{item.product.id}"} class="cart-item-name">
-              <%= item.product.name %>
+              <%= item.product.name %> · <%= item.variant.name %>
             </a>
-            <div class="cart-item-price"><%= format_price(item.product.price_cents) %> c/u</div>
+            <div class="cart-item-price"><%= format_price(item.variant.price_cents) %> c/u</div>
           </div>
           <div class="cart-item-quantity">
-            <form method="post" action="/mr-munch-me/cart/update" id={"qty-form-#{item.product.id}"}>
+            <form method="post" action="/mr-munch-me/cart/update" id={"qty-form-#{item.variant.id}"}>
               <input type="hidden" name="_csrf_token" value={Plug.CSRFProtection.get_csrf_token()} />
               <input type="hidden" name="_method" value="put" />
-              <input type="hidden" name="product_id" value={item.product.id} />
-              <input type="hidden" name="quantity" id={"qty-#{item.product.id}"} value={item.quantity} />
+              <input type="hidden" name="variant_id" value={item.variant.id} />
+              <input type="hidden" name="quantity" id={"qty-#{item.variant.id}"} value={item.quantity} />
               <div class="qty-controls">
-                <button type="button" class="qty-btn qty-dec" data-product-id={item.product.id}>−</button>
-                <span class="qty-value" id={"qty-display-#{item.product.id}"}><%= item.quantity %></span>
-                <button type="button" class="qty-btn qty-inc" data-product-id={item.product.id}>+</button>
+                <button type="button" class="qty-btn qty-dec" data-variant-id={item.variant.id}>−</button>
+                <span class="qty-value" id={"qty-display-#{item.variant.id}"}><%= item.quantity %></span>
+                <button type="button" class="qty-btn qty-inc" data-variant-id={item.variant.id}>+</button>
               </div>
             </form>
           </div>
@@ -44,7 +44,7 @@
           <div class="cart-item-remove">
             <form method="post" action="/mr-munch-me/cart/remove">
               <input type="hidden" name="_csrf_token" value={Plug.CSRFProtection.get_csrf_token()} />
-              <input type="hidden" name="product_id" value={item.product.id} />
+              <input type="hidden" name="variant_id" value={item.variant.id} />
               <button type="submit" class="btn-remove" title="Quitar">&times;</button>
             </form>
           </div>

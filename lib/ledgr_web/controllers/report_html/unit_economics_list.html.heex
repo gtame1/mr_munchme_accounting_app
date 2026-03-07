@@ -81,9 +81,6 @@
                 <tr>
                   <td>
                     <strong><%= ue.product.name %></strong>
-                    <%= if ue.product.sku do %>
-                      <br/><small class="text-muted"><%= ue.product.sku %></small>
-                    <% end %>
                   </td>
                   <td class="numeric"><%= ue.units_sold %></td>
                   <td class="numeric"><%= format_currency(ue.revenue_cents) %></td>

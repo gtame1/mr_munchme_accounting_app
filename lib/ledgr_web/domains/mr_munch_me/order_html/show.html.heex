@@ -8,7 +8,7 @@
       <span style="display: inline-block; padding: 0.15rem 0.5rem; font-size: 0.78rem; font-weight: 600; border-radius: 999px; background: #fef3c7; color: #92400e;">🎁 Gift</span>
     <% end %>
     <span style="font-size: 0.85rem; color: var(--text-muted);">
-      <%= @order.product.name %><%= if (@order.quantity || 1) > 1, do: " x#{@order.quantity}" %>
+      <%= @order.variant.product.name %> · <%= @order.variant.name %><%= if (@order.quantity || 1) > 1, do: " x#{@order.quantity}" %>
     </span>
     <.location_badge location={@order.prep_location} />
   </div>
@@ -37,7 +37,7 @@
     <div style="display: flex; flex-direction: column; gap: 0.3rem; font-size: 0.9rem;">
     <%= if (@order.quantity || 1) > 1 do %>
       <div style="display: flex; justify-content: space-between; color: var(--text-muted);">
-        <span><%= format_currency(@order.product.price_cents) %> x <%= @order.quantity %></span>
+        <span><%= format_currency(@order.variant.price_cents) %> x <%= @order.quantity %></span>
         <span><%= format_currency(@payment_summary.original_price_cents) %></span>
       </div>
     <% end %>
@@ -132,9 +132,9 @@
       <div>
         <span style="font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-muted);">Product Price</span>
         <div style="font-size: 0.9rem;">
-          <%= format_currency(@order.product.price_cents) %>
+          <%= format_currency(@order.variant.price_cents) %>
           <%= if (@order.quantity || 1) > 1 do %>
-            <span style="color: var(--text-muted);"> x <%= @order.quantity %> = <%= format_currency(@order.product.price_cents * @order.quantity) %></span>
+            <span style="color: var(--text-muted);"> x <%= @order.quantity %> = <%= format_currency(@order.variant.price_cents * @order.quantity) %></span>
           <% end %>
         </div>
       </div>

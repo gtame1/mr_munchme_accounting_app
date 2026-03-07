@@ -5,26 +5,51 @@ defmodule Ledgr.Domains.MrMunchMe.OrdersFixtures do
 
   alias Ledgr.Domains.MrMunchMe.Orders
   alias Ledgr.Repo
-  alias Ledgr.Domains.MrMunchMe.Orders.{Product, Order}
+  alias Ledgr.Domains.MrMunchMe.Orders.{Product, ProductVariant, Order}
   alias Ledgr.Domains.MrMunchMe.Inventory.Location
 
   @doc """
-  Generate a product.
+  Generate a product (no sku/price_cents — those live on variants now).
   """
   def product_fixture(attrs \\ %{}) do
     {:ok, product} =
       %Product{}
       |> Product.changeset(
         Enum.into(attrs, %{
-          sku: "TEST-#{System.unique_integer([:positive])}",
           name: "Test Product",
-          price_cents: 10000,
           active: true
         })
       )
       |> Repo.insert()
 
     product
+  end
+
+  @doc """
+  Generate a product variant.
+
+  Accepts an optional `:product` key with an existing product; otherwise creates one.
+  All other keys are forwarded to the variant changeset.
+  """
+  def variant_fixture(attrs \\ %{}) do
+    product = attrs[:product] || product_fixture()
+
+    {:ok, variant} =
+      %ProductVariant{}
+      |> ProductVariant.changeset(
+        attrs
+        |> Map.drop([:product])
+        |> Enum.into(%{
+          name: "Standard",
+          sku: "TEST-VAR-#{System.unique_integer([:positive])}",
+          price_cents: 10000,
+          active: true,
+          product_id: product.id
+        })
+      )
+      |> Repo.insert()
+
+    variant
   end
 
   @doc """
@@ -46,19 +71,35 @@ defmodule Ledgr.Domains.MrMunchMe.OrdersFixtures do
 
   @doc """
   Generate an order with minimal required fields.
-  Requires a product and location to exist.
+
+  Accepts:
+  - `:variant` — an existing `ProductVariant` struct (preferred)
+  - `:product` — an existing `Product` struct; a default variant will be created for it
+  - `:location` — an existing `Location` struct; one is created if omitted
+  All other keys are merged into the order changeset attrs.
   """
   def order_fixture(attrs \\ %{}) do
-    product = attrs[:product] || product_fixture()
+    variant =
+      cond do
+        Map.has_key?(attrs, :variant) ->
+          attrs[:variant]
+
+        Map.has_key?(attrs, :product) ->
+          variant_fixture(%{product: attrs[:product]})
+
+        true ->
+          variant_fixture()
+      end
+
     location = attrs[:location] || location_fixture()
 
     order_attrs =
       attrs
-      |> Map.drop([:product, :location])
+      |> Map.drop([:variant, :location, :product])
       |> Enum.into(%{
         customer_name: "Test Customer",
         customer_phone: "5551234567",
-        product_id: product.id,
+        variant_id: variant.id,
         prep_location_id: location.id,
         delivery_date: Date.utc_today(),
         delivery_type: "pickup",
@@ -70,7 +111,7 @@ defmodule Ledgr.Domains.MrMunchMe.OrdersFixtures do
       |> Order.changeset(order_attrs)
       |> Repo.insert()
 
-    order |> Repo.preload([:product, :prep_location, :customer])
+    order |> Repo.preload([variant: :product, prep_location: [], customer: []])
   end
 
   @doc """
@@ -78,16 +119,27 @@ defmodule Ledgr.Domains.MrMunchMe.OrdersFixtures do
   This triggers all the business logic (customer lookup, accounting, etc.)
   """
   def order_with_full_creation(attrs \\ %{}) do
-    product = attrs[:product] || product_fixture()
+    variant =
+      cond do
+        Map.has_key?(attrs, :variant) ->
+          attrs[:variant]
+
+        Map.has_key?(attrs, :product) ->
+          variant_fixture(%{product: attrs[:product]})
+
+        true ->
+          variant_fixture()
+      end
+
     location = attrs[:location] || location_fixture()
 
     order_attrs =
       attrs
-      |> Map.drop([:product, :location])
+      |> Map.drop([:variant, :location, :product])
       |> Enum.into(%{
         "customer_name" => "Test Customer",
         "customer_phone" => "5551234567",
-        "product_id" => to_string(product.id),
+        "variant_id" => to_string(variant.id),
         "prep_location_id" => to_string(location.id),
         "delivery_date" => Date.to_iso8601(Date.utc_today()),
         "delivery_type" => "pickup",
@@ -115,4 +167,3 @@ defmodule Ledgr.Domains.MrMunchMe.OrdersFixtures do
     payment
   end
 end
-

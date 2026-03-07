@@ -113,7 +113,7 @@
           <%= for item <- @cart_items do %>
             <div class="checkout-summary-item">
               <span class="checkout-summary-item-name">
-                <%= item.product.name %> <span class="checkout-summary-qty">&times;<%= item.quantity %></span>
+                <%= item.product.name %> · <%= item.variant.name %> <span class="checkout-summary-qty">&times;<%= item.quantity %></span>
               </span>
               <span class="checkout-summary-item-price"><%= format_price(item.subtotal) %></span>
             </div>

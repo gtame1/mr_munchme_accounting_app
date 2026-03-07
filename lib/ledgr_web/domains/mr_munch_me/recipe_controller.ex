@@ -7,7 +7,7 @@ defmodule LedgrWeb.Domains.MrMunchMe.RecipeController do
 
   def index(conn, _params) do
     recipes = Recepies.list_recipes()
-    recipe_versions_by_product = Recepies.list_all_recipe_versions_by_product()
+    recipe_versions_by_variant = Recepies.list_all_recipe_versions_by_variant()
 
     # Calculate estimated costs for each recipe
     recipes_with_costs =
@@ -17,21 +17,38 @@ defmodule LedgrWeb.Domains.MrMunchMe.RecipeController do
       end)
 
     # Calculate estimated costs for all recipe versions
-    recipe_versions_by_product_with_costs =
-      recipe_versions_by_product
-      |> Enum.map(fn {product_id, versions} ->
+    recipe_versions_by_variant_with_costs =
+      recipe_versions_by_variant
+      |> Enum.map(fn {variant_id, versions} ->
         versions_with_costs =
           Enum.map(versions, fn version ->
             estimated_cost = Recepies.estimated_recipe_cost(version)
             Map.put(version, :estimated_cost, estimated_cost)
           end)
-        {product_id, versions_with_costs}
+        {variant_id, versions_with_costs}
       end)
       |> Map.new()
 
+    # Group latest recipes by product for the index view
+    recipes_by_product =
+      recipes_with_costs
+      |> Enum.group_by(fn r -> {r.variant.product_id, r.variant.product.name} end)
+      |> Enum.sort_by(fn {{_id, name}, _recipes} -> name end)
+
+    # Find active variants (with active parent products) that have no recipe yet
+    variant_ids_with_recipes = MapSet.new(recipes_with_costs, & &1.variant_id)
+
+    variants_missing_recipes =
+      Orders.list_all_active_variants_with_products()
+      |> Enum.reject(&MapSet.member?(variant_ids_with_recipes, &1.id))
+      |> Enum.group_by(& &1.product.name)
+      |> Enum.sort_by(fn {name, _} -> name end)
+
     render(conn, :index,
       recipes: recipes_with_costs,
-      recipe_versions_by_product: recipe_versions_by_product_with_costs
+      recipe_versions_by_variant: recipe_versions_by_variant_with_costs,
+      recipes_by_product: recipes_by_product,
+      variants_missing_recipes: variants_missing_recipes
     )
   end
 
@@ -41,14 +58,15 @@ defmodule LedgrWeb.Domains.MrMunchMe.RecipeController do
     changeset = Recepies.change_recipe(%Recipe{}, attrs)
     form = Phoenix.Component.to_form(changeset)
 
-    ingredient_options = Ledgr.Domains.MrMunchMe.Inventory.ingredient_select_options()
-    ingredient_options_json = Jason.encode!(Enum.map(ingredient_options, fn {name, code} -> [name, code] end))
+    ingredient_options_raw = Ledgr.Domains.MrMunchMe.Inventory.ingredient_options_with_units()
+    ingredient_options = Enum.map(ingredient_options_raw, fn {name, code, _unit} -> {name, code} end)
+    ingredient_options_json = Jason.encode!(Enum.map(ingredient_options_raw, fn {name, code, unit} -> [name, code, unit] end))
 
     render(conn, :new,
       changeset: changeset,
       form: form,
       action: dp(conn, "/recipes"),
-      product_options: Orders.product_select_options(),
+      variant_options: Orders.variant_select_options(),
       ingredient_options: ingredient_options,
       ingredient_options_json: ingredient_options_json
     )
@@ -65,14 +83,15 @@ defmodule LedgrWeb.Domains.MrMunchMe.RecipeController do
         changeset = Map.put(changeset, :action, :insert)
         form = Phoenix.Component.to_form(changeset)
 
-        ingredient_options = Ledgr.Domains.MrMunchMe.Inventory.ingredient_select_options()
-        ingredient_options_json = Jason.encode!(Enum.map(ingredient_options, fn {name, code} -> [name, code] end))
+        ingredient_options_raw = Ledgr.Domains.MrMunchMe.Inventory.ingredient_options_with_units()
+        ingredient_options = Enum.map(ingredient_options_raw, fn {name, code, _unit} -> {name, code} end)
+        ingredient_options_json = Jason.encode!(Enum.map(ingredient_options_raw, fn {name, code, unit} -> [name, code, unit] end))
 
         render(conn, :new,
           changeset: changeset,
           form: form,
           action: dp(conn, "/recipes"),
-          product_options: Orders.product_select_options(),
+          variant_options: Orders.variant_select_options(),
           ingredient_options: ingredient_options,
           ingredient_options_json: ingredient_options_json
         )
@@ -99,7 +118,7 @@ defmodule LedgrWeb.Domains.MrMunchMe.RecipeController do
 
     # Build attrs from existing recipe for pre-filling
     attrs = %{
-      "product_id" => original_recipe.product_id,
+      "variant_id" => original_recipe.variant_id,
       "effective_date" => new_effective_date,
       "name" => original_recipe.name,
       "description" => original_recipe.description,
@@ -124,15 +143,16 @@ defmodule LedgrWeb.Domains.MrMunchMe.RecipeController do
     changeset = Recepies.change_recipe(%Recipe{}, attrs)
     form = Phoenix.Component.to_form(changeset)
 
-    ingredient_options = Ledgr.Domains.MrMunchMe.Inventory.ingredient_select_options()
-    ingredient_options_json = Jason.encode!(Enum.map(ingredient_options, fn {name, code} -> [name, code] end))
+    ingredient_options_raw = Ledgr.Domains.MrMunchMe.Inventory.ingredient_options_with_units()
+    ingredient_options = Enum.map(ingredient_options_raw, fn {name, code, _unit} -> {name, code} end)
+    ingredient_options_json = Jason.encode!(Enum.map(ingredient_options_raw, fn {name, code, unit} -> [name, code, unit] end))
 
     render(conn, :edit,
       original_recipe: original_recipe,
       changeset: changeset,
       form: form,
       action: dp(conn, "/recipes/new_version/#{original_recipe.id}"),
-      product_options: Orders.product_select_options(),
+      variant_options: Orders.variant_select_options(),
       ingredient_options: ingredient_options,
       ingredient_options_json: ingredient_options_json
     )
@@ -159,8 +179,9 @@ defmodule LedgrWeb.Domains.MrMunchMe.RecipeController do
         changeset = Map.put(changeset, :action, :insert)
         form = Phoenix.Component.to_form(changeset)
 
-        ingredient_options = Ledgr.Domains.MrMunchMe.Inventory.ingredient_select_options()
-        ingredient_options_json = Jason.encode!(Enum.map(ingredient_options, fn {name, code} -> [name, code] end))
+        ingredient_options_raw = Ledgr.Domains.MrMunchMe.Inventory.ingredient_options_with_units()
+        ingredient_options = Enum.map(ingredient_options_raw, fn {name, code, _unit} -> {name, code} end)
+        ingredient_options_json = Jason.encode!(Enum.map(ingredient_options_raw, fn {name, code, unit} -> [name, code, unit] end))
 
         conn
         |> put_flash(:error, "Please fix the errors below and try again.")
@@ -169,7 +190,7 @@ defmodule LedgrWeb.Domains.MrMunchMe.RecipeController do
           changeset: changeset,
           form: form,
           action: dp(conn, "/recipes/new_version/#{original_recipe.id}"),
-          product_options: Orders.product_select_options(),
+          variant_options: Orders.variant_select_options(),
           ingredient_options: ingredient_options,
           ingredient_options_json: ingredient_options_json
         )

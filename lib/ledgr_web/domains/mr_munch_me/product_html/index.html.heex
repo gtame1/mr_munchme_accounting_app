@@ -19,8 +19,7 @@
     <thead>
       <tr>
         <th>Name</th>
-        <th>SKU</th>
-        <th>Price</th>
+        <th>Variants</th>
         <th>Active</th>
         <th>Actions</th>
       </tr>
@@ -29,8 +28,7 @@
       <%= for product <- @products do %>
         <tr>
           <td><%= product.name %></td>
-          <td><%= product.sku || "—" %></td>
-          <td><%= format_currency(product.price_cents || 0) %></td>
+          <td><%= Enum.count(product.variants) %> variant(s)</td>
           <td>
             <%= if product.active do %>
               <span class="badge badge-success">Active</span>

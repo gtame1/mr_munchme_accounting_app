@@ -5,7 +5,7 @@ defmodule Ledgr.Domains.MrMunchMe.Inventory.VerificationTest do
   alias Ledgr.Domains.MrMunchMe.Inventory
   alias Ledgr.Repo
   alias Ledgr.Domains.MrMunchMe.Inventory.{Ingredient, Location, InventoryItem, InventoryMovement, Verification}
-  alias Ledgr.Domains.MrMunchMe.Orders.{Order, OrderPayment}
+  alias Ledgr.Domains.MrMunchMe.Orders.{Order, OrderPayment, Product, ProductVariant}
 
   # Get or create an account, handling the case where it already exists
   # (can happen with async tests sharing the database)
@@ -624,29 +624,37 @@ defmodule Ledgr.Domains.MrMunchMe.Inventory.VerificationTest do
 
   # ── Private helpers ────────────────────────────────────────────────────
 
+  # Returns a {product, variant} tuple
   defp create_product do
-    alias Ledgr.Domains.MrMunchMe.Orders.Product
-
     {:ok, product} =
       %Product{}
       |> Product.changeset(%{
-        sku: "GIFT-#{System.unique_integer([:positive])}",
         name: "Gift Product",
-        price_cents: 10000,
         active: true
       })
       |> Repo.insert()
 
-    product
+    {:ok, variant} =
+      %ProductVariant{}
+      |> ProductVariant.changeset(%{
+        name: "Standard",
+        sku: "GIFT-#{System.unique_integer([:positive])}",
+        price_cents: 10000,
+        active: true,
+        product_id: product.id
+      })
+      |> Repo.insert()
+
+    {product, variant}
   end
 
-  defp create_regular_order(product, location, status) do
+  defp create_regular_order({_product, variant}, location, status) do
     {:ok, order} =
       %Order{}
       |> Order.changeset(%{
         customer_name: "Test Customer",
         customer_phone: "555#{System.unique_integer([:positive])}",
-        product_id: product.id,
+        variant_id: variant.id,
         prep_location_id: location.id,
         delivery_date: Date.utc_today(),
         delivery_type: "pickup",
@@ -658,13 +666,13 @@ defmodule Ledgr.Domains.MrMunchMe.Inventory.VerificationTest do
     order
   end
 
-  defp create_gift_order(product, location, status) do
+  defp create_gift_order({_product, variant}, location, status) do
     {:ok, order} =
       %Order{}
       |> Order.changeset(%{
         customer_name: "Gift Recipient",
         customer_phone: "5559999999",
-        product_id: product.id,
+        variant_id: variant.id,
         prep_location_id: location.id,
         delivery_date: Date.utc_today(),
         delivery_type: "pickup",

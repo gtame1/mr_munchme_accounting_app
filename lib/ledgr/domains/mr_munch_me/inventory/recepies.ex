@@ -4,7 +4,7 @@ defmodule Ledgr.Domains.MrMunchMe.Inventory.Recepies do
   """
   import Ecto.Query
   alias Ledgr.Repo
-  alias Ledgr.Domains.MrMunchMe.Orders.Product
+  alias Ledgr.Domains.MrMunchMe.Orders.ProductVariant
   alias Ledgr.Domains.MrMunchMe.Inventory.{Recipe}
   alias Ledgr.Domains.MrMunchMe.Inventory
 
@@ -18,21 +18,16 @@ defmodule Ledgr.Domains.MrMunchMe.Inventory.Recepies do
   def packaging_code?(code) when is_binary(code), do: code in @packaging_codes
 
   @doc """
-  Return the recipe for a given product as a list of maps.
-  Quantities are in the ingredient's unit (e.g. g, ml, units).
-
-  If a date is provided, returns the active recipe for that date.
-  If no date is provided or no recipe is found, falls back to hardcoded recipes.
+  Return the recipe for a given product variant as a list of ingredient maps.
+  Prefers DB-stored recipe keyed by variant_id; falls back to hardcoded recipes
+  using the variant's SKU (same codes as the original product SKUs).
   """
-  def recipe_for_product(%Product{} = product, date \\ nil) do
-    # Try to get recipe from database first
-    case get_active_recipe(product, date) do
+  def recipe_for_variant(%ProductVariant{} = variant, date \\ nil) do
+    case get_active_recipe(variant, date) do
       nil ->
-        # Fallback to hardcoded recipes for backward compatibility
-        fallback_recipe_for_product(product)
+        fallback_recipe_for_sku(variant.sku)
 
       recipe ->
-        # Convert recipe lines to the expected format
         recipe
         |> Repo.preload(:recipe_lines)
         |> Map.get(:recipe_lines, [])
@@ -46,21 +41,22 @@ defmodule Ledgr.Domains.MrMunchMe.Inventory.Recepies do
   end
 
   @doc """
-  Get the active recipe for a product on a given date.
+  Get the active recipe for a product variant on a given date.
   Returns the recipe with the most recent effective_date <= date.
   If date is nil, returns the most recent recipe.
   """
-  def get_active_recipe(%Product{} = product, date \\ nil) do
+  def get_active_recipe(variant, date \\ nil)
+
+  def get_active_recipe(%ProductVariant{} = variant, date) do
     query =
       from r in Recipe,
-        where: r.product_id == ^product.id,
+        where: r.variant_id == ^variant.id,
         order_by: [desc: r.effective_date],
         limit: 1
 
     query =
       if date do
-        from r in query,
-          where: r.effective_date <= ^date
+        from r in query, where: r.effective_date <= ^date
       else
         query
       end
@@ -73,48 +69,48 @@ defmodule Ledgr.Domains.MrMunchMe.Inventory.Recepies do
   Only shows the latest version of each recipe (hides deprecated/older versions).
   """
   def list_recipes do
-    # Find the most recent effective_date for each product
+    # Find the most recent effective_date for each variant
     latest_dates =
       from r in Recipe,
-        group_by: r.product_id,
+        group_by: r.variant_id,
         select: %{
-          product_id: r.product_id,
+          variant_id: r.variant_id,
           max_date: max(r.effective_date)
         }
 
-    # Get recipes that match the latest date for each product
+    # Get recipes that match the latest date for each variant
     from(r in Recipe,
       inner_join: latest in subquery(latest_dates),
-      on: r.product_id == latest.product_id and r.effective_date == latest.max_date,
+      on: r.variant_id == latest.variant_id and r.effective_date == latest.max_date,
       order_by: [desc: r.effective_date],
-      preload: [:product, :recipe_lines]
+      preload: [:recipe_lines, variant: :product]
     )
     |> Repo.all()
   end
 
   @doc """
-  List all recipes for a product, ordered by effective_date descending.
+  List all recipes for a product variant, ordered by effective_date descending.
   """
-  def list_recipes_for_product(%Product{} = product) do
+  def list_recipes_for_variant(%ProductVariant{} = variant) do
     from(r in Recipe,
-      where: r.product_id == ^product.id,
+      where: r.variant_id == ^variant.id,
       order_by: [desc: r.effective_date],
-      preload: :recipe_lines
+      preload: [:recipe_lines, variant: :product]
     )
     |> Repo.all()
   end
 
   @doc """
-  Get all recipe versions grouped by product_id.
-  Returns a map where keys are product_ids and values are lists of recipes.
+  Get all recipe versions grouped by variant_id.
+  Returns a map where keys are variant_ids and values are lists of recipes.
   """
-  def list_all_recipe_versions_by_product do
+  def list_all_recipe_versions_by_variant do
     from(r in Recipe,
-      order_by: [r.product_id, desc: r.effective_date],
-      preload: [:product, :recipe_lines]
+      order_by: [r.variant_id, desc: r.effective_date],
+      preload: [:recipe_lines, variant: :product]
     )
     |> Repo.all()
-    |> Enum.group_by(& &1.product_id)
+    |> Enum.group_by(& &1.variant_id)
   end
 
   @doc """
@@ -123,7 +119,7 @@ defmodule Ledgr.Domains.MrMunchMe.Inventory.Recepies do
   def get_recipe!(id) do
     Recipe
     |> Repo.get!(id)
-    |> Repo.preload([:recipe_lines, :product])
+    |> Repo.preload([:recipe_lines, variant: :product])
   end
 
   @doc """
@@ -159,11 +155,11 @@ defmodule Ledgr.Domains.MrMunchMe.Inventory.Recepies do
   end
 
   @doc """
-  Copy a recipe from one product to another.
-  Creates a new recipe for the target product with the same recipe lines.
+  Copy a recipe from one variant to another.
+  Creates a new recipe for the target variant with the same recipe lines.
   """
-  def copy_recipe_from_product(%Product{} = source_product, %Product{} = target_product, effective_date \\ Date.utc_today()) do
-    case get_active_recipe(source_product) do
+  def copy_recipe_from_variant(%ProductVariant{} = source_variant, %ProductVariant{} = target_variant, effective_date \\ Date.utc_today()) do
+    case get_active_recipe(source_variant) do
       nil ->
         {:error, :no_recipe_found}
 
@@ -171,10 +167,10 @@ defmodule Ledgr.Domains.MrMunchMe.Inventory.Recepies do
         source_recipe = Repo.preload(source_recipe, :recipe_lines)
 
         recipe_attrs = %{
-          product_id: target_product.id,
+          variant_id: target_variant.id,
           effective_date: effective_date,
-          name: source_recipe.name || "#{target_product.name} Recipe",
-          description: source_recipe.description || "Recipe copied from #{source_product.name}",
+          name: source_recipe.name || "#{target_variant.name} Recipe",
+          description: source_recipe.description || "Recipe copied from #{source_variant.name}",
           recipe_lines:
             Enum.map(source_recipe.recipe_lines || [], fn line ->
               %{
@@ -189,26 +185,20 @@ defmodule Ledgr.Domains.MrMunchMe.Inventory.Recepies do
   end
 
   @doc """
-  Get options for products that have recipes, for use in dropdowns.
-  Returns a list of {label, product_id} tuples.
+  Get options for variants that have recipes, for use in dropdowns.
+  Returns a list of {label, variant_id} tuples.
   """
-  def products_with_recipes_select_options do
+  def variants_with_recipes_select_options do
     from(r in Recipe,
-      distinct: r.product_id,
-      join: p in assoc(r, :product),
-      order_by: p.name,
-      select: {p.id, p.name, p.sku}
+      distinct: r.variant_id,
+      join: v in assoc(r, :variant),
+      join: p in assoc(v, :product),
+      order_by: [p.name, v.name],
+      select: {v.id, p.name, v.name}
     )
     |> Repo.all()
-    |> Enum.map(fn {id, name, sku} ->
-      label =
-        if sku do
-          "#{name} (#{sku})"
-        else
-          name
-        end
-
-      {label, id}
+    |> Enum.map(fn {variant_id, product_name, variant_name} ->
+      {"#{product_name} · #{variant_name}", variant_id}
     end)
   end
 
@@ -255,10 +245,11 @@ defmodule Ledgr.Domains.MrMunchMe.Inventory.Recepies do
     end
   end
 
-  # Fallback to hardcoded recipes (original implementation)
-  defp fallback_recipe_for_product(%Product{} = product) do
+  # Shared SKU-based fallback so both the product path and the variant path
+  # resolve to the same hardcoded ingredient lists.
+  defp fallback_recipe_for_sku(sku) when is_binary(sku) do
     main_ingredients =
-      case product.sku do
+      case sku do
         "TAKIS-GRANDE" -> [%{ingredient_code: "TAKIS_FUEGO", quantity: 1020}]
         "TAKIS-MEDIANA" -> [%{ingredient_code: "TAKIS_FUEGO", quantity: 517}]
         "RUNNERS-GRANDE" -> [%{ingredient_code: "RUNNERS", quantity: 840}]
@@ -289,22 +280,21 @@ defmodule Ledgr.Domains.MrMunchMe.Inventory.Recepies do
 
     extra_ingredients =
       cond do
-        product.sku == "SALSA-NEGRAS-GRANDE" -> [
+        sku == "SALSA-NEGRAS-GRANDE" -> [
           %{ingredient_code: "MIEL_KARO", quantity: 180},
           %{ingredient_code: "MAGGI", quantity: 5}, #ml
           %{ingredient_code: "TAJIN", quantity: 30},
           %{ingredient_code: "LIMON", quantity: 1},
           %{ingredient_code: "PULPARINDIO", quantity: 2},
         ]
-        product.sku == "SALSA-NEGRAS-MEDIANA" -> [
+        sku == "SALSA-NEGRAS-MEDIANA" -> [
           %{ingredient_code: "MIEL_KARO", quantity: 100},
           %{ingredient_code: "MAGGI", quantity: 5},
           %{ingredient_code: "TAJIN", quantity: 15},
           %{ingredient_code: "LIMON", quantity: 0.5},
           %{ingredient_code: "PULPARINDIO", quantity: 1},
-
         ]
-        product.sku in ["TAKIS-GRANDE", "RUNNERS-GRANDE", "MIXTA-GRANDE"] -> [
+        sku in ["TAKIS-GRANDE", "RUNNERS-GRANDE", "MIXTA-GRANDE"] -> [
           %{ingredient_code: "MIEL_KARO", quantity: 180}, #ml
           %{ingredient_code: "SIRILO", quantity: 120}, #ml
           %{ingredient_code: "MIGUELITO", quantity: 30}, #g
@@ -312,7 +302,7 @@ defmodule Ledgr.Domains.MrMunchMe.Inventory.Recepies do
           %{ingredient_code: "LIMON", quantity: 1}, #unit
           %{ingredient_code: "PULPARINDIO", quantity: 2}, #unit
         ]
-        product.sku in ["TAKIS-MEDIANA", "RUNNERS-MEDIANA", "MIXTA-MEDIANA"] -> [
+        sku in ["TAKIS-MEDIANA", "RUNNERS-MEDIANA", "MIXTA-MEDIANA"] -> [
           %{ingredient_code: "MIEL_KARO", quantity: 100},
           %{ingredient_code: "SIRILO", quantity: 30},
           %{ingredient_code: "MIGUELITO", quantity: 15},
@@ -329,11 +319,13 @@ defmodule Ledgr.Domains.MrMunchMe.Inventory.Recepies do
       %{ingredient_code: "LISTONES", quantity: 15}, #cm
     ] ++
       cond do
-        String.contains?(product.sku, "GRANDE") -> [%{ingredient_code: "BASE_GRANDE", quantity: 1}] #unit
-        String.contains?(product.sku, "MEDIANA") -> [%{ingredient_code: "BASE_MEDIANA", quantity: 1}] #unit
+        String.contains?(sku, "GRANDE") -> [%{ingredient_code: "BASE_GRANDE", quantity: 1}] #unit
+        String.contains?(sku, "MEDIANA") -> [%{ingredient_code: "BASE_MEDIANA", quantity: 1}] #unit
         true -> []
       end
 
     main_ingredients ++ extra_ingredients ++ packing_ingredients
   end
+
+  defp fallback_recipe_for_sku(_sku), do: []
 end

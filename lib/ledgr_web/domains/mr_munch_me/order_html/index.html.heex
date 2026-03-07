@@ -135,7 +135,7 @@
                 </.link>
               </td>
               <td><%= order.customer_name %></td>
-              <td><%= order.product && order.product.name %><%= if (order.quantity || 1) > 1, do: " x#{order.quantity}" %></td>
+              <td><%= order.variant && (order.variant.product.name <> " · " <> order.variant.name) %><%= if (order.quantity || 1) > 1, do: " x#{order.quantity}" %></td>
               <td><%= order.delivery_date %></td>
               <td><%= String.capitalize(order.delivery_type || "") %></td>
 
@@ -256,7 +256,7 @@
                 </.link>
               </td>
               <td><%= order.customer_name %></td>
-              <td><%= order.product && order.product.name %><%= if (order.quantity || 1) > 1, do: " x#{order.quantity}" %></td>
+              <td><%= order.variant && (order.variant.product.name <> " · " <> order.variant.name) %><%= if (order.quantity || 1) > 1, do: " x#{order.quantity}" %></td>
               <td><%= order.delivery_date %></td>
               <td><%= String.capitalize(order.delivery_type || "") %></td>
 
@@ -334,7 +334,7 @@
                 </.link>
               </td>
               <td><%= order.customer_name %></td>
-              <td><%= order.product && order.product.name %><%= if (order.quantity || 1) > 1, do: " x#{order.quantity}" %></td>
+              <td><%= order.variant && (order.variant.product.name <> " · " <> order.variant.name) %><%= if (order.quantity || 1) > 1, do: " x#{order.quantity}" %></td>
               <td><%= order.delivery_date %></td>
               <td><%= String.capitalize(order.delivery_type || "") %></td>
 

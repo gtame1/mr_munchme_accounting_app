@@ -14,7 +14,7 @@ defmodule Mix.Tasks.DiagnoseCogs do
 
   import Ecto.Query
   alias Ledgr.Repo
-  alias Ledgr.Domains.MrMunchMe.Orders.{Order, Product}
+  alias Ledgr.Domains.MrMunchMe.Orders.{Order, ProductVariant}
   alias Ledgr.Core.Accounting.JournalEntry
   alias Ledgr.Domains.MrMunchMe.Inventory
   alias Ledgr.Domains.MrMunchMe.Inventory.Recepies
@@ -131,49 +131,53 @@ defmodule Mix.Tasks.DiagnoseCogs do
   end
 
   defp diagnose_all_products do
-    IO.puts("\n📊 COGS BY PRODUCT")
+    IO.puts("\n📊 COGS BY VARIANT")
     IO.puts(String.duplicate("-", 50))
 
-    # Get all products with delivered orders
-    products =
-      from(p in Product,
-        join: o in Order, on: o.product_id == p.id,
+    # Get all variants with delivered orders
+    variants =
+      from(v in ProductVariant,
+        join: p in assoc(v, :product),
+        join: o in Order, on: o.variant_id == v.id,
         where: o.status == "delivered",
         distinct: true,
-        select: p
+        preload: [product: p]
       )
       |> Repo.all()
 
-    if products == [] do
-      IO.puts("No products with delivered orders found.\n")
+    if variants == [] do
+      IO.puts("No variants with delivered orders found.\n")
     else
       ingredient_costs = Inventory.ingredient_quick_infos()
 
-      Enum.each(products, fn product ->
-        diagnose_product(product, ingredient_costs)
+      Enum.each(variants, fn variant ->
+        diagnose_variant(variant, ingredient_costs)
       end)
     end
   end
 
   defp diagnose_product_by_sku(sku) do
-    case Repo.get_by(Product, sku: sku) do
+    case Repo.get_by(ProductVariant, sku: sku) |> maybe_preload_product() do
       nil ->
-        IO.puts("❌ Product with SKU '#{sku}' not found\n")
+        IO.puts("❌ Variant with SKU '#{sku}' not found\n")
 
-      product ->
+      variant ->
         ingredient_costs = Inventory.ingredient_quick_infos()
-        diagnose_product(product, ingredient_costs)
+        diagnose_variant(variant, ingredient_costs)
     end
   end
 
-  defp diagnose_product(product, ingredient_costs) do
-    IO.puts("\n🍽️  #{product.name} (#{product.sku || "no SKU"})")
-    IO.puts("   Price: #{format_currency(product.price_cents)}")
+  defp maybe_preload_product(nil), do: nil
+  defp maybe_preload_product(variant), do: Repo.preload(variant, :product)
+
+  defp diagnose_variant(variant, ingredient_costs) do
+    IO.puts("\n🍽️  #{variant.product.name} · #{variant.name} (#{variant.sku || "no SKU"})")
+    IO.puts("   Price: #{format_currency(variant.price_cents)}")
 
     # Get delivered orders
     orders =
       from(o in Order,
-        where: o.product_id == ^product.id and o.status == "delivered",
+        where: o.variant_id == ^variant.id and o.status == "delivered",
         select: o
       )
       |> Repo.all()
@@ -184,15 +188,15 @@ defmodule Mix.Tasks.DiagnoseCogs do
     if units_sold == 0 do
       IO.puts("   (No delivered orders)")
     else
-      diagnose_product_with_orders(product, orders, ingredient_costs)
+      diagnose_variant_with_orders(variant, orders, ingredient_costs)
     end
   end
 
-  defp diagnose_product_with_orders(product, orders, ingredient_costs) do
+  defp diagnose_variant_with_orders(variant, orders, ingredient_costs) do
     units_sold = length(orders)
 
     # Calculate expected COGS from recipe
-    recipe = Recepies.recipe_for_product(product)
+    recipe = Recepies.recipe_for_variant(variant)
     expected_cogs_per_unit = calculate_expected_cogs(recipe, ingredient_costs)
 
     # Get actual COGS from journal entries

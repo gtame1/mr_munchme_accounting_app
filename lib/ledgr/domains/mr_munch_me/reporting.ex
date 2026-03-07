@@ -39,13 +39,13 @@ defmodule Ledgr.Domains.MrMunchMe.Reporting do
     # Revenue from orders – if you want to include shipping product, you can adjust later
     revenue_stats =
       from(o in Order,
-        join: p in assoc(o, :product),
+        join: v in assoc(o, :variant),
         where:
           fragment("COALESCE(?, ?)", o.actual_delivery_date, o.delivery_date) >= ^start_date and
             fragment("COALESCE(?, ?)", o.actual_delivery_date, o.delivery_date) <= ^end_date and
             o.status != "canceled",
         select: %{
-          revenue_cents: coalesce(sum(p.price_cents * fragment("COALESCE(?, 1)", o.quantity)), 0)
+          revenue_cents: coalesce(sum(v.price_cents * fragment("COALESCE(?, 1)", o.quantity)), 0)
         }
       )
       |> Repo.one()
@@ -91,19 +91,19 @@ defmodule Ledgr.Domains.MrMunchMe.Reporting do
 
     orders_by_product_base =
       from(o in Order,
-        join: p in assoc(o, :product),
+        join: v in assoc(o, :variant),
+        join: p in assoc(v, :product),
         where:
           fragment("COALESCE(?, ?)", o.actual_delivery_date, o.delivery_date) >= ^start_date and
             fragment("COALESCE(?, ?)", o.actual_delivery_date, o.delivery_date) <= ^end_date and
             o.status != "canceled",
-        group_by: [p.id, p.name, p.sku],
+        group_by: [p.id, p.name],
         select: %{
           product_id: p.id,
           product_name: p.name,
-          product_sku: p.sku,
           order_count: count(o.id),
           unit_count: sum(fragment("COALESCE(?, 1)", o.quantity)),
-          revenue_cents: fragment("SUM(? * COALESCE(?, 1)) + SUM(CASE WHEN ? THEN COALESCE(?, ?) ELSE 0 END)", p.price_cents, o.quantity, o.customer_paid_shipping, o.shipping_fee_cents, ^fallback_shipping_fee)
+          revenue_cents: fragment("SUM(? * COALESCE(?, 1)) + SUM(CASE WHEN ? THEN COALESCE(?, ?) ELSE 0 END)", v.price_cents, o.quantity, o.customer_paid_shipping, o.shipping_fee_cents, ^fallback_shipping_fee)
         },
         order_by: [desc: count(o.id)]
       )
@@ -121,11 +121,12 @@ defmodule Ledgr.Domains.MrMunchMe.Reporting do
         []
       else
         from(o in Order,
+          join: v in assoc(o, :variant),
           where:
             fragment("COALESCE(?, ?)", o.actual_delivery_date, o.delivery_date) >= ^start_date and
               fragment("COALESCE(?, ?)", o.actual_delivery_date, o.delivery_date) <= ^end_date and
               o.status != "canceled" and
-              o.product_id in ^product_order_ids,
+              v.product_id in ^product_order_ids,
           select: o.id
         )
         |> Repo.all()
@@ -181,8 +182,9 @@ defmodule Ledgr.Domains.MrMunchMe.Reporting do
         []
       else
         from(o in Order,
+          join: v in assoc(o, :variant),
           where: o.id in ^all_orders,
-          select: {o.id, o.product_id}
+          select: {o.id, v.product_id}
         )
         |> Repo.all()
       end
@@ -275,7 +277,9 @@ defmodule Ledgr.Domains.MrMunchMe.Reporting do
   Returns revenue, COGS, gross margin, expenses, and net profit.
   """
   def unit_economics(product_id, start_date \\ nil, end_date \\ nil) do
-    product = Repo.get!(Product, product_id)
+    product =
+      from(p in Product, where: p.id == ^product_id and is_nil(p.deleted_at))
+      |> Repo.one!()
 
     # Default to all time if no dates provided
     {start_date, end_date} =
@@ -289,12 +293,13 @@ defmodule Ledgr.Domains.MrMunchMe.Reporting do
     # Get all delivered orders for this product
     orders =
       from(o in Order,
+        join: v in assoc(o, :variant),
         where:
-          o.product_id == ^product_id and
+          v.product_id == ^product_id and
             fragment("COALESCE(?, ?)", o.actual_delivery_date, o.delivery_date) >= ^start_date and
             fragment("COALESCE(?, ?)", o.actual_delivery_date, o.delivery_date) <= ^end_date and
             o.status == "delivered",
-        preload: [:product]
+        preload: [variant: v]
       )
       |> Repo.all()
 
@@ -302,7 +307,7 @@ defmodule Ledgr.Domains.MrMunchMe.Reporting do
     revenue_cents =
       Enum.reduce(orders, 0, fn order, acc ->
         quantity = order.quantity || 1
-        base_revenue = (order.product.price_cents || 0) * quantity
+        base_revenue = (order.variant.price_cents || 0) * quantity
         shipping_cents = if order.customer_paid_shipping, do: order.shipping_fee_cents || OrderAccounting.shipping_fee_cents(), else: 0
         acc + base_revenue + shipping_cents
       end)
@@ -428,10 +433,10 @@ defmodule Ledgr.Domains.MrMunchMe.Reporting do
         {nil, e} -> {~D[2000-01-01], e}
       end
 
-    # Get all active products
+    # Get all active, non-deleted products
     products =
       from(p in Product,
-        where: p.active == true,
+        where: p.active == true and is_nil(p.deleted_at),
         order_by: [asc: p.name]
       )
       |> Repo.all()
@@ -476,7 +481,7 @@ defmodule Ledgr.Domains.MrMunchMe.Reporting do
     delivered_orders =
       from(o in Order,
         where: o.status == "delivered",
-        preload: [:product, :order_payments]
+        preload: [:order_payments]
       )
       |> Repo.all()
 

@@ -71,9 +71,6 @@
                 <tr>
                   <td style="padding-left: 2rem;">
                     <%= product.product_name %>
-                    <%= if product.product_sku do %>
-                      <span style="color: #6b7280; font-size: 0.875rem;">(<%= product.product_sku %>)</span>
-                    <% end %>
                   </td>
                   <td class="numeric"><%= format_currency(product.revenue_cents) %></td>
                   <td class="numeric">
@@ -105,9 +102,6 @@
                 <tr>
                   <td style="padding-left: 2rem;">
                     <%= product.product_name %>
-                    <%= if product.product_sku do %>
-                      <span style="color: #6b7280; font-size: 0.875rem;">(<%= product.product_sku %>)</span>
-                    <% end %>
                   </td>
                   <td class="numeric"><%= format_currency(product.cogs_cents) %></td>
                   <td class="numeric">

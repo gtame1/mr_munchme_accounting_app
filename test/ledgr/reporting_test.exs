@@ -12,10 +12,11 @@ defmodule Ledgr.Core.ReportingTest do
   describe "unit_economics/3" do
     setup do
       accounts = standard_accounts_fixture()
-      product = product_fixture(%{price_cents: 15000, name: "Test Product"})
+      product = product_fixture(%{name: "Test Product"})
+      variant = variant_fixture(%{product: product, price_cents: 15000})
       location = location_fixture()
 
-      {:ok, accounts: accounts, product: product, location: location}
+      {:ok, accounts: accounts, product: product, variant: variant, location: location}
     end
 
     test "returns metrics for product with no orders", %{product: product} do
@@ -28,22 +29,23 @@ defmodule Ledgr.Core.ReportingTest do
       assert result.cogs_cents == 0
     end
 
-    test "calculates revenue for delivered orders", %{product: product, location: location} do
+    test "calculates revenue for delivered orders", %{product: product, variant: variant, location: location} do
       today = Date.utc_today()
 
       # Create a delivered order
-      _order = order_fixture(%{product: product, location: location, status: "delivered"})
+      _order = order_fixture(%{variant: variant, location: location, status: "delivered"})
 
       result = DomainReporting.unit_economics(product.id, today, today)
 
       assert result.units_sold == 1
-      assert result.revenue_cents == product.price_cents
-      assert result.revenue_per_unit_cents == product.price_cents
+      assert result.revenue_cents == variant.price_cents
+      assert result.revenue_per_unit_cents == variant.price_cents
     end
 
-    test "includes shipping revenue when customer_paid_shipping is true", %{product: product, location: location} do
-      # Create shipping product
-      _shipping = product_fixture(%{sku: "ENVIO", name: "Shipping", price_cents: 5000})
+    test "includes shipping revenue when customer_paid_shipping is true", %{product: product, variant: variant, location: location} do
+      # Create shipping variant
+      envio_product = product_fixture(%{name: "Shipping"})
+      _envio_variant = variant_fixture(%{product: envio_product, sku: "ENVIO", price_cents: 5000})
 
       today = Date.utc_today()
 
@@ -53,7 +55,7 @@ defmodule Ledgr.Core.ReportingTest do
         |> Order.changeset(%{
           customer_name: "Test",
           customer_phone: "5551234567",
-          product_id: product.id,
+          variant_id: variant.id,
           prep_location_id: location.id,
           delivery_date: today,
           delivery_type: "delivery",
@@ -65,18 +67,18 @@ defmodule Ledgr.Core.ReportingTest do
       result = DomainReporting.unit_economics(product.id, today, today)
 
       assert result.units_sold == 1
-      # Revenue should be product + shipping
-      assert result.revenue_cents == product.price_cents + 5000
+      # Revenue should be product variant price + shipping
+      assert result.revenue_cents == variant.price_cents + 5000
     end
 
-    test "excludes non-delivered orders from calculations", %{product: product, location: location} do
+    test "excludes non-delivered orders from calculations", %{product: product, variant: variant, location: location} do
       today = Date.utc_today()
 
       # Create orders with different statuses
-      _new_order = order_fixture(%{product: product, location: location, status: "new_order"})
-      _in_prep = order_fixture(%{product: product, location: location, status: "in_prep"})
-      _delivered = order_fixture(%{product: product, location: location, status: "delivered"})
-      _canceled = order_fixture(%{product: product, location: location, status: "canceled"})
+      _new_order = order_fixture(%{variant: variant, location: location, status: "new_order"})
+      _in_prep = order_fixture(%{variant: variant, location: location, status: "in_prep"})
+      _delivered = order_fixture(%{variant: variant, location: location, status: "delivered"})
+      _canceled = order_fixture(%{variant: variant, location: location, status: "canceled"})
 
       result = DomainReporting.unit_economics(product.id, today, today)
 
@@ -84,14 +86,14 @@ defmodule Ledgr.Core.ReportingTest do
       assert result.units_sold == 1
     end
 
-    test "filters by date range", %{product: product, location: location} do
+    test "filters by date range", %{product: product, variant: variant, location: location} do
       today = Date.utc_today()
       yesterday = Date.add(today, -1)
       _tomorrow = Date.add(today, 1)
 
       # Create orders on different dates
-      _yesterday_order = order_fixture(%{product: product, location: location, status: "delivered", delivery_date: yesterday})
-      _today_order = order_fixture(%{product: product, location: location, status: "delivered", delivery_date: today})
+      _yesterday_order = order_fixture(%{variant: variant, location: location, status: "delivered", delivery_date: yesterday})
+      _today_order = order_fixture(%{variant: variant, location: location, status: "delivered", delivery_date: today})
 
       # Query only today
       result = DomainReporting.unit_economics(product.id, today, today)
@@ -102,10 +104,10 @@ defmodule Ledgr.Core.ReportingTest do
       assert result_both.units_sold == 2
     end
 
-    test "calculates gross margin correctly", %{product: product, location: location} do
+    test "calculates gross margin correctly", %{product: product, variant: variant, location: location} do
       today = Date.utc_today()
 
-      _order = order_fixture(%{product: product, location: location, status: "delivered"})
+      _order = order_fixture(%{variant: variant, location: location, status: "delivered"})
 
       result = DomainReporting.unit_economics(product.id, today, today)
 
@@ -113,9 +115,9 @@ defmodule Ledgr.Core.ReportingTest do
       assert result.gross_margin_cents == result.revenue_cents - result.cogs_cents
     end
 
-    test "defaults to all time when no dates provided", %{product: product, location: location} do
+    test "defaults to all time when no dates provided", %{product: product, variant: variant, location: location} do
       # Create an order with today's date
-      _order = order_fixture(%{product: product, location: location, status: "delivered"})
+      _order = order_fixture(%{variant: variant, location: location, status: "delivered"})
 
       result = DomainReporting.unit_economics(product.id, nil, nil)
 
@@ -153,17 +155,18 @@ defmodule Ledgr.Core.ReportingTest do
   describe "dashboard_metrics/2" do
     setup do
       accounts = standard_accounts_fixture()
-      product = product_fixture(%{price_cents: 10000})
+      product = product_fixture()
+      variant = variant_fixture(%{product: product, price_cents: 10000})
       location = location_fixture()
 
-      {:ok, accounts: accounts, product: product, location: location}
+      {:ok, accounts: accounts, product: product, variant: variant, location: location}
     end
 
-    test "returns order counts by status", %{product: product, location: location} do
+    test "returns order counts by status", %{variant: variant, location: location} do
       today = Date.utc_today()
 
-      _order1 = order_fixture(%{product: product, location: location, status: "new_order"})
-      _order2 = order_fixture(%{product: product, location: location, status: "delivered"})
+      _order1 = order_fixture(%{variant: variant, location: location, status: "new_order"})
+      _order2 = order_fixture(%{variant: variant, location: location, status: "delivered"})
 
       result = DomainReporting.dashboard_metrics(today, today)
 
@@ -171,27 +174,29 @@ defmodule Ledgr.Core.ReportingTest do
       assert result.delivered_orders == 1
     end
 
-    test "calculates revenue from all non-canceled orders", %{product: product, location: location} do
+    test "calculates revenue from all non-canceled orders", %{variant: variant, location: location} do
       today = Date.utc_today()
 
-      _order1 = order_fixture(%{product: product, location: location, status: "delivered"})
-      _order2 = order_fixture(%{product: product, location: location, status: "new_order"})
+      _order1 = order_fixture(%{variant: variant, location: location, status: "delivered"})
+      _order2 = order_fixture(%{variant: variant, location: location, status: "new_order"})
 
       result = DomainReporting.dashboard_metrics(today, today)
 
       # Both orders count for revenue (all non-canceled)
-      assert result.revenue_cents == product.price_cents * 2
+      assert result.revenue_cents == variant.price_cents * 2
     end
 
     test "groups orders by product", %{location: location} do
       today = Date.utc_today()
 
-      product1 = product_fixture(%{price_cents: 10000, name: "Product A"})
-      product2 = product_fixture(%{price_cents: 20000, name: "Product B"})
+      product1 = product_fixture(%{name: "Product A"})
+      variant1 = variant_fixture(%{product: product1, price_cents: 10000})
+      product2 = product_fixture(%{name: "Product B"})
+      variant2 = variant_fixture(%{product: product2, price_cents: 20000})
 
-      _order1 = order_fixture(%{product: product1, location: location, status: "delivered"})
-      _order2 = order_fixture(%{product: product1, location: location, status: "delivered"})
-      _order3 = order_fixture(%{product: product2, location: location, status: "delivered"})
+      _order1 = order_fixture(%{variant: variant1, location: location, status: "delivered"})
+      _order2 = order_fixture(%{variant: variant1, location: location, status: "delivered"})
+      _order3 = order_fixture(%{variant: variant2, location: location, status: "delivered"})
 
       result = DomainReporting.dashboard_metrics(today, today)
 
@@ -206,12 +211,12 @@ defmodule Ledgr.Core.ReportingTest do
       assert product2_stats.revenue_cents == 20000
     end
 
-    test "filters by date range", %{product: product, location: location} do
+    test "filters by date range", %{variant: variant, location: location} do
       today = Date.utc_today()
       yesterday = Date.add(today, -1)
 
-      _yesterday_order = order_fixture(%{product: product, location: location, status: "delivered", delivery_date: yesterday})
-      _today_order = order_fixture(%{product: product, location: location, status: "delivered", delivery_date: today})
+      _yesterday_order = order_fixture(%{variant: variant, location: location, status: "delivered", delivery_date: yesterday})
+      _today_order = order_fixture(%{variant: variant, location: location, status: "delivered", delivery_date: today})
 
       # Query only today
       result = DomainReporting.dashboard_metrics(today, today)
@@ -223,29 +228,29 @@ defmodule Ledgr.Core.ReportingTest do
       assert result_both.total_orders == 2
     end
 
-    test "calculates average order value", %{product: product, location: location} do
+    test "calculates average order value", %{variant: variant, location: location} do
       today = Date.utc_today()
 
-      _order1 = order_fixture(%{product: product, location: location, status: "delivered"})
-      _order2 = order_fixture(%{product: product, location: location, status: "delivered"})
+      _order1 = order_fixture(%{variant: variant, location: location, status: "delivered"})
+      _order2 = order_fixture(%{variant: variant, location: location, status: "delivered"})
 
       result = DomainReporting.dashboard_metrics(today, today)
 
       assert result.delivered_orders == 2
-      assert result.avg_order_value_cents == product.price_cents
+      assert result.avg_order_value_cents == variant.price_cents
     end
 
-    test "calculates avg order value from all non-canceled orders", %{product: product, location: location} do
+    test "calculates avg order value from all non-canceled orders", %{variant: variant, location: location} do
       today = Date.utc_today()
 
-      _order = order_fixture(%{product: product, location: location, status: "new_order"})
+      _order = order_fixture(%{variant: variant, location: location, status: "new_order"})
 
       result = DomainReporting.dashboard_metrics(today, today)
 
       # avg_order_value is based on all non-canceled orders
       assert result.delivered_orders == 0
       assert result.total_orders == 1
-      assert result.avg_order_value_cents == product.price_cents
+      assert result.avg_order_value_cents == variant.price_cents
     end
   end
 end

@@ -527,7 +527,7 @@ defmodule Ledgr.Domains.MrMunchMe.Inventory.Verification do
       orders =
         from(o in Order,
           where: o.status == "delivered" and o.is_gift == false,
-          preload: [:product, :order_payments]
+          preload: [variant: :product, order_payments: []]
         )
         |> Repo.all()
 

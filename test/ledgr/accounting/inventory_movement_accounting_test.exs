@@ -9,7 +9,7 @@ defmodule Ledgr.Core.Accounting.InventoryMovementAccountingTest do
   alias Ledgr.Repo
   alias Ledgr.Core.Accounting.{Account, JournalEntry, JournalLine}
   alias Ledgr.Domains.MrMunchMe.Inventory.{Ingredient, Location, InventoryMovement, Recipe, RecipeLine}
-  alias Ledgr.Domains.MrMunchMe.Orders.{Order, Product}
+  alias Ledgr.Domains.MrMunchMe.Orders.{Order, Product, ProductVariant}
 
   setup do
     # Create accounts
@@ -135,13 +135,23 @@ defmodule Ledgr.Core.Accounting.InventoryMovementAccountingTest do
       })
       |> Repo.insert()
 
-    # Create product
+    # Create product and variant
     {:ok, product} =
       %Product{}
       |> Product.changeset(%{
-        sku: "COOKIE",
         name: "Cookie",
-        price_cents: 1000
+        active: true
+      })
+      |> Repo.insert()
+
+    {:ok, variant} =
+      %ProductVariant{}
+      |> ProductVariant.changeset(%{
+        name: "Standard",
+        sku: "COOKIE",
+        price_cents: 1000,
+        active: true,
+        product_id: product.id
       })
       |> Repo.insert()
 
@@ -149,7 +159,7 @@ defmodule Ledgr.Core.Accounting.InventoryMovementAccountingTest do
     {:ok, recipe} =
       %Recipe{}
       |> Recipe.changeset(%{
-        product_id: product.id,
+        variant_id: variant.id,
         effective_date: Date.utc_today(),
         name: "Cookie Recipe",
         description: "Basic cookie recipe"
@@ -209,14 +219,15 @@ defmodule Ledgr.Core.Accounting.InventoryMovementAccountingTest do
       flour: flour,
       sugar: sugar,
       location: location,
-      product: product
+      product: product,
+      variant: variant
     }
   end
 
   describe "order_in_prep accounting" do
     test "creates balanced journal entry when order moves to in_prep", %{
       wip_account: wip_account,
-      product: product,
+      variant: variant,
       location: location
     } do
       # Get ingredients account from setup
@@ -229,7 +240,7 @@ defmodule Ledgr.Core.Accounting.InventoryMovementAccountingTest do
           customer_name: "Test Customer",
           customer_email: "test@example.com",
           customer_phone: "1234567890",
-          product_id: product.id,
+          variant_id: variant.id,
           delivery_date: Date.utc_today(),
           delivery_type: "delivery",
           status: "new_order",
@@ -293,7 +304,7 @@ defmodule Ledgr.Core.Accounting.InventoryMovementAccountingTest do
 
     test "journal entry amount matches inventory movement costs", %{
       wip_account: wip_account,
-      product: product,
+      variant: variant,
       location: location,
       flour: flour,
       sugar: sugar
@@ -305,7 +316,7 @@ defmodule Ledgr.Core.Accounting.InventoryMovementAccountingTest do
           customer_name: "Test Customer",
           customer_email: "test@example.com",
           customer_phone: "1234567890",
-          product_id: product.id,
+          variant_id: variant.id,
           delivery_date: Date.utc_today(),
           delivery_type: "delivery",
           status: "new_order",
@@ -373,7 +384,7 @@ defmodule Ledgr.Core.Accounting.InventoryMovementAccountingTest do
 
     test "account balances are updated correctly after in_prep", %{
       wip_account: wip_account,
-      product: product,
+      variant: variant,
       location: location
     } do
       # Get ingredients account from setup
@@ -390,7 +401,7 @@ defmodule Ledgr.Core.Accounting.InventoryMovementAccountingTest do
           customer_name: "Test Customer",
           customer_email: "test@example.com",
           customer_phone: "1234567890",
-          product_id: product.id,
+          variant_id: variant.id,
           delivery_date: Date.utc_today(),
           delivery_type: "delivery",
           status: "new_order",
@@ -435,7 +446,7 @@ defmodule Ledgr.Core.Accounting.InventoryMovementAccountingTest do
       ar_account: ar_account,
       sales_account: sales_account,
       cogs_account: cogs_account,
-      product: product,
+      variant: variant,
       location: location
     } do
       # Create order and move to in_prep first
@@ -445,7 +456,7 @@ defmodule Ledgr.Core.Accounting.InventoryMovementAccountingTest do
           customer_name: "Test Customer",
           customer_email: "test@example.com",
           customer_phone: "1234567890",
-          product_id: product.id,
+          variant_id: variant.id,
           delivery_date: Date.utc_today(),
           delivery_type: "delivery",
           status: "new_order",
@@ -540,7 +551,7 @@ defmodule Ledgr.Core.Accounting.InventoryMovementAccountingTest do
       cogs_account: cogs_account,
       ar_account: ar_account,
       sales_account: sales_account,
-      product: product,
+      variant: variant,
       location: location
     } do
       # Create order and move to in_prep
@@ -550,7 +561,7 @@ defmodule Ledgr.Core.Accounting.InventoryMovementAccountingTest do
           customer_name: "Test Customer",
           customer_email: "test@example.com",
           customer_phone: "1234567890",
-          product_id: product.id,
+          variant_id: variant.id,
           delivery_date: Date.utc_today(),
           delivery_type: "delivery",
           status: "new_order",
@@ -601,7 +612,7 @@ defmodule Ledgr.Core.Accounting.InventoryMovementAccountingTest do
       cogs_account: cogs_account,
       ar_account: ar_account,
       sales_account: sales_account,
-      product: product,
+      variant: variant,
       location: location
     } do
       # Get ingredients account from setup
@@ -621,7 +632,7 @@ defmodule Ledgr.Core.Accounting.InventoryMovementAccountingTest do
           customer_name: "Test Customer",
           customer_email: "test@example.com",
           customer_phone: "1234567890",
-          product_id: product.id,
+          variant_id: variant.id,
           delivery_date: Date.utc_today(),
           delivery_type: "delivery",
           status: "new_order",
@@ -706,7 +717,7 @@ defmodule Ledgr.Core.Accounting.InventoryMovementAccountingTest do
 
   describe "duplicate entry prevention" do
     test "calling handle_order_status_change('in_prep') twice creates only one entry", %{
-      product: product,
+      variant: variant,
       location: location
     } do
       # Create order
@@ -716,7 +727,7 @@ defmodule Ledgr.Core.Accounting.InventoryMovementAccountingTest do
           customer_name: "Test Customer",
           customer_email: "test@example.com",
           customer_phone: "1234567890",
-          product_id: product.id,
+          variant_id: variant.id,
           delivery_date: Date.utc_today(),
           delivery_type: "delivery",
           status: "new_order",
@@ -740,7 +751,7 @@ defmodule Ledgr.Core.Accounting.InventoryMovementAccountingTest do
     end
 
     test "calling handle_order_status_change('delivered') twice creates only one entry", %{
-      product: product,
+      variant: variant,
       location: location
     } do
       # Create order
@@ -750,7 +761,7 @@ defmodule Ledgr.Core.Accounting.InventoryMovementAccountingTest do
           customer_name: "Test Customer",
           customer_email: "test@example.com",
           customer_phone: "1234567890",
-          product_id: product.id,
+          variant_id: variant.id,
           delivery_date: Date.utc_today(),
           delivery_type: "delivery",
           status: "new_order",
@@ -779,7 +790,7 @@ defmodule Ledgr.Core.Accounting.InventoryMovementAccountingTest do
     test "COGS is not duplicated even with multiple status transitions", %{
       wip_account: wip_account,
       cogs_account: cogs_account,
-      product: product,
+      variant: variant,
       location: location
     } do
       # Create order
@@ -789,7 +800,7 @@ defmodule Ledgr.Core.Accounting.InventoryMovementAccountingTest do
           customer_name: "Test Customer",
           customer_email: "test@example.com",
           customer_phone: "1234567890",
-          product_id: product.id,
+          variant_id: variant.id,
           delivery_date: Date.utc_today(),
           delivery_type: "delivery",
           status: "new_order",

@@ -2693,9 +2693,7 @@
     font-size: 2rem;
     font-weight: 800;
     color: var(--text-main, #3b1c1c);
-    margin: 0 0 1rem;
-    text-transform: uppercase;
-    letter-spacing: 0.02em;
+    margin: 0 0 0.5rem;
   }
 
   .product-detail-price {
@@ -2821,11 +2819,78 @@
 
   .product-detail-cart-form {
     display: flex;
-    align-items: center;
+    flex-direction: column;
     gap: 1rem;
     margin-top: 1.5rem;
     padding-top: 1.5rem;
     border-top: 1px solid var(--border-subtle, #f0ddd8);
+  }
+
+  /* Variant selector — pill-style radio options */
+  .variant-selector {
+    margin-bottom: 0.25rem;
+  }
+
+  .variant-selector-label {
+    display: block;
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: var(--text-muted, #8c6b63);
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    margin: 0 0 0.625rem;
+  }
+
+  .variant-option {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem;
+    border: 2px solid var(--border-subtle, #f0ddd8);
+    border-radius: var(--radius-md, 0.5rem);
+    cursor: pointer;
+    margin-bottom: 0.5rem;
+    transition: border-color 0.15s, background-color 0.15s;
+    background: white;
+    user-select: none;
+  }
+
+  .variant-option:hover {
+    border-color: var(--primary, #6b2d2d);
+    background-color: #fdf8f7;
+  }
+
+  .variant-option:has(input:checked) {
+    border-color: var(--primary, #6b2d2d);
+    background-color: #fdf2f0;
+  }
+
+  .variant-option input[type="radio"] {
+    accent-color: var(--primary, #6b2d2d);
+    width: 1.1rem;
+    height: 1.1rem;
+    flex-shrink: 0;
+    cursor: pointer;
+  }
+
+  .variant-name {
+    flex: 1;
+    font-weight: 600;
+    font-size: 0.975rem;
+    color: var(--text-main, #3b1c1c);
+  }
+
+  .variant-price {
+    font-weight: 700;
+    font-size: 0.975rem;
+    color: var(--primary, #6b2d2d);
+  }
+
+  /* Quantity + Add to cart row */
+  .product-detail-add-row {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
   }
 
   .product-detail-quantity {

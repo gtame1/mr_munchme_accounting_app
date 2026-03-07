@@ -310,7 +310,7 @@ defmodule Ledgr.Domains.MrMunchMe.Inventory do
   """
   @production_location_code "CASA_AG"
   def consume_for_order(%Order{} = order) do
-    order = Repo.preload(order, [:product, :order_ingredients])
+    order = Repo.preload(order, [:variant, :order_ingredients])
 
     location_code =
       case order.prep_location do
@@ -346,9 +346,9 @@ defmodule Ledgr.Domains.MrMunchMe.Inventory do
         |> Map.update!(:total, &(&1 + cost_cents))
       end)
     else
-      # Use recipe quantities (default behavior), multiplied by order quantity
+      # Use recipe quantities (default behavior), multiplied by order quantity.
       recipe_date = order.delivery_date || Date.utc_today()
-      recipe_lines = Recepies.recipe_for_product(order.product, recipe_date)
+      recipe_lines = Recepies.recipe_for_variant(order.variant, recipe_date)
 
       Enum.reduce(recipe_lines, initial_costs, fn %{ingredient_code: code, quantity: qty}, acc ->
         # Convert float quantity to integer (round to nearest), multiplied by order quantity
@@ -434,17 +434,17 @@ defmodule Ledgr.Domains.MrMunchMe.Inventory do
   - `shortage` = max(total_required - on_hand, 0)
   """
   def required_ingredients_for_new_orders do
-    # 1) Get all NEW orders with product + prep_location preloaded
+    # 1) Get all NEW orders with product + variant + prep_location preloaded
     orders =
       Orders.list_orders(%{"status" => "new_order"})
-      |> Repo.preload([:product, :prep_location])
+      |> Repo.preload([:variant, :prep_location])
 
     # 2) Expand orders into per-ingredient, per-location requirements
     raw_needs =
       Enum.flat_map(orders, fn %Order{} = order ->
-        # Use the order's delivery_date to get the active recipe at that time
+        # Use the order's delivery_date to get the active recipe at that time.
         recipe_date = order.delivery_date || Date.utc_today()
-        recipe = Recepies.recipe_for_product(order.product, recipe_date)
+        recipe = Recepies.recipe_for_variant(order.variant, recipe_date)
 
         prep_location_id = order.prep_location_id || @production_location_code
         order_qty = order.quantity || 1
@@ -1003,6 +1003,13 @@ defmodule Ledgr.Domains.MrMunchMe.Inventory do
     Repo.all(Ingredient)
     |> Enum.map(fn ing ->
       {"#{ing.name} (#{ing.code})", ing.code}
+    end)
+  end
+
+  def ingredient_options_with_units do
+    Repo.all(Ingredient)
+    |> Enum.map(fn ing ->
+      {"#{ing.name} (#{ing.code})", ing.code, ing.unit || "g"}
     end)
   end
 

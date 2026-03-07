@@ -112,8 +112,8 @@ defmodule LedgrWeb.Domains.MrMunchMe.OrderController do
     render(conn, :new,
       changeset: changeset,
       action: dp(conn, "/orders"),
-      product_options: Orders.product_select_options(),
-      product_prices: product_price_map(),
+      variant_options: Orders.variant_select_options(),
+      variant_prices: variant_price_map(),
       shipping_fee_cents: OrderAccounting.shipping_fee_cents(),
       location_options: Inventory.list_locations() |> Enum.map(&{&1.name, &1.id}),
       customer_options: Customers.customer_select_options()
@@ -133,8 +133,8 @@ defmodule LedgrWeb.Domains.MrMunchMe.OrderController do
         render(conn, :new,
           changeset: changeset,
           action: dp(conn, "/orders"),
-          product_options: Orders.product_select_options(),
-          product_prices: product_price_map(),
+          variant_options: Orders.variant_select_options(),
+          variant_prices: variant_price_map(),
           shipping_fee_cents: OrderAccounting.shipping_fee_cents(),
           location_options: Inventory.list_locations() |> Enum.map(&{&1.name, &1.id}),
           customer_options: Customers.customer_select_options()
@@ -151,8 +151,8 @@ defmodule LedgrWeb.Domains.MrMunchMe.OrderController do
         |> render(:new,
           changeset: changeset,
           action: dp(conn, "/orders"),
-          product_options: Orders.product_select_options(),
-          product_prices: product_price_map(),
+          variant_options: Orders.variant_select_options(),
+          variant_prices: variant_price_map(),
           shipping_fee_cents: OrderAccounting.shipping_fee_cents(),
           location_options: Inventory.list_locations() |> Enum.map(&{&1.name, &1.id}),
           customer_options: Customers.customer_select_options()
@@ -169,7 +169,7 @@ defmodule LedgrWeb.Domains.MrMunchMe.OrderController do
     recipe_ingredients =
       if order.status == "new_order" do
         recipe_date = order.delivery_date || Date.utc_today()
-        Inventory.Recepies.recipe_for_product(order.product, recipe_date)
+        Inventory.Recepies.recipe_for_variant(order.variant, recipe_date)
       else
         []
       end
@@ -206,14 +206,14 @@ defmodule LedgrWeb.Domains.MrMunchMe.OrderController do
     render(conn, :edit,
       order: order,
       changeset: changeset,
-      product_options: Orders.product_select_options(),
+      variant_options: Orders.variant_select_options(),
       location_options: Inventory.list_locations() |> Enum.map(&{&1.name, &1.id}),
       customer_options: Customers.customer_select_options()
     )
   end
 
   def update(conn, %{"id" => id, "order" => order_params}) do
-    order = Orders.get_order!(id) |> Repo.preload([:product, :prep_location])
+    order = Orders.get_order!(id) |> Repo.preload([:prep_location])
 
     case Orders.update_order(order, order_params) do
       {:ok, order} ->
@@ -225,7 +225,7 @@ defmodule LedgrWeb.Domains.MrMunchMe.OrderController do
         render(conn, :edit,
           order: order,
           changeset: changeset,
-          product_options: Orders.product_select_options(),
+          variant_options: Orders.variant_select_options(),
           location_options: Inventory.list_locations() |> Enum.map(&{&1.name, &1.id}),
           customer_options: Customers.customer_select_options()
         )
@@ -462,9 +462,9 @@ defmodule LedgrWeb.Domains.MrMunchMe.OrderController do
     )
   end
 
-  defp product_price_map do
-    Orders.list_products()
-    |> Map.new(fn p -> {p.id, p.price_cents || 0} end)
+  defp variant_price_map do
+    Orders.list_active_variants()
+    |> Map.new(fn v -> {v.id, v.price_cents || 0} end)
   end
 end
 

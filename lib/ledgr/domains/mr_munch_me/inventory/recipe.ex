@@ -3,12 +3,12 @@ defmodule Ledgr.Domains.MrMunchMe.Inventory.Recipe do
   import Ecto.Changeset
   import Ecto.Query
 
-  alias Ledgr.Domains.MrMunchMe.Orders.Product
+  alias Ledgr.Domains.MrMunchMe.Orders.ProductVariant
   alias Ledgr.Domains.MrMunchMe.Inventory.RecipeLine
   alias Ledgr.Repo
 
   schema "recipes" do
-    belongs_to :product, Product
+    belongs_to :variant, ProductVariant, foreign_key: :variant_id
     field :effective_date, :date
     field :name, :string
     field :description, :string
@@ -20,43 +20,42 @@ defmodule Ledgr.Domains.MrMunchMe.Inventory.Recipe do
 
   def changeset(recipe, attrs) do
     recipe
-    |> cast(attrs, [:product_id, :effective_date, :name, :description])
-    |> validate_required([:product_id, :effective_date])
+    |> cast(attrs, [:variant_id, :effective_date, :name, :description])
+    |> validate_required([:variant_id, :effective_date])
     |> validate_unique_recipe()
     |> cast_assoc(:recipe_lines, with: &RecipeLine.changeset/2)
-    |> unique_constraint([:product_id, :effective_date], name: :recipes_product_id_effective_date_index)
+    |> assoc_constraint(:variant)
   end
 
   defp validate_unique_recipe(changeset) do
-    product_id = get_field(changeset, :product_id)
+    variant_id = get_field(changeset, :variant_id)
     effective_date = get_field(changeset, :effective_date)
 
-    if product_id && effective_date do
+    if variant_id && effective_date do
       query =
         from r in __MODULE__,
-          where: r.product_id == ^product_id and r.effective_date == ^effective_date
+          where: r.variant_id == ^variant_id and r.effective_date == ^effective_date
 
-      # Exclude the current recipe if we're updating
-      query =
-        case changeset.data do
-          %{id: id} when not is_nil(id) ->
-            from r in query, where: r.id != ^id
-
-          _ ->
-            query
-        end
+      query = exclude_current(query, changeset)
 
       if Repo.exists?(query) do
         add_error(
           changeset,
           :effective_date,
-          "A recipe for this product already exists with this effective date. Please choose a different date."
+          "A recipe for this variant already exists with this effective date. Please choose a different date."
         )
       else
         changeset
       end
     else
       changeset
+    end
+  end
+
+  defp exclude_current(query, changeset) do
+    case changeset.data do
+      %{id: id} when not is_nil(id) -> from r in query, where: r.id != ^id
+      _ -> query
     end
   end
 end

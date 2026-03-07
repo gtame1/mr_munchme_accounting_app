@@ -88,6 +88,8 @@ defmodule LedgrWeb.Router do
     resources "/products", Domains.MrMunchMe.ProductController, only: [:index, :new, :create, :edit, :update, :delete]
     post "/products/:product_id/images", Domains.MrMunchMe.ProductController, :upload_gallery_image
     delete "/products/:product_id/images/:image_id", Domains.MrMunchMe.ProductController, :delete_gallery_image
+    resources "/products/:product_id/variants", Domains.MrMunchMe.VariantController, only: [:new, :create, :edit, :update, :delete]
+    post "/products/:product_id/variants/:variant_id/recipe", Domains.MrMunchMe.VariantController, :save_recipe
     resources "/ingredients", Domains.MrMunchMe.IngredientController, only: [:index, :new, :create, :edit, :update, :delete]
     resources "/recipes", Domains.MrMunchMe.RecipeController, only: [:index, :new, :create, :show, :edit, :delete]
     post "/recipes/new_version/:id", Domains.MrMunchMe.RecipeController, :create_new_version

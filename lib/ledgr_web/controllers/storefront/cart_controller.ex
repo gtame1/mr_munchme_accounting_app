@@ -13,34 +13,36 @@ defmodule LedgrWeb.Storefront.CartController do
     |> render(:index, cart_items: cart_items, cart_total: cart_total)
   end
 
-  def add(conn, %{"product_id" => product_id, "quantity" => quantity}) do
-    product_id_str = to_string(product_id)
+  def add(conn, %{"variant_id" => variant_id, "quantity" => quantity}) do
+    variant_id_str = to_string(variant_id)
     quantity = max(String.to_integer(to_string(quantity)), 1)
 
-    # Verify product exists and is active
-    product = Orders.get_product!(product_id)
-    unless product.active, do: raise("Product not active")
+    # Verify variant exists and is active
+    variant = Orders.get_variant!(String.to_integer(variant_id_str))
+    unless variant.active, do: raise("Variant not active")
 
     cart = get_session(conn, :cart) || %{}
-    existing_qty = Map.get(cart, product_id_str, 0)
-    cart = Map.put(cart, product_id_str, existing_qty + quantity)
+    existing_qty = Map.get(cart, variant_id_str, 0)
+    cart = Map.put(cart, variant_id_str, existing_qty + quantity)
+
+    display_name = "#{variant.product.name} · #{variant.name}"
 
     conn
     |> put_session(:cart, cart)
-    |> put_flash(:info, "#{product.name} added to cart!")
+    |> put_flash(:info, "#{display_name} agregado al carrito!")
     |> redirect(to: "/mr-munch-me/menu")
   end
 
-  def update(conn, %{"product_id" => product_id, "quantity" => quantity}) do
-    product_id_str = to_string(product_id)
+  def update(conn, %{"variant_id" => variant_id, "quantity" => quantity}) do
+    variant_id_str = to_string(variant_id)
     quantity = String.to_integer(to_string(quantity))
     cart = get_session(conn, :cart) || %{}
 
     cart =
       if quantity <= 0 do
-        Map.delete(cart, product_id_str)
+        Map.delete(cart, variant_id_str)
       else
-        Map.put(cart, product_id_str, quantity)
+        Map.put(cart, variant_id_str, quantity)
       end
 
     conn
@@ -48,14 +50,14 @@ defmodule LedgrWeb.Storefront.CartController do
     |> redirect(to: "/mr-munch-me/cart")
   end
 
-  def remove(conn, %{"product_id" => product_id}) do
-    product_id_str = to_string(product_id)
+  def remove(conn, %{"variant_id" => variant_id}) do
+    variant_id_str = to_string(variant_id)
     cart = get_session(conn, :cart) || %{}
-    cart = Map.delete(cart, product_id_str)
+    cart = Map.delete(cart, variant_id_str)
 
     conn
     |> put_session(:cart, cart)
-    |> put_flash(:info, "Item removed from cart.")
+    |> put_flash(:info, "Producto eliminado del carrito.")
     |> redirect(to: "/mr-munch-me/cart")
   end
 
@@ -63,12 +65,14 @@ defmodule LedgrWeb.Storefront.CartController do
 
   defp load_cart_items(cart) do
     items =
-      Enum.reduce(cart, [], fn {product_id_str, quantity}, acc ->
-        case Integer.parse(product_id_str) do
+      Enum.reduce(cart, [], fn {variant_id_str, quantity}, acc ->
+        case Integer.parse(variant_id_str) do
           {id, _} ->
             try do
-              product = Orders.get_product!(id)
-              [%{product: product, quantity: quantity, subtotal: product.price_cents * quantity} | acc]
+              variant = Orders.get_variant!(id)
+              product = variant.product
+              subtotal = variant.price_cents * quantity
+              [%{product: product, variant: variant, quantity: quantity, subtotal: subtotal} | acc]
             rescue
               Ecto.NoResultsError -> acc
             end
@@ -77,7 +81,7 @@ defmodule LedgrWeb.Storefront.CartController do
             acc
         end
       end)
-      |> Enum.sort_by(& &1.product.name)
+      |> Enum.sort_by(fn item -> "#{item.product.name} #{item.variant.name}" end)
 
     total = Enum.reduce(items, 0, fn item, acc -> acc + item.subtotal end)
     {items, total}

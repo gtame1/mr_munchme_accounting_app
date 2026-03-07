@@ -2,7 +2,7 @@ defmodule Ledgr.Domains.MrMunchMe.Orders.Order do
   use Ecto.Schema
   import Ecto.Changeset
 
-  alias Ledgr.Domains.MrMunchMe.Orders.Product
+  alias Ledgr.Domains.MrMunchMe.Orders.ProductVariant
   alias Ledgr.Domains.MrMunchMe.Inventory.Location
   alias Ledgr.Core.Customers.Customer
 
@@ -31,7 +31,7 @@ defmodule Ledgr.Domains.MrMunchMe.Orders.Order do
     field :quantity, :integer, default: 1
     field :shipping_fee_cents, :integer
 
-    belongs_to :product, Product
+    belongs_to :variant, ProductVariant, foreign_key: :variant_id
     belongs_to :prep_location, Location
     belongs_to :customer, Customer
 
@@ -52,7 +52,7 @@ defmodule Ledgr.Domains.MrMunchMe.Orders.Order do
       :delivery_date,
       :delivery_time,
       :status,
-      :product_id,
+      :variant_id,
       :prep_location_id,
       :customer_paid_shipping,
       :customer_id,
@@ -64,9 +64,9 @@ defmodule Ledgr.Domains.MrMunchMe.Orders.Order do
       :shipping_fee_cents
     ])
     |> validate_required([
+      :variant_id,
       :delivery_type,
       :delivery_date,
-      :product_id,
       :prep_location_id,
       :customer_paid_shipping
     ])
@@ -75,7 +75,7 @@ defmodule Ledgr.Domains.MrMunchMe.Orders.Order do
     |> validate_inclusion(:status, @statuses)
     |> validate_discount()
     |> validate_number(:quantity, greater_than_or_equal_to: 1)
-    |> assoc_constraint(:product)
+    |> assoc_constraint(:variant)
     |> assoc_constraint(:prep_location)
     |> assoc_constraint(:customer)
   end

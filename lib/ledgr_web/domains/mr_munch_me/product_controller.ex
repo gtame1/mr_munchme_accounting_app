@@ -3,7 +3,6 @@ defmodule LedgrWeb.Domains.MrMunchMe.ProductController do
 
   alias Ledgr.Domains.MrMunchMe.Orders
   alias Ledgr.Domains.MrMunchMe.Orders.Product
-  alias LedgrWeb.Helpers.MoneyHelper
   alias Ledgr.Uploads
 
   def index(conn, _params) do
@@ -20,28 +19,19 @@ defmodule LedgrWeb.Domains.MrMunchMe.ProductController do
   end
 
   def create(conn, %{"product" => product_params} = params) do
-    # Convert pesos to cents
-    product_params = MoneyHelper.convert_params_pesos_to_cents(product_params, [:price_cents])
-
     # Handle thumbnail upload if provided
     {product_params, upload_error} = handle_thumbnail_upload(product_params, params)
     conn = if upload_error, do: put_flash(conn, :error, upload_error), else: conn
 
     case Orders.create_product(product_params) do
-      {:ok, _product} ->
+      {:ok, product} ->
         conn
-        |> put_flash(:info, "Product created successfully. Don't forget to create a recipe for it!")
-        |> redirect(to: dp(conn, "/products"))
+        |> put_flash(:info, "Product created. Add variants below, then create a recipe for each variant.")
+        |> redirect(to: dp(conn, "/products/#{product.id}/edit"))
 
       {:error, %Ecto.Changeset{} = changeset} ->
-        # Convert price_cents back to pesos for form re-display
-        changeset =
-          changeset
-          |> Map.put(:action, :insert)
-          |> Ecto.Changeset.put_change(:price_cents, MoneyHelper.cents_to_pesos(Ecto.Changeset.get_field(changeset, :price_cents)))
-
         render(conn, :new,
-          changeset: changeset,
+          changeset: Map.put(changeset, :action, :insert),
           action: dp(conn, "/products")
         )
     end
@@ -49,17 +39,12 @@ defmodule LedgrWeb.Domains.MrMunchMe.ProductController do
 
   def edit(conn, %{"id" => id}) do
     product = Orders.get_product_with_images!(id)
-    # Convert cents to pesos for form display
-    attrs = %{"price_cents" => MoneyHelper.cents_to_pesos(product.price_cents || 0)}
-    changeset = Orders.change_product(product, attrs)
+    changeset = Orders.change_product(product)
     render(conn, :edit, product: product, changeset: changeset, action: dp(conn, "/products/#{product.id}"))
   end
 
   def update(conn, %{"id" => id, "product" => product_params} = params) do
     product = Orders.get_product_with_images!(id)
-
-    # Convert pesos to cents
-    product_params = MoneyHelper.convert_params_pesos_to_cents(product_params, [:price_cents])
 
     # Handle thumbnail upload if provided
     {product_params, upload_error} = handle_thumbnail_upload(product_params, params)
@@ -72,13 +57,7 @@ defmodule LedgrWeb.Domains.MrMunchMe.ProductController do
         |> redirect(to: dp(conn, "/products/#{id}/edit"))
 
       {:error, %Ecto.Changeset{} = changeset} ->
-        # Convert price_cents back to pesos for form re-display
-        changeset =
-          changeset
-          |> Map.put(:action, :update)
-          |> Ecto.Changeset.put_change(:price_cents, MoneyHelper.cents_to_pesos(Ecto.Changeset.get_field(changeset, :price_cents)))
-
-        render(conn, :edit, product: product, changeset: changeset, action: dp(conn, "/products/#{product.id}"))
+        render(conn, :edit, product: product, changeset: Map.put(changeset, :action, :update), action: dp(conn, "/products/#{product.id}"))
     end
   end
 
@@ -165,7 +144,6 @@ defmodule LedgrWeb.Domains.MrMunchMe.ProductHTML do
   use LedgrWeb, :html
   import LedgrWeb.CoreComponents
   import Phoenix.Naming
-  alias LedgrWeb.Helpers.MoneyHelper
 
   embed_templates "product_html/*"
 end

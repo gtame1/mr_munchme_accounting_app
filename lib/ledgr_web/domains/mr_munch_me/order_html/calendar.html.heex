@@ -51,7 +51,7 @@
           %{
             id: o.id,
             customer_name: o.customer_name,
-            product: (o.product && o.product.name) || "",
+            product: (o.variant && (o.variant.product.name <> " · " <> o.variant.name)) || "",
             quantity: o.quantity || 1,
             status: o.status,
             delivery_time: o.delivery_time,
@@ -81,7 +81,7 @@
             <div class="calendar-orders-list">
               <%= for order <- visible_orders do %>
                 <div class="calendar-order-item"
-                     data-tooltip-content={"#{order.customer_name} · #{(order.product && order.product.name) || "—"}#{if (order.quantity || 1) > 1, do: " ×#{order.quantity}", else: ""}#{if order.delivery_time, do: " · #{order.delivery_time}", else: ""}"}>
+                     data-tooltip-content={"#{order.customer_name} · #{(order.variant && (order.variant.product.name <> " · " <> order.variant.name)) || "—"}#{if (order.quantity || 1) > 1, do: " ×#{order.quantity}", else: ""}#{if order.delivery_time, do: " · #{order.delivery_time}", else: ""}"}>
                   <span class={
                     cond do
                       order.status == "new_order" -> "calendar-order-status-new_order"
@@ -92,7 +92,7 @@
                     end
                   }></span>
                   <.link navigate={dp(@domain_path_prefix, "/orders/#{order.id}")} class="calendar-order-link">
-                    <%= order.customer_name %> - <%= order.product && order.product.name %><%= if (order.quantity || 1) > 1, do: " x#{order.quantity}" %>
+                    <%= order.customer_name %> - <%= order.variant && (order.variant.product.name <> " · " <> order.variant.name) %><%= if (order.quantity || 1) > 1, do: " x#{order.quantity}" %>
                   </.link>
                 </div>
               <% end %>

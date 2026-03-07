@@ -20,7 +20,7 @@
     <h2 class="confirmation-section-title">Resumen del pedido</h2>
     <%= for item <- @cart_items do %>
       <div class="confirmation-item">
-        <span><%= item.product.name %> &times;<%= item.quantity %></span>
+        <span><%= item.product.name %> · <%= item.variant.name %> &times;<%= item.quantity %></span>
         <span><%= format_price(item.subtotal) %></span>
       </div>
     <% end %>

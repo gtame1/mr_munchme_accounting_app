@@ -102,15 +102,26 @@ defmodule LedgrWeb.Domains.MrMunchMe.ApiController do
     %{
       id: product.id,
       name: product.name,
-      sku: product.sku,
-      price_cents: product.price_cents,
       active: product.active,
       inserted_at: product.inserted_at,
       updated_at: product.updated_at
     }
   end
 
+  defp serialize_variant(variant) do
+    %{
+      id: variant.id,
+      name: variant.name,
+      sku: variant.sku,
+      price_cents: variant.price_cents,
+      active: variant.active
+    }
+  end
+
   defp serialize_order(order) do
+    variant = order.variant
+    product = variant && variant.product
+
     %{
       id: order.id,
       customer_name: order.customer_name,
@@ -123,7 +134,8 @@ defmodule LedgrWeb.Domains.MrMunchMe.ApiController do
       status: order.status,
       customer_paid_shipping: order.customer_paid_shipping,
       quantity: order.quantity || 1,
-      product: order.product && serialize_product(order.product),
+      variant: variant && serialize_variant(variant),
+      product: product && serialize_product(product),
       customer_id: order.customer_id,
       prep_location_id: order.prep_location_id,
       inserted_at: order.inserted_at,

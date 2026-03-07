@@ -9,6 +9,7 @@ defmodule Ledgr.Domains.MrMunchMe.Orders.ProductVariant do
     field :sku, :string
     field :price_cents, :integer
     field :active, :boolean, default: true
+    field :deleted_at, :utc_datetime
 
     belongs_to :product, Product
     has_many :orders, Ledgr.Domains.MrMunchMe.Orders.Order, foreign_key: :variant_id

@@ -2,7 +2,7 @@ defmodule Ledgr.Domains.MrMunchMe.Orders do
   import Ecto.Query, warn: false
   alias Ledgr.Repo
 
-  alias Ledgr.Domains.MrMunchMe.Orders.{Order, Product, ProductImage, OrderPayment, OrderIngredient}
+  alias Ledgr.Domains.MrMunchMe.Orders.{Order, Product, ProductImage, ProductVariant, OrderPayment, OrderIngredient}
   alias Ledgr.Domains.MrMunchMe.OrderAccounting
   alias Ledgr.Core.Customers
   alias Ledgr.Repo
@@ -11,12 +11,12 @@ defmodule Ledgr.Domains.MrMunchMe.Orders do
   # PRODUCTS
 
   def list_products do
-    Repo.all(from p in Product, where: p.active == true, order_by: p.name)
+    Repo.all(from p in Product, where: p.active == true and is_nil(p.deleted_at), order_by: p.name)
   end
 
   def list_products_filtered(params \\ %{}) do
     Product
-    |> where([p], p.active == true)
+    |> where([p], p.active == true and is_nil(p.deleted_at))
     |> maybe_search_products(params["q"])
     |> order_by([p], p.name)
     |> Repo.all()
@@ -31,10 +31,14 @@ defmodule Ledgr.Domains.MrMunchMe.Orders do
   end
 
   def list_all_products do
-    Repo.all(from p in Product, order_by: p.name)
+    from(p in Product, where: is_nil(p.deleted_at), order_by: p.name, preload: :variants)
+    |> Repo.all()
   end
 
-  def get_product!(id), do: Repo.get!(Product, id)
+  def get_product!(id) do
+    from(p in Product, where: p.id == ^id and is_nil(p.deleted_at))
+    |> Repo.one!()
+  end
 
   def change_product(%Product{} = product, attrs \\ %{}) do
     Product.changeset(product, attrs)
@@ -53,13 +57,35 @@ defmodule Ledgr.Domains.MrMunchMe.Orders do
   end
 
   def delete_product(%Product{} = product) do
-    Repo.delete(product)
+    now = DateTime.utc_now() |> DateTime.truncate(:second)
+
+    Repo.transaction(fn ->
+      from(v in ProductVariant, where: v.product_id == ^product.id)
+      |> Repo.update_all(set: [deleted_at: now, updated_at: now])
+
+      product |> Ecto.Changeset.change(deleted_at: now) |> Repo.update!()
+    end)
   end
 
   def get_product_with_images!(id) do
-    Product
-    |> Repo.get!(id)
-    |> Repo.preload(:images)
+    from(p in Product, where: p.id == ^id and is_nil(p.deleted_at))
+    |> Repo.one!()
+    |> Repo.preload([
+      :images,
+      variants: from(v in ProductVariant, where: is_nil(v.deleted_at), order_by: v.name)
+    ])
+  end
+
+  def list_products_with_variants do
+    from(p in Product,
+      where: p.active == true and is_nil(p.deleted_at),
+      order_by: p.name,
+      preload: [
+        variants:
+          ^from(v in ProductVariant, where: v.active == true and is_nil(v.deleted_at), order_by: v.name)
+      ]
+    )
+    |> Repo.all()
   end
 
   # PRODUCT IMAGES (Gallery)
@@ -88,16 +114,88 @@ defmodule Ledgr.Domains.MrMunchMe.Orders do
 
   def product_select_options do
     list_products()
-    |> Enum.map(fn p ->
+    |> Enum.map(fn p -> {p.name, p.id} end)
+  end
+
+  @doc """
+  Returns select options grouped by product for all active variants.
+  Each entry is `{"Product · Variant (SKU)", variant_id}`.
+  Used in admin order forms so operators pick the specific size.
+  """
+  def variant_select_options do
+    from(v in ProductVariant,
+      join: p in assoc(v, :product),
+      where: v.active == true and p.active == true and is_nil(v.deleted_at) and is_nil(p.deleted_at),
+      order_by: [p.name, v.name],
+      select: {v.id, p.name, v.name, v.sku}
+    )
+    |> Repo.all()
+    |> Enum.map(fn {id, product_name, variant_name, sku} ->
       label =
-        if p.sku do
-          "#{p.name} (#{p.sku})"
+        if sku do
+          "#{product_name} · #{variant_name} (#{sku})"
         else
-          p.name
+          "#{product_name} · #{variant_name}"
         end
 
-      {label, p.id}
+      {label, id}
     end)
+  end
+
+  # VARIANT CRUD
+
+  def get_variant!(id) do
+    from(v in ProductVariant, where: v.id == ^id and is_nil(v.deleted_at))
+    |> Repo.one!()
+    |> Repo.preload(:product)
+  end
+
+  def list_variants_for_product(%Product{} = product) do
+    from(v in ProductVariant,
+      where: v.product_id == ^product.id and is_nil(v.deleted_at),
+      order_by: v.name
+    )
+    |> Repo.all()
+  end
+
+  def list_active_variants do
+    from(v in ProductVariant,
+      where: v.active == true and is_nil(v.deleted_at),
+      order_by: v.name
+    )
+    |> Repo.all()
+  end
+
+  @doc """
+  List all active variants whose parent product is also active,
+  ordered by product name then variant name, with product preloaded.
+  Used by the recipe index to detect variants missing a recipe.
+  """
+  def list_all_active_variants_with_products do
+    from(v in ProductVariant,
+      join: p in assoc(v, :product),
+      where: v.active == true and p.active == true and is_nil(v.deleted_at) and is_nil(p.deleted_at),
+      order_by: [p.name, v.name],
+      preload: [product: p]
+    )
+    |> Repo.all()
+  end
+
+  def create_variant(attrs) do
+    %ProductVariant{}
+    |> ProductVariant.changeset(attrs)
+    |> Repo.insert()
+  end
+
+  def update_variant(%ProductVariant{} = variant, attrs) do
+    variant
+    |> ProductVariant.changeset(attrs)
+    |> Repo.update()
+  end
+
+  def delete_variant(%ProductVariant{} = variant) do
+    now = DateTime.utc_now() |> DateTime.truncate(:second)
+    variant |> Ecto.Changeset.change(deleted_at: now) |> Repo.update()
   end
 
   # ORDERS
@@ -108,13 +206,15 @@ defmodule Ledgr.Domains.MrMunchMe.Orders do
     base_query =
       from o in Order,
         as: :order,
-        join: p in assoc(o, :product),
+        join: v in assoc(o, :variant),
+        as: :variant,
+        join: p in assoc(v, :product),
         as: :product,
         join: l in assoc(o, :prep_location),
         as: :prep_location,
         left_join: c in assoc(o, :customer),
         as: :customer,
-        preload: [:order_payments, product: p, prep_location: l, customer: c]
+        preload: [:order_payments, variant: {v, product: p}, prep_location: l, customer: c]
 
     # Exclude canceled orders by default unless explicitly filtering for canceled status
     query =
@@ -140,10 +240,11 @@ defmodule Ledgr.Domains.MrMunchMe.Orders do
     canceled_orders =
       from o in Order,
         where: o.status == "canceled",
-        join: p in assoc(o, :product),
+        join: v in assoc(o, :variant),
+        join: p in assoc(v, :product),
         join: l in assoc(o, :prep_location),
         left_join: c in assoc(o, :customer),
-        preload: [:order_payments, product: p, prep_location: l, customer: c],
+        preload: [:order_payments, variant: {v, product: p}, prep_location: l, customer: c],
         order_by: [desc: o.delivery_date, desc: o.id],
         limit: ^limit,
         offset: ^offset
@@ -163,10 +264,11 @@ defmodule Ledgr.Domains.MrMunchMe.Orders do
     delivered_orders =
       from o in Order,
         where: o.status == "delivered",
-        join: p in assoc(o, :product),
+        join: v in assoc(o, :variant),
+        join: p in assoc(v, :product),
         join: l in assoc(o, :prep_location),
         left_join: c in assoc(o, :customer),
-        preload: [:order_payments, product: p, prep_location: l, customer: c],
+        preload: [:order_payments, variant: {v, product: p}, prep_location: l, customer: c],
         order_by: [desc: o.delivery_date, desc: o.id],
         limit: ^batch_size,
         offset: ^offset
@@ -189,7 +291,7 @@ defmodule Ledgr.Domains.MrMunchMe.Orders do
     delivered_orders =
       from o in Order,
         where: o.status == "delivered",
-        preload: [:product, :order_payments]
+        preload: [variant: :product, order_payments: []]
 
     # Count how many are fully paid — no N+1 since payments are preloaded
     delivered_orders
@@ -242,7 +344,7 @@ defmodule Ledgr.Domains.MrMunchMe.Orders do
   defp maybe_filter_product_id(query, product_id) when is_binary(product_id) do
     case Integer.parse(product_id) do
       {id, _} ->
-        from o in query, where: o.product_id == ^id
+        from [variant: v] in query, where: v.product_id == ^id
 
       :error ->
         query
@@ -298,9 +400,6 @@ defmodule Ledgr.Domains.MrMunchMe.Orders do
       "product" ->
         from [product: p] in query, order_by: [{^dir, p.name}]
 
-      "price_cents" ->
-        from [product: p] in query, order_by: [{^dir, p.price_cents}]
-
       _ ->
         from [order: o] in query, order_by: [{^dir, o.delivery_date}]
     end
@@ -323,10 +422,11 @@ defmodule Ledgr.Domains.MrMunchMe.Orders do
     base_query =
       from o in Order,
         where: o.delivery_date >= ^first_day and o.delivery_date <= ^last_day,
-        join: p in assoc(o, :product),
+        join: v in assoc(o, :variant),
+        join: p in assoc(v, :product),
         join: l in assoc(o, :prep_location),
         left_join: c in assoc(o, :customer),
-        preload: [product: p, prep_location: l, customer: c],
+        preload: [variant: {v, product: p}, prep_location: l, customer: c],
         order_by: [asc: o.delivery_date, asc: o.id]
 
     query =
@@ -342,7 +442,7 @@ defmodule Ledgr.Domains.MrMunchMe.Orders do
     Enum.group_by(orders, & &1.delivery_date, & &1)
   end
 
-  def get_order!(id), do: Repo.get!(Order, id) |> Repo.preload([:product, :prep_location, :customer, :order_ingredients])
+  def get_order!(id), do: Repo.get!(Order, id) |> Repo.preload([variant: :product, prep_location: [], customer: [], order_ingredients: []])
 
   def change_order(%Order{} = order, attrs \\ %{}) do
     Order.changeset(order, attrs)
@@ -350,8 +450,6 @@ defmodule Ledgr.Domains.MrMunchMe.Orders do
 
   def create_order(attrs) do
     Repo.transaction(fn ->
-      # If customer_id is provided, populate customer fields from customer record
-      # If customer_id is not provided, find or create customer by phone
       customer_id = attrs["customer_id"] || attrs[:customer_id]
       customer_id = if customer_id in [nil, ""], do: nil, else: customer_id
 
@@ -609,12 +707,12 @@ defmodule Ledgr.Domains.MrMunchMe.Orders do
   # ---------------------------
 
   def payment_summary(%Order{} = order) do
-    order = Repo.preload(order, [:product, :order_payments])
+    order = Repo.preload(order, [variant: :product, order_payments: []])
     compute_payment_summary(order, order.order_payments)
   end
 
   @doc """
-  Compute payment summary from an order that already has :product and :order_payments preloaded.
+  Compute payment summary from an order that already has :variant and :order_payments preloaded.
   No additional DB queries — use this in batch/list contexts to avoid N+1.
   """
   def payment_summary_from_preloaded(%Order{} = order) do
@@ -628,12 +726,7 @@ defmodule Ledgr.Domains.MrMunchMe.Orders do
         (p.amount_cents || 0) + acc
       end)
 
-    # Get the original price before discount for display (unit price * quantity)
-    unit_price_cents =
-      case order.product do
-        %{} -> order.product.price_cents || 0
-        _ -> 0
-      end
+    unit_price_cents = resolve_unit_price(order)
 
     quantity = order.quantity || 1
     original_price_cents = unit_price_cents * quantity
@@ -673,13 +766,9 @@ defmodule Ledgr.Domains.MrMunchMe.Orders do
   end
 
   def order_total_cents(%Order{} = order) do
-    order = Repo.preload(order, :product)
+    order = Repo.preload(order, [:variant])
 
-    unit_price =
-      case order.product do
-        %{} -> order.product.price_cents || 0
-        _ -> 0
-      end
+    unit_price = resolve_unit_price(order)
 
     quantity = order.quantity || 1
     base = unit_price * quantity
@@ -736,10 +825,17 @@ defmodule Ledgr.Domains.MrMunchMe.Orders do
       end)
 
       # Reload order with ingredients
-      Repo.get!(Order, order.id) |> Repo.preload([:product, :prep_location, :customer, :order_ingredients])
+      Repo.get!(Order, order.id) |> Repo.preload([variant: :product, prep_location: [], customer: [], order_ingredients: []])
     end)
   end
 
   def update_order_ingredients(%Order{} = _order, _), do: {:error, :invalid_attrs}
+
+  # ---------------------------------------------------------------------------
+  # Private helpers
+  # ---------------------------------------------------------------------------
+
+  defp resolve_unit_price(%Order{variant: %ProductVariant{price_cents: p}}) when is_integer(p), do: p
+  defp resolve_unit_price(_), do: 0
 
 end

@@ -652,7 +652,8 @@ defmodule Ledgr.Core.AccountingTest do
     end
 
     test "returns price when shipping product exists" do
-      _shipping = product_fixture(%{sku: "ENVIO", name: "Shipping", price_cents: 5500})
+      envio_product = product_fixture(%{name: "Shipping"})
+      _shipping = variant_fixture(%{product: envio_product, sku: "ENVIO", price_cents: 5500})
       assert OrderAccounting.shipping_fee_cents() == 5500
     end
   end
@@ -660,11 +661,12 @@ defmodule Ledgr.Core.AccountingTest do
   describe "order payment accounting" do
     setup do
       accounts = standard_accounts_fixture()
-      product = product_fixture(%{price_cents: 10000})
+      product = product_fixture()
+      variant = variant_fixture(%{product: product, price_cents: 10000})
       location = location_fixture()
-      order = order_fixture(%{product: product, location: location})
+      order = order_fixture(%{variant: variant, location: location})
 
-      {:ok, accounts: accounts, order: order, product: product}
+      {:ok, accounts: accounts, order: order, variant: variant}
     end
 
     test "record_order_payment creates correct journal entry for regular payment", %{accounts: accounts, order: order} do

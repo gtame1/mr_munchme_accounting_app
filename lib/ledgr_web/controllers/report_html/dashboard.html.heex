@@ -113,9 +113,6 @@
                 <tr>
                   <td>
                     <%= product.product_name %>
-                    <%= if product.product_sku do %>
-                      <span style="color: #6b7280; font-size: 0.875rem;">(<%= product.product_sku %>)</span>
-                    <% end %>
                   </td>
                   <td class="numeric"><%= product.unit_count %></td>
                   <td class="numeric"><%= format_currency(product.revenue_cents || 0) %></td>

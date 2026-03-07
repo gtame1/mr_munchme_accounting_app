@@ -11,7 +11,7 @@ defmodule Ledgr.Domains.MrMunchMe.OrderAccounting do
   import Ecto.Query, warn: false
 
   alias Ledgr.Repo
-  alias Ledgr.Domains.MrMunchMe.Orders.{Order, OrderPayment, Product}
+  alias Ledgr.Domains.MrMunchMe.Orders.{Order, OrderPayment, ProductVariant}
   alias Ledgr.Domains.MrMunchMe.Inventory
   alias Ledgr.Core.Accounting
   alias Ledgr.Core.Accounting.{JournalEntry, JournalLine}
@@ -285,25 +285,27 @@ defmodule Ledgr.Domains.MrMunchMe.OrderAccounting do
   # ── Revenue & COGS breakdowns ─────────────────────────────────────────
 
   def shipping_fee_cents do
-    case Repo.get_by(Product, sku: @shipping_product_sku) do
+    alias Ledgr.Domains.MrMunchMe.Orders.ProductVariant
+    case Repo.get_by(ProductVariant, sku: @shipping_product_sku) do
       nil -> 0
-      %Product{price_cents: cents} -> cents || 0
+      %ProductVariant{price_cents: cents} -> cents || 0
     end
   end
 
-  # Get revenue breakdown by product
+  # Get revenue breakdown by product — aggregates all variants into one product P&L line
   def revenue_by_product(start_date, end_date) do
     fallback_shipping_fee = shipping_fee_cents()
 
     from(o in Order,
-      join: p in assoc(o, :product),
+      join: v in assoc(o, :variant),
+      join: p in assoc(v, :product),
       where: fragment("COALESCE(?, ?)", o.actual_delivery_date, o.delivery_date) >= ^start_date and fragment("COALESCE(?, ?)", o.actual_delivery_date, o.delivery_date) <= ^end_date and o.status == "delivered",
-      group_by: [p.id, p.name, p.sku],
+      group_by: [p.id, p.name],
       select: %{
         product_id: p.id,
         product_name: p.name,
-        product_sku: p.sku,
-        revenue_cents: fragment("SUM(? * COALESCE(?, 1)) + SUM(CASE WHEN ? THEN COALESCE(?, ?) ELSE 0 END)", p.price_cents, o.quantity, o.customer_paid_shipping, o.shipping_fee_cents, ^fallback_shipping_fee)
+        # Group by product so all variants roll up into a single P&L line per product.
+        revenue_cents: fragment("SUM(? * COALESCE(?, 1)) + SUM(CASE WHEN ? THEN COALESCE(?, ?) ELSE 0 END)", v.price_cents, o.quantity, o.customer_paid_shipping, o.shipping_fee_cents, ^fallback_shipping_fee)
       }
     )
     |> Repo.all()
@@ -314,19 +316,20 @@ defmodule Ledgr.Domains.MrMunchMe.OrderAccounting do
     end)
   end
 
-  # Get COGS breakdown by product
+  # Get COGS breakdown by product — aggregates all variants into one product COGS line
   def cogs_by_product(start_date, end_date) do
-    # Get all delivered orders in the period with their products
+    # Get all delivered orders in the period with their product (via variant)
     orders =
       from(o in Order,
-        join: p in assoc(o, :product),
+        join: v in assoc(o, :variant),
+        join: p in assoc(v, :product),
         where: fragment("COALESCE(?, ?)", o.actual_delivery_date, o.delivery_date) >= ^start_date and fragment("COALESCE(?, ?)", o.actual_delivery_date, o.delivery_date) <= ^end_date and o.status == "delivered",
-        select: {o.id, p.id, p.name, p.sku}
+        select: {o.id, p.id, p.name}
       )
       |> Repo.all()
 
     # Get COGS for each order from journal entries
-    order_ids = Enum.map(orders, fn {id, _, _, _} -> id end)
+    order_ids = Enum.map(orders, fn {id, _, _} -> id end)
 
     cogs_map =
       if Enum.empty?(order_ids) do
@@ -375,17 +378,16 @@ defmodule Ledgr.Domains.MrMunchMe.OrderAccounting do
 
     # Group COGS by product
     orders
-    |> Enum.reduce(%{}, fn {order_id, product_id, product_name, product_sku}, acc ->
+    |> Enum.reduce(%{}, fn {order_id, product_id, product_name}, acc ->
       cogs_cents = Map.get(cogs_map, order_id, 0)
-      key = {product_id, product_name, product_sku}
+      key = {product_id, product_name}
 
       Map.update(acc, key, cogs_cents, &(&1 + cogs_cents))
     end)
-    |> Enum.map(fn {{product_id, product_name, product_sku}, cogs_cents} ->
+    |> Enum.map(fn {{product_id, product_name}, cogs_cents} ->
       %{
         product_id: product_id,
         product_name: product_name,
-        product_sku: product_sku,
         cogs_cents: cogs_cents
       }
     end)
@@ -395,7 +397,7 @@ defmodule Ledgr.Domains.MrMunchMe.OrderAccounting do
   # ── Private helpers ───────────────────────────────────────────────────
 
   defp do_record_order_delivered(order, reference) do
-    order = Repo.preload(order, :product)
+    order = Repo.preload(order, [:variant])
 
     if order.is_gift do
       do_record_gift_order_delivered(order, reference)
@@ -442,7 +444,12 @@ defmodule Ledgr.Domains.MrMunchMe.OrderAccounting do
 
   defp do_record_sale_order_delivered(order, reference) do
     quantity = order.quantity || 1
-    gross_product_price = (order.product.price_cents || 0) * quantity
+    unit_price =
+      case order.variant do
+        %ProductVariant{price_cents: p} when is_integer(p) -> p
+        _ -> 0
+      end
+    gross_product_price = unit_price * quantity
 
     # Calculate discount using the Orders context helper
     {discounted_product_price, shipping_cents} =
@@ -733,7 +740,7 @@ defmodule Ledgr.Domains.MrMunchMe.OrderAccounting do
   #   2. ingredients.cost_per_unit_cents (catalog fallback)
   #   → if both are 0/nil the resulting movement will be $0 COGS
   defp validate_ingredient_costs(%Order{} = order) do
-    order = Repo.preload(order, [:product, :order_ingredients, :prep_location])
+    order = Repo.preload(order, [:variant, :order_ingredients, :prep_location])
 
     location_code =
       case order.prep_location do
@@ -746,9 +753,8 @@ defmodule Ledgr.Domains.MrMunchMe.OrderAccounting do
         Enum.map(order.order_ingredients, & &1.ingredient_code)
       else
         recipe_date = order.delivery_date || Date.utc_today()
-        order.product
-        |> Inventory.Recepies.recipe_for_product(recipe_date)
-        |> Enum.map(& &1.ingredient_code)
+        recipe = Inventory.Recepies.recipe_for_variant(order.variant, recipe_date)
+        Enum.map(recipe, & &1.ingredient_code)
       end
 
     if ingredient_codes == [] do

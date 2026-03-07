@@ -372,9 +372,9 @@ document.addEventListener('DOMContentLoaded', initCartAnimations)
 function initQtyControls() {
   document.querySelectorAll('.qty-dec, .qty-inc').forEach(btn => {
     btn.addEventListener('click', function() {
-      const productId = this.dataset.productId
-      const input = document.getElementById('qty-' + productId)
-      const display = document.getElementById('qty-display-' + productId)
+      const variantId = this.dataset.variantId
+      const input = document.getElementById('qty-' + variantId)
+      const display = document.getElementById('qty-display-' + variantId)
       if (!input) return
       const delta = this.classList.contains('qty-dec') ? -1 : 1
       const newVal = Math.max(0, parseInt(input.value, 10) + delta)

@@ -94,13 +94,13 @@ defmodule LedgrWeb.Storefront.CheckoutController do
     default_location = get_default_prep_location()
 
     results =
-      Enum.map(cart, fn {product_id_str, quantity} ->
+      Enum.map(cart, fn {variant_id_str, quantity} ->
         order_attrs = %{
           "customer_id" => customer.id,
           "delivery_type" => checkout_params["delivery_type"],
           "delivery_date" => checkout_params["delivery_date"],
           "delivery_address" => checkout_params["delivery_address"],
-          "product_id" => product_id_str,
+          "variant_id" => variant_id_str,
           "prep_location_id" => to_string(default_location.id),
           "quantity" => to_string(quantity),
           "customer_paid_shipping" => to_string(checkout_params["delivery_type"] == "delivery")
@@ -109,10 +109,11 @@ defmodule LedgrWeb.Storefront.CheckoutController do
         Orders.create_order(order_attrs)
       end)
 
-    failures = Enum.filter(results, fn
-      {:ok, _} -> false
-      {:error, _} -> true
-    end)
+    failures =
+      Enum.filter(results, fn
+        {:ok, _} -> false
+        {:error, _} -> true
+      end)
 
     if Enum.empty?(failures) do
       created_orders = Enum.map(results, fn {:ok, order} -> order end)
@@ -155,7 +156,8 @@ defmodule LedgrWeb.Storefront.CheckoutController do
     items_text =
       cart_items
       |> Enum.map(fn item ->
-        "- #{item.product.name} x#{item.quantity} ($#{:erlang.float_to_binary(item.subtotal / 100, decimals: 2)})"
+        item_name = "#{item.product.name} #{item.variant.name}"
+        "- #{item_name} x#{item.quantity} ($#{:erlang.float_to_binary(item.subtotal / 100, decimals: 2)})"
       end)
       |> Enum.join("\n")
 
@@ -191,12 +193,14 @@ defmodule LedgrWeb.Storefront.CheckoutController do
 
   defp load_cart_items(cart) do
     items =
-      Enum.reduce(cart, [], fn {product_id_str, quantity}, acc ->
-        case Integer.parse(to_string(product_id_str)) do
+      Enum.reduce(cart, [], fn {variant_id_str, quantity}, acc ->
+        case Integer.parse(to_string(variant_id_str)) do
           {id, _} ->
             try do
-              product = Orders.get_product!(id)
-              [%{product: product, quantity: quantity, subtotal: product.price_cents * quantity} | acc]
+              variant = Orders.get_variant!(id)
+              product = variant.product
+              subtotal = variant.price_cents * quantity
+              [%{product: product, variant: variant, quantity: quantity, subtotal: subtotal} | acc]
             rescue
               Ecto.NoResultsError -> acc
             end
@@ -205,7 +209,7 @@ defmodule LedgrWeb.Storefront.CheckoutController do
             acc
         end
       end)
-      |> Enum.sort_by(& &1.product.name)
+      |> Enum.sort_by(fn item -> "#{item.product.name} #{item.variant.name}" end)
 
     total = Enum.reduce(items, 0, fn item, acc -> acc + item.subtotal end)
     {items, total}

@@ -152,12 +152,12 @@
           <div class="form-block">
             <div class="field">
               <.input
-                field={f[:product_id]}
+                field={f[:variant_id]}
                 type="searchable_select"
-                label="Product"
-                prompt="Search for a product..."
-                options={@product_options}
-                id="product_id_select"
+                label="Variant"
+                prompt="Search for a variant..."
+                options={@variant_options}
+                id="variant_id_select"
               />
             </div>
 
@@ -507,9 +507,9 @@
     }
 
     // ── Price Preview ──
-    const productPrices = <%= Phoenix.HTML.raw(Jason.encode!(@product_prices)) %>;
+    const variantPrices = <%= Phoenix.HTML.raw(Jason.encode!(@variant_prices)) %>;
     const shippingFeeCents = <%= @shipping_fee_cents %>;
-    const productSelect = document.getElementById("product_id_select");
+    const variantSelect = document.getElementById("variant_id_select");
     const quantityInput = document.querySelector('input[name="order[quantity]"]');
     const shippingCheckbox = document.querySelector('input[name="order[customer_paid_shipping]"]');
     const discountTypeSelect = document.querySelector('select[name="order[discount_type]"]');
@@ -533,14 +533,14 @@
 
     function updatePricePreview() {
       const isGift = isGiftCheckbox && isGiftCheckbox.checked;
-      const productId = productSelect ? productSelect.value : "";
+      const variantId = variantSelect ? variantSelect.value : "";
 
-      if (!productId || isGift) {
+      if (!variantId || isGift) {
         previewSection.style.display = "none";
         return;
       }
 
-      const unitPriceCents = productPrices[productId] || 0;
+      const unitPriceCents = variantPrices[variantId] || 0;
       const qty = Math.max(parseInt(quantityInput && quantityInput.value) || 1, 1);
       const subtotalCents = unitPriceCents * qty;
 
@@ -593,7 +593,7 @@
     }
 
     // Listen to all relevant inputs
-    [productSelect, quantityInput, shippingCheckbox, discountTypeSelect, discountValueInput].forEach(function(el) {
+    [variantSelect, quantityInput, shippingCheckbox, discountTypeSelect, discountValueInput].forEach(function(el) {
       if (el) {
         el.addEventListener("change", updatePricePreview);
         el.addEventListener("input", updatePricePreview);
@@ -601,8 +601,8 @@
     });
 
     // TomSelect fires change on the original select
-    if (productSelect) {
-      productSelect.addEventListener("change", updatePricePreview);
+    if (variantSelect) {
+      variantSelect.addEventListener("change", updatePricePreview);
     }
 
     // Gift toggle also affects preview
