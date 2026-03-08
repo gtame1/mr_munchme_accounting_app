@@ -94,7 +94,7 @@
             <div class="storefront-header-inner">
               <a href={"/#{domain.slug()}/menu"} class="storefront-logo-link">
                 <%= if theme[:sidebar_logo] do %>
-                  <img src={theme[:sidebar_logo]} alt={domain.name()} class="storefront-logo-img" />
+                  <img src={theme[:sidebar_logo]} alt={domain.name()} class="storefront-logo-img" onerror="this.style.display='none'" />
                 <% else %>
                   <span class="storefront-logo-emoji"><%= domain.logo() %></span>
                   <span class="storefront-brand-name"><%= domain.name() %></span>
@@ -155,7 +155,7 @@
           <.link navigate={prefix}>
             <div class="sidebar-header">
               <%= if theme[:sidebar_logo] do %>
-                <img src={theme[:sidebar_logo]} alt={domain.name()} class="sidebar-logo-img" />
+                <img src={theme[:sidebar_logo]} alt={domain.name()} class="sidebar-logo-img" onerror="this.style.display='none'" />
               <% else %>
                 <span class="app-logo"><%= domain.logo() %></span>
                 <span class="app-title"><%= domain.name() %></span>
@@ -253,6 +253,35 @@
       <main>
         <%= @inner_content %>
       </main>
+    <% end %>
+    <%!-- Flash toast notifications --%>
+    <% flash_info  = Phoenix.Flash.get(@flash, :info) %>
+    <% flash_error = Phoenix.Flash.get(@flash, :error) %>
+    <%= if flash_info || flash_error do %>
+      <div class="flash-container" id="flash-container">
+        <%= if flash_info do %>
+          <div class="flash-toast flash-toast-info" data-flash-auto-dismiss>
+            <span class="flash-toast-icon">✓</span>
+            <span class="flash-toast-message"><%= flash_info %></span>
+            <button type="button" class="flash-toast-close" onclick="this.closest('.flash-toast').classList.add('hiding'); setTimeout(()=>this.closest('.flash-toast').remove(), 350)">✕</button>
+          </div>
+        <% end %>
+        <%= if flash_error do %>
+          <div class="flash-toast flash-toast-error" data-flash-auto-dismiss>
+            <span class="flash-toast-icon">⚠</span>
+            <span class="flash-toast-message"><%= flash_error %></span>
+            <button type="button" class="flash-toast-close" onclick="this.closest('.flash-toast').classList.add('hiding'); setTimeout(()=>this.closest('.flash-toast').remove(), 350)">✕</button>
+          </div>
+        <% end %>
+      </div>
+      <script>
+        document.querySelectorAll("[data-flash-auto-dismiss]").forEach(function(el) {
+          setTimeout(function() {
+            el.classList.add("hiding");
+            setTimeout(function() { el.remove(); }, 350);
+          }, 4500);
+        });
+      </script>
     <% end %>
   </body>
 </html>

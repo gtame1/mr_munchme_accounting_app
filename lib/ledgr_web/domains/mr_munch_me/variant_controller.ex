@@ -59,7 +59,7 @@ defmodule LedgrWeb.Domains.MrMunchMe.VariantController do
 
           case Recepies.get_active_recipe(source_variant) do
             nil ->
-              {%{"recipe_lines" => [%{}]}, nil}
+              {%{"effective_date" => Date.utc_today(), "recipe_lines" => [%{}]}, nil}
 
             source_recipe ->
               source_recipe = Recepies.get_recipe!(source_recipe.id)
@@ -106,7 +106,7 @@ defmodule LedgrWeb.Domains.MrMunchMe.VariantController do
           {attrs, nil}
 
         true ->
-          {%{"recipe_lines" => [%{}]}, nil}
+          {%{"effective_date" => Date.utc_today(), "recipe_lines" => [%{}]}, nil}
       end
 
     recipe_changeset = Recepies.change_recipe(%Recipe{}, recipe_attrs)

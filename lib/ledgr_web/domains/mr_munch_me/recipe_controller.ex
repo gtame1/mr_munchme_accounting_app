@@ -53,8 +53,8 @@ defmodule LedgrWeb.Domains.MrMunchMe.RecipeController do
   end
 
   def new(conn, _params) do
-    # Initialize with at least one empty recipe line
-    attrs = %{"recipe_lines" => [%{}]}
+    # Initialize with at least one empty recipe line, defaulting to today
+    attrs = %{"effective_date" => Date.utc_today(), "recipe_lines" => [%{}]}
     changeset = Recepies.change_recipe(%Recipe{}, attrs)
     form = Phoenix.Component.to_form(changeset)
 

@@ -61,6 +61,24 @@ defmodule LedgrWeb.Domains.MrMunchMe.ProductController do
     end
   end
 
+  def toggle_active(conn, %{"id" => id}) do
+    product = Orders.get_product!(id)
+
+    case Orders.update_product(product, %{active: !product.active}) do
+      {:ok, updated} ->
+        status = if updated.active, do: "activated", else: "deactivated"
+
+        conn
+        |> put_flash(:info, "Product #{status}.")
+        |> redirect(to: dp(conn, "/products"))
+
+      {:error, _changeset} ->
+        conn
+        |> put_flash(:error, "Could not update product status.")
+        |> redirect(to: dp(conn, "/products"))
+    end
+  end
+
   def delete(conn, %{"id" => id}) do
     {:ok, _} =
       Orders.get_product!(id)

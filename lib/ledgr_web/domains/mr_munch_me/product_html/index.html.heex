@@ -31,15 +31,25 @@
           <td><%= Enum.count(product.variants) %> variant(s)</td>
           <td>
             <%= if product.active do %>
-              <span class="badge badge-success">Active</span>
+              <span class="status-pill status-pill-active">✓ Active</span>
             <% else %>
-              <span class="badge badge-secondary">Inactive</span>
+              <span class="status-pill status-pill-inactive">○ Inactive</span>
             <% end %>
           </td>
           <td>
-            <.link navigate={dp(@domain_path_prefix, "/products/#{product.id}/edit")} class="btn btn-sm">
-              Edit
-            </.link>
+            <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
+              <.link navigate={dp(@domain_path_prefix, "/products/#{product.id}/edit")} class="btn btn-sm">
+                Edit
+              </.link>
+              <.link
+                href={dp(@domain_path_prefix, "/products/#{product.id}/toggle_active")}
+                method="patch"
+                class={"btn btn-sm #{if product.active, do: "secondary", else: ""}"}
+                style={unless product.active, do: "background: #dcfce7; color: #15803d; border-color: #bbf7d0;"}
+              >
+                <%= if product.active, do: "Deactivate", else: "Activate" %>
+              </.link>
+            </div>
           </td>
         </tr>
       <% end %>
