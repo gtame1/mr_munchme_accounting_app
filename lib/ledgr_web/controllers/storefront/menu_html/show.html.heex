@@ -55,12 +55,6 @@
         <%= if first_variant, do: format_price(first_variant.price_cents) %>
       </div>
 
-      <%= if @product.description && @product.description != "" do %>
-        <div class="product-detail-description">
-          <%= render_markdown(@product.description) %>
-        </div>
-      <% end %>
-
       <form method="post" action="/mr-munch-me/cart/add" class="product-detail-cart-form">
         <input type="hidden" name="_csrf_token" value={Plug.CSRFProtection.get_csrf_token()} />
 
@@ -96,6 +90,15 @@
         </div>
       </form>
 
+      <%= if @product.description && @product.description != "" do %>
+        <hr class="product-detail-divider" />
+        <h2 class="product-detail-section-title">Descripción</h2>
+        <div class="product-detail-description" id="product-description">
+          <%= render_markdown(@product.description) %>
+        </div>
+        <button type="button" class="product-detail-see-more" id="desc-toggle" onclick="toggleDescription()">Ver más</button>
+      <% end %>
+
     </div>
   </div>
 </div>
@@ -110,4 +113,13 @@
       }
     });
   });
+
+  // Description expand/collapse
+  function toggleDescription() {
+    var desc = document.getElementById('product-description');
+    var btn  = document.getElementById('desc-toggle');
+    if (!desc || !btn) return;
+    var expanded = desc.classList.toggle('expanded');
+    btn.textContent = expanded ? 'Ver menos' : 'Ver más';
+  }
 </script>

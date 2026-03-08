@@ -163,7 +163,7 @@
       <summary style="font-size: 0.8125rem; font-weight: 500; color: #dc2626; cursor: pointer; user-select: none;">Delete this product…</summary>
       <div style="margin-top: 0.75rem; padding: 1rem; background: #fef2f2; border: 1px solid #fecaca; border-radius: 0.5rem;">
         <p style="margin: 0 0 0.75rem; font-size: 0.875rem; color: #991b1b;">
-          ⚠️ <strong>This will permanently delete "<%= @product.name %>"</strong>
+          ⚠️ <strong>This will delete "<%= @product.name %>"</strong>
           <%= case Enum.count(@product.variants) do %>
             <% 0 -> %> with no variants.
             <% 1 -> %> and its 1 variant.
