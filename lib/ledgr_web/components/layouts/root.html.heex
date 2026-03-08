@@ -95,6 +95,7 @@
               <a href={"/#{domain.slug()}/menu"} class="storefront-logo-link">
                 <%= if theme[:sidebar_logo] do %>
                   <img src={theme[:sidebar_logo]} alt={domain.name()} class="storefront-logo-img" onerror="this.style.display='none'" />
+                  <span class="storefront-brand-name storefront-brand-name--hide-mobile"><%= domain.name() %></span>
                 <% else %>
                   <span class="storefront-logo-emoji"><%= domain.logo() %></span>
                   <span class="storefront-brand-name"><%= domain.name() %></span>
