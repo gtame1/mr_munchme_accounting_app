@@ -180,7 +180,7 @@
             <div class="recipe-line-row" style="border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: 0.75rem 1rem; background: #fffaf6; box-shadow: 0 2px 8px rgba(61, 35, 24, 0.05);">
               <div style="display: flex; flex-direction: column; gap: 0.5rem;">
                 <div style="display: flex; align-items: flex-start; gap: 1rem;">
-                  <div style="flex: 1; display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; align-items: end;">
+                  <div style="flex: 1; display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; align-items: start;">
                     <div class="field" style="min-width: 0; margin-bottom: 0;">
                       <.input
                         field={line_f[:ingredient_code]}
@@ -188,7 +188,7 @@
                         label="Ingredient"
                         prompt="Choose an ingredient"
                         options={@ingredient_options}
-                        class="line-ingredient-select"
+                        class="line-ingredient-select select w-full"
                       />
                     </div>
 
@@ -199,7 +199,7 @@
                         label="Quantity"
                         step="0.01"
                         min="0.01"
-                        class="line-quantity"
+                        class="line-quantity input w-full"
                       />
                       <span class="unit-display" style="font-size: 0.8rem; color: #6b7280; display: block;"></span>
                     </div>
@@ -318,14 +318,14 @@
 
       const ingredientSelect = document.createElement("select");
       ingredientSelect.name = `${RECIPE_FORM_NAME}[recipe_lines][${index}][ingredient_code]`;
-      ingredientSelect.className = "line-ingredient-select";
+      ingredientSelect.className = "line-ingredient-select select w-full";
       ingredientSelect.innerHTML = '<option value="">Choose an ingredient</option>' +
         INGREDIENT_OPTIONS.map(([name, code]) => `<option value="${code}">${name}</option>`).join('');
 
       const quantityInput = document.createElement("input");
       quantityInput.type = "number";
       quantityInput.name = `${RECIPE_FORM_NAME}[recipe_lines][${index}][quantity]`;
-      quantityInput.className = "line-quantity";
+      quantityInput.className = "line-quantity input w-full";
       quantityInput.step = "0.01";
       quantityInput.min = "0.01";
       quantityInput.required = true;
@@ -339,7 +339,7 @@
       newRow.innerHTML = `
         <div style="display: flex; flex-direction: column; gap: 0.5rem;">
           <div style="display: flex; align-items: flex-start; gap: 1rem;">
-            <div style="flex: 1; display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; align-items: end;">
+            <div style="flex: 1; display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; align-items: start;">
               <div class="field" style="min-width: 0; margin-bottom: 0;">
                 <div class="fieldset mb-2">
                   <label>
