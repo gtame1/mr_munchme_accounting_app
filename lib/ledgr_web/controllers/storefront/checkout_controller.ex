@@ -101,12 +101,19 @@ defmodule LedgrWeb.Storefront.CheckoutController do
             _ -> nil
           end
 
+        special_instructions =
+          case checkout_params["special_instructions"] do
+            s when is_binary(s) and s != "" -> String.trim(s)
+            _ -> nil
+          end
+
         order_attrs = %{
           "customer_id" => customer.id,
           "delivery_type" => checkout_params["delivery_type"],
           "delivery_date" => checkout_params["delivery_date"],
           "delivery_time" => delivery_time,
           "delivery_address" => checkout_params["delivery_address"],
+          "special_instructions" => special_instructions,
           "variant_id" => variant_id_str,
           "prep_location_id" => to_string(default_location.id),
           "quantity" => to_string(quantity),
@@ -183,6 +190,12 @@ defmodule LedgrWeb.Storefront.CheckoutController do
         _ -> ""
       end
 
+    special_instructions_text =
+      case checkout_params["special_instructions"] do
+        s when is_binary(s) and s != "" -> "\nInstrucciones especiales: #{String.trim(s)}"
+        _ -> ""
+      end
+
     """
     ¡Hola! Acabo de realizar un pedido en la tienda MrMunchMe.
 
@@ -194,7 +207,7 @@ defmodule LedgrWeb.Storefront.CheckoutController do
 
     Total: #{total_text}
     #{delivery_type}: #{checkout_params["delivery_date"]}#{delivery_time_text}
-    #{if checkout_params["delivery_type"] == "delivery", do: "Dirección: #{checkout_params["delivery_address"]}", else: ""}
+    #{if checkout_params["delivery_type"] == "delivery", do: "Dirección: #{checkout_params["delivery_address"]}", else: ""}#{special_instructions_text}
     """
     |> String.trim()
   end

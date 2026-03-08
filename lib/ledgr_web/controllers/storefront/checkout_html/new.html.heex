@@ -114,6 +114,16 @@
           ><%= @form_values["delivery_address"] %></textarea>
         </div>
 
+        <div class="checkout-field">
+          <label for="special_instructions">Instrucciones especiales (opcional)</label>
+          <textarea
+            id="special_instructions"
+            name="checkout[special_instructions]"
+            rows="3"
+            placeholder="Alergias, preferencias, instrucciones para entrega..."
+          ><%= @form_values["special_instructions"] %></textarea>
+        </div>
+
         <button type="submit" class="btn btn-primary checkout-submit">Realizar pedido</button>
       </form>
     </div>

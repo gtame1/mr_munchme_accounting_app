@@ -30,6 +30,7 @@ defmodule Ledgr.Domains.MrMunchMe.Orders.Order do
     field :is_gift, :boolean, default: false
     field :quantity, :integer, default: 1
     field :shipping_fee_cents, :integer
+    field :special_instructions, :string
 
     belongs_to :variant, ProductVariant, foreign_key: :variant_id
     belongs_to :prep_location, Location
@@ -61,7 +62,8 @@ defmodule Ledgr.Domains.MrMunchMe.Orders.Order do
       :is_gift,
       :actual_delivery_date,
       :quantity,
-      :shipping_fee_cents
+      :shipping_fee_cents,
+      :special_instructions
     ])
     |> validate_required([
       :variant_id,

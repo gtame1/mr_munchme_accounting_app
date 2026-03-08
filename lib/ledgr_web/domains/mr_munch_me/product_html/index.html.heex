@@ -47,7 +47,12 @@
     <tbody>
       <%= for product <- @products do %>
         <tr>
-          <td><%= product.name %></td>
+          <td>
+            <%= product.name %>
+            <%= if product.description && product.description != "" do %>
+              <br /><span style="font-size: 0.78rem; color: #9ca3af;"><%= String.slice(product.description, 0, 80) %><%= if String.length(product.description) > 80, do: "…" %></span>
+            <% end %>
+          </td>
           <td><%= Enum.count(product.variants) %> variant(s)</td>
           <td>
             <%= if product.active do %>

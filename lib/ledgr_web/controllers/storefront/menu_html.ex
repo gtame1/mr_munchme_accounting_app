@@ -27,4 +27,13 @@ defmodule LedgrWeb.Storefront.MenuHTML do
     gallery = Enum.map(product.images || [], & &1.image_url)
     thumbnail ++ gallery
   end
+
+  @doc "Render a markdown string as safe HTML. Returns empty string for nil/empty input."
+  def render_markdown(nil), do: Phoenix.HTML.raw("")
+  def render_markdown(""), do: Phoenix.HTML.raw("")
+
+  def render_markdown(text) do
+    {:ok, html, _} = Earmark.as_html(text, compact_output: true)
+    Phoenix.HTML.raw(html)
+  end
 end

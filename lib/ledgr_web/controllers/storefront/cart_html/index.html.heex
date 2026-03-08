@@ -12,7 +12,7 @@
         <div class="cart-item">
           <div class="cart-item-image">
             <%= if item.product.image_url do %>
-              <img src={item.product.image_url} alt={item.product.name} />
+              <img src={item.product.image_url} alt={item.product.name} onerror="this.onerror=null;this.src='/images/mr-munchme-logos/mr-munchme-icon.png'" />
             <% else %>
               <div class="cart-item-placeholder">
                 <img src="/images/mr-munchme-logos/mr-munchme-icon.png" alt="MrMunchMe" />

@@ -135,7 +135,12 @@
                 </.link>
               </td>
               <td><%= order.customer_name %></td>
-              <td><%= order.variant && (order.variant.product.name <> " · " <> order.variant.name) %><%= if (order.quantity || 1) > 1, do: " x#{order.quantity}" %></td>
+              <td>
+                <%= order.variant && (order.variant.product.name <> " · " <> order.variant.name) %><%= if (order.quantity || 1) > 1, do: " x#{order.quantity}" %>
+                <%= if order.special_instructions && order.special_instructions != "" do %>
+                  <br /><span style="font-size: 0.78rem; color: #6b7280; font-style: italic;">📝 <%= order.special_instructions %></span>
+                <% end %>
+              </td>
               <td><%= order.delivery_date %></td>
               <td><%= String.capitalize(order.delivery_type || "") %></td>
 

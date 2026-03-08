@@ -57,7 +57,7 @@
 
       <%= if @product.description && @product.description != "" do %>
         <div class="product-detail-description">
-          <%= raw(Earmark.as_html!(@product.description, compact_output: true)) %>
+          <%= render_markdown(@product.description) %>
         </div>
       <% end %>
 
