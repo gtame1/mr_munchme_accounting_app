@@ -253,4 +253,140 @@ defmodule Ledgr.Core.ReportingTest do
       assert result.avg_order_value_cents == variant.price_cents
     end
   end
+
+  # ---------------------------------------------------------------------------
+  # AR aging report
+  # ---------------------------------------------------------------------------
+
+  describe "ar_aging_report/1" do
+    setup do
+      accounts = standard_accounts_fixture()
+      product = product_fixture()
+      variant = variant_fixture(%{product: product, price_cents: 10000})
+      location = location_fixture()
+
+      {:ok, accounts: accounts, variant: variant, location: location}
+    end
+
+    test "returns empty result when no delivered orders exist" do
+      today = Date.utc_today()
+      result = DomainReporting.ar_aging_report(today)
+
+      assert result.as_of_date == today
+      assert result.total_outstanding_cents == 0
+      assert result.line_items == []
+      assert result.buckets == %{current: 0, days_31_60: 0, days_61_90: 0, over_90: 0}
+    end
+
+    test "includes unpaid delivered order in current bucket when as_of_date equals delivery_date",
+         %{variant: variant, location: location} do
+      today = Date.utc_today()
+      order = order_fixture(%{variant: variant, location: location, status: "delivered", delivery_date: today})
+
+      result = DomainReporting.ar_aging_report(today)
+
+      assert result.total_outstanding_cents == 10000
+      assert result.buckets.current == 10000
+      assert length(result.line_items) == 1
+
+      item = hd(result.line_items)
+      assert item.order_id == order.id
+      assert item.outstanding_cents == 10000
+      assert item.paid_cents == 0
+      assert item.order_total_cents == 10000
+      assert item.bucket == "current"
+      assert item.days_outstanding == 0
+    end
+
+    test "excludes fully paid delivered order from line items",
+         %{accounts: accounts, variant: variant, location: location} do
+      today = Date.utc_today()
+      order = order_fixture(%{variant: variant, location: location, status: "delivered", delivery_date: today})
+      _payment = order_payment_fixture(order, accounts["1000"], %{"amount_cents" => 10000})
+
+      result = DomainReporting.ar_aging_report(today)
+
+      assert result.total_outstanding_cents == 0
+      assert result.line_items == []
+    end
+
+    test "shows outstanding balance for partially paid order",
+         %{accounts: accounts, variant: variant, location: location} do
+      today = Date.utc_today()
+      order = order_fixture(%{variant: variant, location: location, status: "delivered", delivery_date: today})
+      _payment = order_payment_fixture(order, accounts["1000"], %{"amount_cents" => 3000})
+
+      result = DomainReporting.ar_aging_report(today)
+
+      assert result.total_outstanding_cents == 7000
+
+      item = hd(result.line_items)
+      assert item.outstanding_cents == 7000
+      assert item.paid_cents == 3000
+      assert item.order_total_cents == 10000
+    end
+
+    test "places orders into correct aging buckets based on days since delivery",
+         %{variant: variant, location: location} do
+      as_of = Date.utc_today()
+
+      # current: ≤ 30 days — 15 days ago
+      _c = order_fixture(%{variant: variant, location: location, status: "delivered", delivery_date: Date.add(as_of, -15)})
+      # 31-60 days — 45 days ago
+      _a = order_fixture(%{variant: variant, location: location, status: "delivered", delivery_date: Date.add(as_of, -45)})
+      # 61-90 days — 75 days ago
+      _b = order_fixture(%{variant: variant, location: location, status: "delivered", delivery_date: Date.add(as_of, -75)})
+      # 90+ days — 100 days ago
+      _d = order_fixture(%{variant: variant, location: location, status: "delivered", delivery_date: Date.add(as_of, -100)})
+
+      result = DomainReporting.ar_aging_report(as_of)
+
+      assert result.buckets.current == 10000
+      assert result.buckets.days_31_60 == 10000
+      assert result.buckets.days_61_90 == 10000
+      assert result.buckets.over_90 == 10000
+      assert result.total_outstanding_cents == 40000
+      assert length(result.line_items) == 4
+    end
+
+    test "excludes non-delivered orders (new_order, in_prep, canceled)",
+         %{variant: variant, location: location} do
+      today = Date.utc_today()
+      _new = order_fixture(%{variant: variant, location: location, status: "new_order", delivery_date: today})
+      _in_prep = order_fixture(%{variant: variant, location: location, status: "in_prep", delivery_date: today})
+      _canceled = order_fixture(%{variant: variant, location: location, status: "canceled", delivery_date: today})
+
+      result = DomainReporting.ar_aging_report(today)
+
+      assert result.line_items == []
+      assert result.total_outstanding_cents == 0
+    end
+
+    test "uses actual_delivery_date over delivery_date for aging calculation",
+         %{variant: variant, location: location} do
+      as_of = Date.utc_today()
+      # delivery_date alone would put this in "current" (5 days ago)
+      delivery_date = Date.add(as_of, -5)
+      # but actual_delivery_date pushes it into "31-60" (45 days ago)
+      actual_delivery_date = Date.add(as_of, -45)
+
+      _order = order_fixture(%{
+        variant: variant,
+        location: location,
+        status: "delivered",
+        delivery_date: delivery_date,
+        actual_delivery_date: actual_delivery_date
+      })
+
+      result = DomainReporting.ar_aging_report(as_of)
+
+      # Should use actual_delivery_date — 45 days → "31-60" bucket
+      assert result.buckets.current == 0
+      assert result.buckets.days_31_60 == 10000
+
+      item = hd(result.line_items)
+      assert item.days_outstanding == 45
+      assert item.bucket == "31-60"
+    end
+  end
 end

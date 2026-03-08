@@ -219,6 +219,91 @@ defmodule Ledgr.Domains.MrMunchMe.OrdersTest do
 
       assert {12000, 0} = Orders.order_total_cents(order)
     end
+
+    test "applies flat discount (in pesos) to order total" do
+      product = product_fixture()
+      variant = variant_fixture(%{product: product, price_cents: 12000})
+      location = location_fixture()
+
+      # Flat discount of $50 pesos = 5000 cents → 12000 - 5000 = 7000
+      {:ok, order} =
+        %Order{}
+        |> Order.changeset(%{
+          customer_name: "Test",
+          customer_phone: "5551234567",
+          variant_id: variant.id,
+          prep_location_id: location.id,
+          delivery_date: Date.utc_today(),
+          delivery_type: "pickup",
+          status: "new_order",
+          customer_paid_shipping: false,
+          discount_type: "flat",
+          discount_value: Decimal.new("50")
+        })
+        |> Repo.insert()
+
+      assert {7000, 0} = Orders.order_total_cents(order)
+    end
+
+    test "applies percentage discount to order total" do
+      product = product_fixture()
+      variant = variant_fixture(%{product: product, price_cents: 10000})
+      location = location_fixture()
+
+      # 10% discount → 10000 - 1000 = 9000
+      {:ok, order} =
+        %Order{}
+        |> Order.changeset(%{
+          customer_name: "Test",
+          customer_phone: "5551234567",
+          variant_id: variant.id,
+          prep_location_id: location.id,
+          delivery_date: Date.utc_today(),
+          delivery_type: "pickup",
+          status: "new_order",
+          customer_paid_shipping: false,
+          discount_type: "percentage",
+          discount_value: Decimal.new("10")
+        })
+        |> Repo.insert()
+
+      assert {9000, 0} = Orders.order_total_cents(order)
+    end
+
+    test "discount applies to the full base price (unit price × quantity)" do
+      product = product_fixture()
+      variant = variant_fixture(%{product: product, price_cents: 10000})
+      location = location_fixture()
+
+      # 2 units × 10000 = 20000 base; 25% off = 5000 discount → 15000
+      {:ok, order} =
+        %Order{}
+        |> Order.changeset(%{
+          customer_name: "Test",
+          customer_phone: "5551234567",
+          variant_id: variant.id,
+          prep_location_id: location.id,
+          delivery_date: Date.utc_today(),
+          delivery_type: "pickup",
+          status: "new_order",
+          customer_paid_shipping: false,
+          quantity: 2,
+          discount_type: "percentage",
+          discount_value: Decimal.new("25")
+        })
+        |> Repo.insert()
+
+      assert {15000, 0} = Orders.order_total_cents(order)
+    end
+
+    test "multi-quantity order without discount totals price × quantity" do
+      product = product_fixture()
+      variant = variant_fixture(%{product: product, price_cents: 8000})
+      order = order_fixture(%{variant: variant, delivery_type: "pickup", customer_paid_shipping: false, quantity: 3})
+
+      # 3 × 8000 = 24000, no shipping
+      assert {24000, 0} = Orders.order_total_cents(order)
+    end
   end
 
   describe "payment_summary/1" do
@@ -275,6 +360,37 @@ defmodule Ledgr.Domains.MrMunchMe.OrdersTest do
 
       assert summary.total_paid_cents == 10000
       assert summary.fully_paid? == true
+    end
+
+    test "gift order shows order_total_cents of 0, outstanding 0, and fully_paid? true" do
+      product = product_fixture()
+      variant = variant_fixture(%{product: product, price_cents: 10000})
+      location = location_fixture()
+
+      {:ok, order} =
+        %Order{}
+        |> Order.changeset(%{
+          customer_name: "Gift Recipient",
+          customer_phone: "5551234567",
+          variant_id: variant.id,
+          prep_location_id: location.id,
+          delivery_date: Date.utc_today(),
+          delivery_type: "pickup",
+          status: "new_order",
+          customer_paid_shipping: false,
+          is_gift: true
+        })
+        |> Repo.insert()
+
+      order = Orders.get_order!(order.id)
+      summary = Orders.payment_summary(order)
+
+      assert summary.order_total_cents == 0
+      assert summary.outstanding_cents == 0
+      assert summary.fully_paid? == true
+      assert summary.partially_paid? == false
+      # No money was actually paid (it's a gift/comp)
+      assert summary.total_paid_cents == 0
     end
   end
 
