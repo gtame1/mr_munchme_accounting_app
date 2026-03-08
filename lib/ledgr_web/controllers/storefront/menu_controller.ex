@@ -22,6 +22,8 @@ defmodule LedgrWeb.Storefront.MenuController do
 
     conn
     |> assign(:storefront, true)
+    |> assign(:show_search, true)
+    |> assign(:current_q, params["q"] || "")
     |> assign(:page_title, "Menu")
     |> render(:index, products: products, current_q: params["q"] || "")
   end

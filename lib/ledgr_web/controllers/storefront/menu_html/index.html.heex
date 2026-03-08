@@ -1,25 +1,4 @@
 <div class="menu-page">
-  <div class="menu-hero">
-    <h1 class="menu-title">Mr. Munch Me</h1>
-    <p class="menu-subtitle">Nuestro Menu horneado con amor. Descubre nuestra selección de delicias artesanales.</p>
-  </div>
-
-  <div class="menu-filters">
-    <form method="get" action="/mr-munch-me/menu" class="menu-filter-form">
-      <input
-        type="text"
-        name="q"
-        value={@current_q}
-        placeholder="Buscar productos..."
-        class="menu-search-input"
-      />
-      <button type="submit" class="btn menu-filter-btn">Buscar</button>
-      <%= if @current_q != "" do %>
-        <a href="/mr-munch-me/menu" class="menu-filter-clear">Limpiar</a>
-      <% end %>
-    </form>
-  </div>
-
   <%= if Enum.empty?(@products) do %>
     <div class="menu-empty">
       <%= if @current_q != "" do %>

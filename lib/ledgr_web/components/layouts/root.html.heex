@@ -100,6 +100,26 @@
                   <span class="storefront-brand-name"><%= domain.name() %></span>
                 <% end %>
               </a>
+              <%= if assigns[:show_search] do %>
+                <form method="get" action={"/#{domain.slug()}/menu"} class="storefront-search-form">
+                  <div class="storefront-search-wrap">
+                    <input
+                      type="text"
+                      name="q"
+                      value={assigns[:current_q] || ""}
+                      placeholder="Buscar productos…"
+                      class="storefront-search-input"
+                      autocomplete="off"
+                    />
+                    <button type="submit" class="storefront-search-btn" aria-label="Buscar">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <circle cx="11" cy="11" r="8"/>
+                        <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                      </svg>
+                    </button>
+                  </div>
+                </form>
+              <% end %>
               <% cart = Plug.Conn.get_session(@conn, :cart) || %{} %>
               <% cart_count = cart |> Map.values() |> Enum.sum() %>
               <a href={"/#{domain.slug()}/cart"} class="storefront-cart-link">
