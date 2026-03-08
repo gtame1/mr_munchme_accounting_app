@@ -189,7 +189,7 @@
       <div class="sidebar-thumbnail-area">
         <%= if @product.image_url do %>
           <div class="sidebar-thumbnail-preview">
-            <img src={@product.image_url} alt={"#{@product.name} thumbnail"} />
+            <img src={@product.image_url} alt={"#{@product.name} thumbnail"} onerror="this.onerror=null;this.src='/images/mr-munchme-logos/mr-munchme-icon.png'" />
           </div>
         <% else %>
           <div class="sidebar-thumbnail-empty">
@@ -264,7 +264,7 @@
         <div class="sidebar-media-grid">
           <%= for image <- @product.images do %>
             <div class="sidebar-media-item">
-              <img src={image.image_url} alt={"Gallery image #{image.position + 1}"} />
+              <img src={image.image_url} alt={"Gallery image #{image.position + 1}"} onerror="this.onerror=null;this.src='/images/mr-munchme-logos/mr-munchme-icon.png'" />
               <.link
                 href={dp(@domain_path_prefix, "/products/#{@product.id}/images/#{image.id}")}
                 method="delete"
@@ -305,7 +305,7 @@
       <div class="sidebar-preview-product">
         <div class="sidebar-preview-img">
           <%= if @product.image_url do %>
-            <img src={@product.image_url} alt={@product.name} />
+            <img src={@product.image_url} alt={@product.name} onerror="this.onerror=null;this.src='/images/mr-munchme-logos/mr-munchme-icon.png'" />
           <% else %>
             <div class="sidebar-preview-placeholder">🍪</div>
           <% end %>
