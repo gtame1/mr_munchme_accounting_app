@@ -12,24 +12,24 @@
     <% end %>
     <%!-- OG / Twitter Card meta tags (storefront pages only) --%>
     <%= if assigns[:current_domain] && assigns[:storefront] do %>
-      <% _d = assigns[:current_domain] %>
-      <% _og_title = _d.name() %>
-      <% _og_desc = _d.theme()[:og_description] || "#{_d.name()} — haz tu pedido en línea." %>
-      <% _og_img_path = _d.theme()[:card_logo] || _d.theme()[:sidebar_logo] %>
-      <% _base_url = LedgrWeb.Endpoint.url() %>
-      <meta name="description" content={_og_desc} />
+      <% d = assigns[:current_domain] %>
+      <% og_title = d.name() %>
+      <% og_desc = d.theme()[:og_description] || "#{d.name()} — haz tu pedido en línea." %>
+      <% og_img_path = d.theme()[:card_logo] || d.theme()[:sidebar_logo] %>
+      <% base_url = LedgrWeb.Endpoint.url() %>
+      <meta name="description" content={og_desc} />
       <meta property="og:type" content="website" />
-      <meta property="og:site_name" content={_og_title} />
-      <meta property="og:title" content={_og_title} />
-      <meta property="og:description" content={_og_desc} />
-      <%= if _og_img_path do %>
-        <meta property="og:image" content={"#{_base_url}#{_og_img_path}"} />
+      <meta property="og:site_name" content={og_title} />
+      <meta property="og:title" content={og_title} />
+      <meta property="og:description" content={og_desc} />
+      <%= if og_img_path do %>
+        <meta property="og:image" content={"#{base_url}#{og_img_path}"} />
       <% end %>
       <meta name="twitter:card" content="summary_large_image" />
-      <meta name="twitter:title" content={_og_title} />
-      <meta name="twitter:description" content={_og_desc} />
-      <%= if _og_img_path do %>
-        <meta name="twitter:image" content={"#{_base_url}#{_og_img_path}"} />
+      <meta name="twitter:title" content={og_title} />
+      <meta name="twitter:description" content={og_desc} />
+      <%= if og_img_path do %>
+        <meta name="twitter:image" content={"#{base_url}#{og_img_path}"} />
       <% end %>
     <% end %>
     <link phx-track-static rel="stylesheet" href={~p"/assets/css/app.css"} />
