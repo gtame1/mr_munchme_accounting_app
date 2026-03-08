@@ -21,7 +21,7 @@ defmodule Ledgr.Domains.MrMunchMe.Orders.ProductVariant do
   def changeset(variant, attrs) do
     variant
     |> cast(attrs, [:name, :sku, :price_cents, :active, :product_id])
-    |> validate_required([:name, :price_cents, :product_id])
+    |> validate_required([:name, :sku, :price_cents, :product_id])
     |> validate_number(:price_cents, greater_than: 0)
     |> unique_constraint(:sku)
     |> assoc_constraint(:product)

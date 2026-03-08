@@ -5,9 +5,15 @@ defmodule LedgrWeb.Domains.MrMunchMe.ProductController do
   alias Ledgr.Domains.MrMunchMe.Orders.Product
   alias Ledgr.Uploads
 
-  def index(conn, _params) do
-    products = Orders.list_all_products()
-    render(conn, :index, products: products)
+  def index(conn, params) do
+    sort  = params["sort"]  || "name"
+    order = params["order"] || "asc"
+
+    products =
+      Orders.list_all_products()
+      |> sort_products(sort, order)
+
+    render(conn, :index, products: products, sort: sort, order: order)
   end
 
   def new(conn, _params) do
@@ -54,7 +60,7 @@ defmodule LedgrWeb.Domains.MrMunchMe.ProductController do
       {:ok, _product} ->
         conn
         |> put_flash(:info, "Product updated successfully.")
-        |> redirect(to: dp(conn, "/products/#{id}/edit"))
+        |> redirect(to: dp(conn, "/products"))
 
       {:error, %Ecto.Changeset{} = changeset} ->
         render(conn, :edit, product: product, changeset: Map.put(changeset, :action, :update), action: dp(conn, "/products/#{product.id}"))
@@ -140,6 +146,18 @@ defmodule LedgrWeb.Domains.MrMunchMe.ProductController do
   end
 
   # Private helpers
+
+  defp sort_products(products, "active", "asc"),
+    do: Enum.sort_by(products, &{&1.active, String.downcase(&1.name)}, :asc)
+
+  defp sort_products(products, "active", _desc),
+    do: Enum.sort_by(products, &{!&1.active, String.downcase(&1.name)}, :asc)
+
+  defp sort_products(products, _name, "desc"),
+    do: Enum.sort_by(products, &String.downcase(&1.name), :desc)
+
+  defp sort_products(products, _name, _asc),
+    do: Enum.sort_by(products, &String.downcase(&1.name), :asc)
 
   defp handle_thumbnail_upload(product_params, %{"product" => %{"thumbnail" => %Plug.Upload{} = upload}}) do
     case Uploads.save(upload) do
