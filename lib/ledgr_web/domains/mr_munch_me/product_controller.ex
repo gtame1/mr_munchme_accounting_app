@@ -85,6 +85,16 @@ defmodule LedgrWeb.Domains.MrMunchMe.ProductController do
     end
   end
 
+  def move_up(conn, %{"id" => id}) do
+    Orders.get_product!(id) |> Orders.move_product_up()
+    redirect(conn, to: dp(conn, "/products"))
+  end
+
+  def move_down(conn, %{"id" => id}) do
+    Orders.get_product!(id) |> Orders.move_product_down()
+    redirect(conn, to: dp(conn, "/products"))
+  end
+
   def delete(conn, %{"id" => id}) do
     {:ok, _} =
       Orders.get_product!(id)

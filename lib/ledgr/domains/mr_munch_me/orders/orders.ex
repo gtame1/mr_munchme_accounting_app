@@ -11,14 +11,14 @@ defmodule Ledgr.Domains.MrMunchMe.Orders do
   # PRODUCTS
 
   def list_products do
-    Repo.all(from p in Product, where: p.active == true and is_nil(p.deleted_at), order_by: p.name)
+    Repo.all(from p in Product, where: p.active == true and is_nil(p.deleted_at), order_by: [asc: p.position, asc: p.name])
   end
 
   def list_products_filtered(params \\ %{}) do
     Product
     |> where([p], p.active == true and is_nil(p.deleted_at))
     |> maybe_search_products(params["q"])
-    |> order_by([p], p.name)
+    |> order_by([p], [asc: p.position, asc: p.name])
     |> Repo.all()
   end
 
@@ -31,7 +31,7 @@ defmodule Ledgr.Domains.MrMunchMe.Orders do
   end
 
   def list_all_products do
-    from(p in Product, where: is_nil(p.deleted_at), order_by: p.name, preload: :variants)
+    from(p in Product, where: is_nil(p.deleted_at), order_by: [asc: p.position, asc: p.name], preload: :variants)
     |> Repo.all()
   end
 
@@ -45,9 +45,45 @@ defmodule Ledgr.Domains.MrMunchMe.Orders do
   end
 
   def create_product(attrs) do
+    next_position =
+      (Repo.one(from p in Product, where: is_nil(p.deleted_at), select: max(p.position)) || -1) + 1
+
     %Product{}
     |> Product.changeset(attrs)
+    |> Ecto.Changeset.put_change(:position, next_position)
     |> Repo.insert()
+  end
+
+  def move_product_up(%Product{} = product) do
+    all = Repo.all(from p in Product, where: is_nil(p.deleted_at), order_by: [asc: p.position, asc: p.name])
+    idx = Enum.find_index(all, &(&1.id == product.id))
+
+    if idx && idx > 0 do
+      swap_product_positions(product, Enum.at(all, idx - 1))
+    else
+      {:ok, product}
+    end
+  end
+
+  def move_product_down(%Product{} = product) do
+    all = Repo.all(from p in Product, where: is_nil(p.deleted_at), order_by: [asc: p.position, asc: p.name])
+    idx = Enum.find_index(all, &(&1.id == product.id))
+
+    if idx && idx < length(all) - 1 do
+      swap_product_positions(product, Enum.at(all, idx + 1))
+    else
+      {:ok, product}
+    end
+  end
+
+  defp swap_product_positions(a, b) do
+    pos_a = a.position
+    pos_b = if b.position == a.position, do: a.position + 1, else: b.position
+
+    Repo.transaction(fn ->
+      Repo.update!(Ecto.Changeset.change(a, position: pos_b))
+      Repo.update!(Ecto.Changeset.change(b, position: pos_a))
+    end)
   end
 
   def update_product(%Product{} = product, attrs) do
@@ -79,7 +115,7 @@ defmodule Ledgr.Domains.MrMunchMe.Orders do
   def list_products_with_variants do
     from(p in Product,
       where: p.active == true and is_nil(p.deleted_at),
-      order_by: p.name,
+      order_by: [asc: p.position, asc: p.name],
       preload: [
         variants:
           ^from(v in ProductVariant, where: v.active == true and is_nil(v.deleted_at), order_by: v.name)

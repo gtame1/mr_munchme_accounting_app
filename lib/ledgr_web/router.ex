@@ -87,6 +87,8 @@ defmodule LedgrWeb.Router do
 
     resources "/products", Domains.MrMunchMe.ProductController, only: [:index, :new, :create, :edit, :update, :delete]
     patch "/products/:id/toggle_active", Domains.MrMunchMe.ProductController, :toggle_active
+    patch "/products/:id/move_up", Domains.MrMunchMe.ProductController, :move_up
+    patch "/products/:id/move_down", Domains.MrMunchMe.ProductController, :move_down
     post "/products/:product_id/images", Domains.MrMunchMe.ProductController, :upload_gallery_image
     delete "/products/:product_id/images/:image_id", Domains.MrMunchMe.ProductController, :delete_gallery_image
     resources "/products/:product_id/variants", Domains.MrMunchMe.VariantController, only: [:new, :create, :edit, :update, :delete]

@@ -10,6 +10,7 @@ defmodule Ledgr.Domains.MrMunchMe.Orders.Product do
     field :active, :boolean, default: true
     field :description, :string
     field :image_url, :string
+    field :position, :integer, default: 0
     field :deleted_at, :utc_datetime
 
     has_many :images, ProductImage, preload_order: [asc: :position]
@@ -20,7 +21,7 @@ defmodule Ledgr.Domains.MrMunchMe.Orders.Product do
 
   def changeset(product, attrs) do
     product
-    |> cast(attrs, [:name, :active, :description, :image_url])
+    |> cast(attrs, [:name, :active, :description, :image_url, :position])
     |> validate_required([:name])
   end
 end

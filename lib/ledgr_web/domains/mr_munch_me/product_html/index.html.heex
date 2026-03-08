@@ -29,6 +29,7 @@
             </span>
           </.link>
         </th>
+        <th>Order</th>
         <th>Variants</th>
         <th>
           <.link
@@ -52,6 +53,22 @@
             <%= if product.description && product.description != "" do %>
               <br /><span style="font-size: 0.78rem; color: #9ca3af;"><%= String.slice(product.description, 0, 80) %><%= if String.length(product.description) > 80, do: "…" %></span>
             <% end %>
+          </td>
+          <td>
+            <div style="display: flex; gap: 0.25rem;">
+              <.link
+                href={dp(@domain_path_prefix, "/products/#{product.id}/move_up")}
+                method="patch"
+                class="btn btn-sm"
+                style="padding: 0.2rem 0.45rem; line-height: 1;"
+              >▲</.link>
+              <.link
+                href={dp(@domain_path_prefix, "/products/#{product.id}/move_down")}
+                method="patch"
+                class="btn btn-sm"
+                style="padding: 0.2rem 0.45rem; line-height: 1;"
+              >▼</.link>
+            </div>
           </td>
           <td><%= Enum.count(product.variants) %> variant(s)</td>
           <td>
