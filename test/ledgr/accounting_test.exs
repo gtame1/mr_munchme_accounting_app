@@ -733,4 +733,108 @@ defmodule Ledgr.Core.AccountingTest do
       assert deposits_line.credit_cents == 3000
     end
   end
+
+  describe "record_inventory_write_off/2" do
+    setup do
+      accounts = standard_accounts_fixture()
+
+      waste_account =
+        case Accounting.get_account_by_code("6060") do
+          nil ->
+            {:ok, a} =
+              Accounting.create_account(%{
+                code: "6060",
+                name: "Inventory Waste",
+                type: "expense",
+                normal_balance: "debit",
+                is_cash: false
+              })
+            a
+          existing -> existing
+        end
+
+      {:ok, accounts: accounts, waste_account: waste_account}
+    end
+
+    test "debits waste expense and credits ingredients inventory", %{accounts: accounts, waste_account: waste_account} do
+      ingredients = accounts["1200"]
+
+      {:ok, entry} = Accounting.record_inventory_write_off(8000, reference: "WASTE-001")
+      entry = Repo.preload(entry, :journal_lines)
+
+      assert length(entry.journal_lines) == 2
+
+      waste_line = Enum.find(entry.journal_lines, fn l ->
+        l.account_id == waste_account.id && l.debit_cents > 0
+      end)
+      assert waste_line.debit_cents == 8000
+
+      inv_line = Enum.find(entry.journal_lines, fn l ->
+        l.account_id == ingredients.id && l.credit_cents > 0
+      end)
+      assert inv_line.credit_cents == 8000
+    end
+
+    test "uses packing inventory account when packing: true", %{accounts: accounts, waste_account: waste_account} do
+      packing = accounts["1210"]
+
+      {:ok, entry} = Accounting.record_inventory_write_off(3000, packing: true)
+      entry = Repo.preload(entry, :journal_lines)
+
+      waste_line = Enum.find(entry.journal_lines, fn l ->
+        l.account_id == waste_account.id && l.debit_cents > 0
+      end)
+      assert waste_line.debit_cents == 3000
+
+      packing_line = Enum.find(entry.journal_lines, fn l ->
+        l.account_id == packing.id && l.credit_cents > 0
+      end)
+      assert packing_line.credit_cents == 3000
+    end
+  end
+
+  describe "record_inventory_usage/2" do
+    setup do
+      accounts = standard_accounts_fixture()
+      {:ok, accounts: accounts}
+    end
+
+    test "debits ingredients COGS and credits ingredients inventory", %{accounts: accounts} do
+      cogs = accounts["5000"]
+      ingredients = accounts["1200"]
+
+      {:ok, entry} = Accounting.record_inventory_usage(12000, reference: "USAGE-001")
+      entry = Repo.preload(entry, :journal_lines)
+
+      assert length(entry.journal_lines) == 2
+
+      cogs_line = Enum.find(entry.journal_lines, fn l ->
+        l.account_id == cogs.id && l.debit_cents > 0
+      end)
+      assert cogs_line.debit_cents == 12000
+
+      inv_line = Enum.find(entry.journal_lines, fn l ->
+        l.account_id == ingredients.id && l.credit_cents > 0
+      end)
+      assert inv_line.credit_cents == 12000
+    end
+
+    test "uses packing COGS and packing inventory when packing: true", %{accounts: accounts} do
+      packing_cogs = accounts["5010"]
+      packing_inv = accounts["1210"]
+
+      {:ok, entry} = Accounting.record_inventory_usage(5000, packing: true)
+      entry = Repo.preload(entry, :journal_lines)
+
+      cogs_line = Enum.find(entry.journal_lines, fn l ->
+        l.account_id == packing_cogs.id && l.debit_cents > 0
+      end)
+      assert cogs_line.debit_cents == 5000
+
+      inv_line = Enum.find(entry.journal_lines, fn l ->
+        l.account_id == packing_inv.id && l.credit_cents > 0
+      end)
+      assert inv_line.credit_cents == 5000
+    end
+  end
 end

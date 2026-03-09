@@ -637,4 +637,30 @@ defmodule Ledgr.Domains.MrMunchMe.InventoryTest do
       assert stock.quantity_on_hand == 800
     end
   end
+
+  describe "batch_inventory_values/0" do
+    test "returns a map keyed by {ingredient_id, location_id} with cost_cents", %{cash_account: cash_account, ingredient: ingredient, location: location} do
+      purchase_attrs = %{
+        "ingredient_code" => ingredient.code,
+        "location_code" => location.code,
+        "quantity" => 100,
+        "total_cost_pesos" => "10.00",
+        "paid_from_account_id" => to_string(cash_account.id),
+        "purchase_date" => Date.utc_today()
+      }
+      {:ok, _} = Inventory.create_purchase(purchase_attrs)
+
+      result = Inventory.batch_inventory_values()
+
+      assert is_map(result)
+      key = {ingredient.id, location.id}
+      assert Map.has_key?(result, key)
+      assert result[key] == 1000
+    end
+
+    test "returns empty map when no movements exist" do
+      result = Inventory.batch_inventory_values()
+      assert result == %{}
+    end
+  end
 end
