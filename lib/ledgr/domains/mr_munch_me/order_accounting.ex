@@ -24,6 +24,7 @@ defmodule Ledgr.Domains.MrMunchMe.OrderAccounting do
   @kitchen_inventory_code "1300"
   @customer_deposits_code "2200"
   @sales_code "4000"
+  @shipping_revenue_code "4020"
   @sales_discounts_code "4010"
   @ingredients_cogs_code "5000"
   @packing_cogs_code "5010"
@@ -463,8 +464,9 @@ defmodule Ledgr.Domains.MrMunchMe.OrderAccounting do
     wip = Accounting.get_account_by_code!(@wip_inventory_code)
     cost_cents = get_order_production_cost(order.id, wip.id) || 0
 
-    ar    = Accounting.get_account_by_code!(@ar_code)
-    sales = Accounting.get_account_by_code!(@sales_code)
+    ar               = Accounting.get_account_by_code!(@ar_code)
+    sales            = Accounting.get_account_by_code!(@sales_code)
+    shipping_revenue = Accounting.get_account_by_code!(@shipping_revenue_code)
     customer_deposits = Accounting.get_account_by_code!(@customer_deposits_code)
 
     ingredients_cogs = Accounting.get_account_by_code!(@ingredients_cogs_code)
@@ -503,48 +505,52 @@ defmodule Ledgr.Domains.MrMunchMe.OrderAccounting do
     net_ar_cents = net_revenue_cents
 
     # 1) Revenue recognition:
-    #    CR Sales (4000) for gross revenue (full product price + shipping)
+    #    DR AR (1100)              for net amount owed by customer
+    #    CR Sales (4000)           for gross product revenue (before discounts)
+    #    CR Shipping Revenue (4020) for shipping fee (when applicable)
     #    DR Sales Discounts (4010) for discount amount (contra-revenue)
-    #    DR AR (1100) for net amount owed by customer
-    #
-    # Accounting best practice: record gross sales and discount separately
-    # so discount impact is visible on P&L. Net Revenue = Sales - Sales Discounts.
     revenue_lines =
       if gross_revenue_cents > 0 do
-        base_lines = [
-          %{
-            account_id: ar.id,
-            debit_cents: net_ar_cents,
-            credit_cents: 0,
-            description: "Recognize AR for order ##{order.id} (net of discounts)"
-          },
-          %{
-            account_id: sales.id,
-            debit_cents: 0,
-            credit_cents: gross_revenue_cents,
-            description:
-              if shipping_cents > 0 do
-                "Gross sales (product + shipping) for order ##{order.id}"
-              else
-                "Gross sales revenue for order ##{order.id}"
-              end
-          }
-        ]
+        ar_line = %{
+          account_id: ar.id,
+          debit_cents: net_ar_cents,
+          credit_cents: 0,
+          description: "Recognize AR for order ##{order.id} (net of discounts)"
+        }
 
-        # Add contra-revenue discount line if there's a discount
-        if discount_cents > 0 do
-          sales_discounts = Accounting.get_account_by_code!(@sales_discounts_code)
-          base_lines ++ [
-            %{
+        product_line = %{
+          account_id: sales.id,
+          debit_cents: 0,
+          credit_cents: gross_product_price,
+          description: "Gross product revenue for order ##{order.id}"
+        }
+
+        shipping_line =
+          if shipping_cents > 0 do
+            [%{
+              account_id: shipping_revenue.id,
+              debit_cents: 0,
+              credit_cents: shipping_cents,
+              description: "Shipping revenue for order ##{order.id}"
+            }]
+          else
+            []
+          end
+
+        discount_line =
+          if discount_cents > 0 do
+            sales_discounts = Accounting.get_account_by_code!(@sales_discounts_code)
+            [%{
               account_id: sales_discounts.id,
               debit_cents: discount_cents,
               credit_cents: 0,
               description: "Sales discount for order ##{order.id}"
-            }
-          ]
-        else
-          base_lines
-        end
+            }]
+          else
+            []
+          end
+
+        [ar_line, product_line] ++ shipping_line ++ discount_line
       else
         []
       end

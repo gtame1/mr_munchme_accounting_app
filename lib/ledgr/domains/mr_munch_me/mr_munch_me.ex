@@ -70,6 +70,7 @@ defmodule Ledgr.Domains.MrMunchMe do
       customer_deposits: "2200",
       sales: "4000",
       sales_discounts: "4010",
+      shipping_revenue: "4020",
       owners_equity: "3000",
       retained_earnings: "3050",
       owners_drawings: "3100",

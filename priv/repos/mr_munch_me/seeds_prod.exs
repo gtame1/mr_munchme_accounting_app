@@ -137,6 +137,7 @@ accounts = [
   # Revenue
   %{code: "4000", name: "Sales",                            type: "revenue",   normal_balance: "credit"},
   %{code: "4010", name: "Sales Discounts",                  type: "revenue",   normal_balance: "debit"},
+  %{code: "4020", name: "Shipping Revenue",                 type: "revenue",   normal_balance: "credit"},
   %{code: "4100", name: "Other Income (Gift Contributions)", type: "revenue",  normal_balance: "credit"},
   # COGS
   %{code: "5000", name: "Ingredients Used (COGS)",          type: "expense",   normal_balance: "debit",  is_cogs: true},
