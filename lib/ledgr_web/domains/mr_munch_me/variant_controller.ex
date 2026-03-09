@@ -83,7 +83,7 @@ defmodule LedgrWeb.Domains.MrMunchMe.VariantController do
 
         current_recipe != nil ->
           new_effective_date =
-            if current_recipe.effective_date >= today_mx do
+            if Date.compare(current_recipe.effective_date, today_mx) != :lt do
               Date.add(current_recipe.effective_date, 1)
             else
               today_mx
@@ -236,7 +236,7 @@ defmodule LedgrWeb.Domains.MrMunchMe.VariantController do
     recipe_attrs =
       if current_recipe != nil do
         new_effective_date =
-          if current_recipe.effective_date >= today_mx do
+          if Date.compare(current_recipe.effective_date, today_mx) != :lt do
             Date.add(current_recipe.effective_date, 1)
           else
             today_mx

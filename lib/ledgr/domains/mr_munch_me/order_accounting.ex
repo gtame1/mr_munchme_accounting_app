@@ -30,6 +30,9 @@ defmodule Ledgr.Domains.MrMunchMe.OrderAccounting do
   @packing_cogs_code "5010"
   @samples_gifts_code "6070"
 
+  @stripe_receivable_code "1005"
+  @stripe_fees_code "6035"
+
   @production_location_code "CASA_AG"
 
   # ── Order status change dispatcher ────────────────────────────────────
@@ -685,7 +688,39 @@ defmodule Ledgr.Domains.MrMunchMe.OrderAccounting do
       ]
     end
 
-    [debit_line | credit_lines]
+    base_lines = [debit_line | credit_lines]
+
+    # For Stripe payments, add fee expense lines:
+    #   Dr 6035 Payment Processing Fees  (fee amount)
+    #   Cr 1005 Stripe Receivable         (fee amount)
+    # This records Stripe's actual processing fee (fetched via API, falls back to formula).
+    if payment.method == "stripe" && total_amount > 0 do
+      fee_cents =
+        fetch_stripe_fee_cents(order.stripe_checkout_session_id) ||
+          calculated_fee(total_amount)
+
+      stripe_receivable = Accounting.get_account_by_code!(@stripe_receivable_code)
+      stripe_fees = Accounting.get_account_by_code!(@stripe_fees_code)
+
+      fee_lines = [
+        %{
+          account_id: stripe_fees.id,
+          debit_cents: fee_cents,
+          credit_cents: 0,
+          description: "Stripe processing fee for order ##{order.id}"
+        },
+        %{
+          account_id: stripe_receivable.id,
+          debit_cents: 0,
+          credit_cents: fee_cents,
+          description: "Stripe fee deducted from receivable for order ##{order.id}"
+        }
+      ]
+
+      base_lines ++ fee_lines
+    else
+      base_lines
+    end
   end
 
   # Get the production cost for an order from the "order_in_prep" journal entry
@@ -782,5 +817,30 @@ defmodule Ledgr.Domains.MrMunchMe.OrderAccounting do
         {:error, "Cannot move to in_prep: #{names} #{verb} no unit cost set. Update the ingredient cost in Inventory before processing this order."}
       end
     end
+  end
+
+  # Fetches the actual Stripe processing fee in cents via the BalanceTransaction API.
+  # Chain: Session → PaymentIntent → latest Charge → BalanceTransaction → fee
+  # Returns nil if the session ID is missing or any API call fails.
+  defp fetch_stripe_fee_cents(nil), do: nil
+
+  defp fetch_stripe_fee_cents(session_id) do
+    with {:ok, session} <- Stripe.Checkout.Session.retrieve(session_id),
+         payment_intent_id when is_binary(payment_intent_id) <- session.payment_intent,
+         {:ok, pi} <- Stripe.PaymentIntent.retrieve(payment_intent_id),
+         latest_charge_id when is_binary(latest_charge_id) <- pi.latest_charge,
+         {:ok, charge} <- Stripe.Charge.retrieve(latest_charge_id),
+         bt_id when is_binary(bt_id) <- charge.balance_transaction,
+         {:ok, bt} <- Stripe.BalanceTransaction.retrieve(bt_id) do
+      bt.fee
+    else
+      _ -> nil
+    end
+  end
+
+  # Fallback fee formula: ~3.6% + $3 MXN fixed, plus 16% IVA on the fee.
+  defp calculated_fee(total_amount) do
+    base_fee_cents = round(total_amount * 0.036) + 300
+    round(base_fee_cents * 1.16)
   end
 end

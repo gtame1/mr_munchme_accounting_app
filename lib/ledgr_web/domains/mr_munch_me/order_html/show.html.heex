@@ -221,6 +221,11 @@
     <.link navigate={dp(@domain_path_prefix, "/orders/#{@order.id}/payments/new")} class="btn payment">
       Record Payment
     </.link>
+    <%= unless @order.status == "canceled" do %>
+      <.link navigate={dp(@domain_path_prefix, "/orders/#{@order.id}/stripe-link")} class="btn">
+        💳 Generate Payment Link
+      </.link>
+    <% end %>
   <% end %>
 
   <%= if @order.status not in ["delivered", "canceled", "ready", "in_prep"] do %>

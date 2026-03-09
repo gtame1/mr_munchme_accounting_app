@@ -3,8 +3,9 @@ defmodule Ledgr.Domains.MrMunchMe.Orders do
   alias Ledgr.Repo
 
   alias Ledgr.Domains.MrMunchMe.Orders.{Order, Product, ProductImage, ProductVariant, OrderPayment, OrderIngredient}
-  alias Ledgr.Domains.MrMunchMe.OrderAccounting
-  alias Ledgr.Core.Customers
+  alias Ledgr.Domains.MrMunchMe.{OrderAccounting, PendingCheckout}
+  alias Ledgr.Domains.MrMunchMe.Inventory.Location
+  alias Ledgr.Core.{Customers, Accounting}
   alias Ledgr.Repo
 
 
@@ -878,6 +879,184 @@ defmodule Ledgr.Domains.MrMunchMe.Orders do
   end
 
   def update_order_ingredients(%Order{} = _order, _), do: {:error, :invalid_attrs}
+
+  # ---------------------------------------------------------------------------
+  # Stripe integration
+  # ---------------------------------------------------------------------------
+
+  @doc """
+  Returns all orders associated with a Stripe Checkout Session ID.
+  Used by the success page and webhook idempotency checks.
+  """
+  def get_orders_by_stripe_session(stripe_session_id) do
+    from(o in Order,
+      where: o.stripe_checkout_session_id == ^stripe_session_id,
+      join: v in assoc(o, :variant),
+      join: p in assoc(v, :product),
+      preload: [variant: {v, product: p}]
+    )
+    |> Repo.all()
+  end
+
+  @doc """
+  Saves the Stripe Checkout Session ID on an order so the success page can find it.
+  Called when the admin generates a payment link for an existing order.
+  """
+  def set_stripe_checkout_session(order_id, stripe_session_id) do
+    Repo.get!(Order, order_id)
+    |> Order.changeset(%{"stripe_checkout_session_id" => stripe_session_id})
+    |> Repo.update()
+  end
+
+  @doc """
+  Creates one order per cart item from a completed Stripe checkout, then records
+  a payment on each order. Called from the Stripe webhook after
+  `checkout.session.completed`.
+
+  Each order gets:
+    - `stripe_checkout_session_id` — for lookup on the success page
+    - An `OrderPayment` with `method: "stripe"` and `paid_to_account_id` pointing
+      to account 1005 (Stripe Receivable), which auto-creates the journal entry.
+  """
+  def create_orders_from_pending_checkout(%PendingCheckout{} = pending, stripe_session_id) do
+    stripe_account = Accounting.get_account_by_code!("1005")
+    default_location = Repo.get_by!(Location, code: "CASA_AG")
+    customer = Customers.get_customer!(pending.customer_id)
+    checkout_attrs = pending.checkout_attrs
+
+    delivery_date =
+      case Date.from_iso8601(checkout_attrs["delivery_date"] || "") do
+        {:ok, d} -> d
+        _ -> Date.utc_today()
+      end
+
+    delivery_type = checkout_attrs["delivery_type"] || "pickup"
+
+    customer_paid_shipping = delivery_type == "delivery"
+
+    Repo.transaction(fn ->
+      Enum.map(pending.cart, fn {variant_id_str, quantity} ->
+        quantity = if is_integer(quantity), do: quantity, else: String.to_integer("#{quantity}")
+        {variant_id, _} = Integer.parse("#{variant_id_str}")
+
+        order_attrs = %{
+          "customer_id" => customer.id,
+          "variant_id" => variant_id,
+          "quantity" => quantity,
+          "delivery_type" => delivery_type,
+          "delivery_date" => delivery_date,
+          "delivery_address" => checkout_attrs["delivery_address"],
+          "special_instructions" => checkout_attrs["special_instructions"],
+          "prep_location_id" => default_location.id,
+          "customer_paid_shipping" => customer_paid_shipping,
+          "stripe_checkout_session_id" => stripe_session_id
+        }
+
+        order =
+          case create_order(order_attrs) do
+            {:ok, o} -> o
+            {:error, reason} -> Repo.rollback(reason)
+          end
+
+        order = Repo.preload(order, [:variant, :order_payments])
+        summary = payment_summary_from_preloaded(order)
+        amount_cents = summary.order_total_cents
+
+        payment_attrs = %{
+          "order_id" => order.id,
+          "amount_cents" => amount_cents,
+          "paid_to_account_id" => stripe_account.id,
+          "method" => "stripe",
+          "payment_date" => Date.utc_today(),
+          "is_deposit" => false
+        }
+
+        case create_order_payment(payment_attrs) do
+          {:ok, _payment} -> order
+          {:error, reason} -> Repo.rollback(reason)
+        end
+      end)
+    end)
+  end
+
+  @doc """
+  Records Stripe payments for existing COD orders that the customer chose to pay online.
+  Updates each order's `stripe_checkout_session_id` and creates an `OrderPayment` with
+  method "stripe". Idempotent — skips orders that already have a Stripe payment.
+  """
+  def create_payments_for_existing_orders(order_ids, stripe_session_id) do
+    stripe_account = Accounting.get_account_by_code!("1005")
+
+    Repo.transaction(fn ->
+      Enum.each(order_ids, fn order_id ->
+        order = Repo.get!(Order, order_id) |> Repo.preload([:variant, :order_payments])
+
+        # Idempotency: skip if already has a Stripe payment
+        already_paid = Enum.any?(order.order_payments, fn p -> p.method == "stripe" end)
+
+        unless already_paid do
+          order
+          |> Order.changeset(%{"stripe_checkout_session_id" => stripe_session_id})
+          |> Repo.update!()
+
+          summary = payment_summary_from_preloaded(order)
+          amount_cents = summary.order_total_cents
+
+          payment_attrs = %{
+            "order_id" => order_id,
+            "amount_cents" => amount_cents,
+            "paid_to_account_id" => stripe_account.id,
+            "method" => "stripe",
+            "payment_date" => Date.utc_today(),
+            "is_deposit" => false
+          }
+
+          case create_order_payment(payment_attrs) do
+            {:ok, _payment} -> :ok
+            {:error, reason} -> Repo.rollback(reason)
+          end
+        end
+      end)
+    end)
+  end
+
+  def create_orders_cod(cart, customer_id, checkout_attrs) do
+    default_location = Repo.get_by!(Location, code: "CASA_AG")
+    customer = Customers.get_customer!(customer_id)
+
+    delivery_date =
+      case Date.from_iso8601(checkout_attrs["delivery_date"] || "") do
+        {:ok, d} -> d
+        _ -> Date.utc_today()
+      end
+
+    delivery_type = checkout_attrs["delivery_type"] || "pickup"
+    customer_paid_shipping = delivery_type == "delivery"
+
+    Repo.transaction(fn ->
+      Enum.map(cart, fn {variant_id_str, quantity} ->
+        quantity = if is_integer(quantity), do: quantity, else: String.to_integer("#{quantity}")
+        {variant_id, _} = Integer.parse("#{variant_id_str}")
+
+        order_attrs = %{
+          "customer_id" => customer.id,
+          "variant_id" => variant_id,
+          "quantity" => quantity,
+          "delivery_type" => delivery_type,
+          "delivery_date" => delivery_date,
+          "delivery_address" => checkout_attrs["delivery_address"],
+          "special_instructions" => checkout_attrs["special_instructions"],
+          "prep_location_id" => default_location.id,
+          "customer_paid_shipping" => customer_paid_shipping
+        }
+
+        case create_order(order_attrs) do
+          {:ok, order} -> order
+          {:error, reason} -> Repo.rollback(reason)
+        end
+      end)
+    end)
+  end
 
   # ---------------------------------------------------------------------------
   # Private helpers

@@ -1,0 +1,34 @@
+<div class="confirmation-page">
+  <div class="confirmation-icon">&#10003;</div>
+  <h1 class="confirmation-title">¡Gracias, <%= @customer_name %>!</h1>
+  <p class="confirmation-subtitle">Tu pago fue procesado y tu pedido está confirmado.</p>
+
+  <div class="confirmation-details">
+    <div class="confirmation-info">
+      <span class="confirmation-label">
+        <%= if @delivery_type == "delivery", do: "Envío a domicilio", else: "Recoger en local" %>:
+      </span>
+      <span><%= @delivery_date %></span>
+    </div>
+    <div class="confirmation-info">
+      <span class="confirmation-label">Referencia:</span>
+      <span><%= @orders |> Enum.map(fn o -> "##{o.id}" end) |> Enum.join(", ") %></span>
+    </div>
+  </div>
+
+  <div class="confirmation-summary">
+    <h2 class="confirmation-section-title">Resumen del pedido</h2>
+    <%= for order <- @orders do %>
+      <div class="confirmation-item">
+        <span><%= order.variant.product.name %> · <%= order.variant.name %> &times;<%= order.quantity %></span>
+      </div>
+    <% end %>
+  </div>
+
+  <div class="confirmation-actions">
+    <a href={@whatsapp_url} target="_blank" class="btn whatsapp-btn">
+      Coordinar entrega por WhatsApp
+    </a>
+    <a href="/mr-munch-me/menu" class="btn btn-secondary">Volver al Menú</a>
+  </div>
+</div>

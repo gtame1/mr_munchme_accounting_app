@@ -34,6 +34,15 @@
     <a href={@whatsapp_url} target="_blank" class="btn whatsapp-btn">
       Confirmar por WhatsApp
     </a>
+    <form action="/mr-munch-me/checkout/pay-existing" method="post" style="display:contents">
+      <input type="hidden" name="_csrf_token" value={Plug.CSRFProtection.get_csrf_token()} />
+      <%= for order <- @orders do %>
+        <input type="hidden" name="order_ids[]" value={order.id} />
+      <% end %>
+      <button type="submit" class="btn btn-primary">
+        💳 Pagar ahora con tarjeta
+      </button>
+    </form>
     <a href="/mr-munch-me/menu" class="btn btn-secondary">Volver al Menú</a>
   </div>
 </div>

@@ -113,7 +113,7 @@ defmodule LedgrWeb.Domains.MrMunchMe.RecipeController do
     today_mx = NaiveDateTime.utc_now() |> NaiveDateTime.add(-6 * 3600, :second) |> NaiveDateTime.to_date()
 
     new_effective_date =
-      if original_recipe.effective_date >= today_mx do
+      if Date.compare(original_recipe.effective_date, today_mx) != :lt do
         Date.add(original_recipe.effective_date, 1)
       else
         today_mx

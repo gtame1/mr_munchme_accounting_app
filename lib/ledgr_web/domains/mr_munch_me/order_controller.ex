@@ -430,6 +430,46 @@ defmodule LedgrWeb.Domains.MrMunchMe.OrderController do
     end
   end
 
+  def stripe_link(conn, %{"id" => id}) do
+    order = Orders.get_order!(id)
+
+    base_url = "#{conn.scheme}://#{conn.host}#{if conn.port not in [80, 443], do: ":#{conn.port}", else: ""}"
+
+    line_items = [
+      %{
+        price_data: %{
+          currency: "mxn",
+          unit_amount: order.variant.price_cents,
+          product_data: %{
+            name: "#{order.variant.product.name} — #{order.variant.name}"
+          }
+        },
+        quantity: order.quantity || 1
+      }
+    ]
+
+    case Stripe.Checkout.Session.create(%{
+           mode: "payment",
+           currency: "mxn",
+           line_items: line_items,
+           metadata: %{order_ids: to_string(order.id)},
+           success_url: "#{base_url}/mr-munch-me/checkout/success?session_id={CHECKOUT_SESSION_ID}",
+           cancel_url: "#{base_url}/mr-munch-me/checkout/cancel"
+         }) do
+      {:ok, session} ->
+        Logger.info("Stripe link generated for order #{id}: session #{session.id}")
+        Orders.set_stripe_checkout_session(order.id, session.id)
+        render(conn, :stripe_link, order: order, stripe_url: session.url)
+
+      {:error, reason} ->
+        Logger.error("Failed to generate Stripe link for order #{id}: #{inspect(reason)}")
+
+        conn
+        |> put_flash(:error, "Could not generate payment link. Please try again.")
+        |> redirect(to: dp(conn, "/orders/#{id}"))
+    end
+  end
+
   def calendar(conn, params) do
     # Parse year and month from params, default to current month
     today = Date.utc_today()

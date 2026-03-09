@@ -85,7 +85,8 @@ defmodule Ledgr.MixProject do
       {:bandit, "~> 1.5"},
       {:bcrypt_elixir, "~> 3.0"},
       {:excoveralls, "~> 0.18", only: :test},
-      {:earmark, "~> 1.4"}
+      {:earmark, "~> 1.4"},
+      {:stripity_stripe, "~> 3.0"}
     ]
   end
 

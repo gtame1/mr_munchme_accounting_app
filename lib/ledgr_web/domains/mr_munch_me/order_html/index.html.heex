@@ -1,91 +1,50 @@
+<%!-- ── Active Orders ── --%>
 <section class="card">
-  <div class="card-header">
-    <h2 class="card-title">Orders</h2>
-    <p class="card-subtitle">
-      Overview of all orders and their current status.
-    </p>
+  <div class="card-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem;">
+    <div>
+      <h2 class="card-title">Orders</h2>
+    </div>
+    <div style="display: flex; gap: 0.5rem; flex-shrink: 0;">
+      <.link navigate={dp(@domain_path_prefix, "/orders/calendar")} class="btn">📅 Calendar</.link>
+      <.link navigate={dp(@domain_path_prefix, "/orders/new")} class="btn primary">+ New Order</.link>
+    </div>
   </div>
 
-  <div class="actions" style="margin-bottom: 0.75rem; display: flex; gap: 0.5rem;">
-    <.link navigate={dp(@domain_path_prefix, "/orders/new")} class="btn primary">
-      + New Order
-    </.link>
-    <.link navigate={dp(@domain_path_prefix, "/orders/calendar")} class="btn">
-      📅 Calendar View
-    </.link>
-  </div>
+  <%!-- Filters --%>
+  <.form for={%{}} method="get" action={dp(@domain_path_prefix, "/orders")} :let={_f}>
+    <div class="filter-bar">
+      <select name="status" class="filter-select" onchange="this.form.submit()">
+        <option value="">All statuses</option>
+        <option value="new_order" selected={@filters.status == "new_order"}>New order</option>
+        <option value="in_prep" selected={@filters.status == "in_prep"}>In prep</option>
+        <option value="ready" selected={@filters.status == "ready"}>Ready</option>
+        <option value="delivered" selected={@filters.status == "delivered"}>Delivered</option>
+        <option value="canceled" selected={@filters.status == "canceled"}>Canceled</option>
+      </select>
 
-  <!-- Filters -->
-  <.form for={%{}} method="get" action={dp(@domain_path_prefix, "/orders")} class="form-grid" :let={_f}>
-    <div class="form-block">
-      <div class="field">
-        <label>Status</label>
-        <select name="status">
-          <option value="">All</option>
-          <option value="new_order" selected={@filters.status == "new_order"}>New order</option>
-          <option value="in_prep" selected={@filters.status == "in_prep"}>In prep</option>
-          <option value="ready" selected={@filters.status == "ready"}>Ready</option>
-          <option value="delivered" selected={@filters.status == "delivered"}>Delivered</option>
-          <option value="canceled" selected={@filters.status == "canceled"}>Canceled</option>
-        </select>
-      </div>
+      <select name="delivery_type" class="filter-select" onchange="this.form.submit()">
+        <option value="">All types</option>
+        <option value="pickup" selected={@filters.delivery_type == "pickup"}>Pickup</option>
+        <option value="delivery" selected={@filters.delivery_type == "delivery"}>Delivery</option>
+      </select>
 
-      <div class="field">
-        <label>Delivery type</label>
-        <select name="delivery_type">
-          <option value="">All</option>
-          <option value="pickup" selected={@filters.delivery_type == "pickup"}>Pickup</option>
-          <option value="delivery" selected={@filters.delivery_type == "delivery"}>Delivery</option>
-        </select>
-      </div>
-
-      <div class="field">
-        <label>Product</label>
-        <select name="product_id">
-          <option value="">All</option>
-          <%= for {label, id} <- @product_filter_options do %>
-            <option value={id} selected={to_string(id) == @filters.product_id}><%= label %></option>
-          <% end %>
-        </select>
-      </div>
-
-<!--
-      <div class="field">
-        <label>Delivery date from</label>
-        <input type="date" name="date_from" value={@filters.date_from} />
-      </div>
-
-      <div class="field">
-        <label>Delivery date to</label>
-        <input type="date" name="date_to" value={@filters.date_to} />
-      </div>
--->
-      <div class="field">
-        <label>Prep Location</label>
-        <select name="prep_location_id">
-          <option value="">All</option>
-
-          <%= for {label, id} <- @location_filter_options do %>
-            <option value={id} selected={to_string(id) == @filters.prep_location_id}>
-              <%= label %>
-            </option>
-          <% end %>
-        </select>
-      </div>
-      
-      <div class="field">
-        <label>&nbsp;</label>
-
-        <%= if filters_active?(@filters) do %>
-          <.link navigate={dp(@domain_path_prefix, "/orders")} class="btn">
-            Clear filters
-          </.link>
-        <% else %>
-          <button class="btn" type="submit">
-            Apply filters
-          </button>
+      <select name="product_id" class="filter-select" onchange="this.form.submit()">
+        <option value="">All products</option>
+        <%= for {label, id} <- @product_filter_options do %>
+          <option value={id} selected={to_string(id) == @filters.product_id}><%= label %></option>
         <% end %>
-      </div>
+      </select>
+
+      <select name="prep_location_id" class="filter-select" onchange="this.form.submit()">
+        <option value="">All locations</option>
+        <%= for {label, id} <- @location_filter_options do %>
+          <option value={id} selected={to_string(id) == @filters.prep_location_id}><%= label %></option>
+        <% end %>
+      </select>
+
+      <%= if filters_active?(@filters) do %>
+        <.link navigate={dp(@domain_path_prefix, "/orders")} class="btn btn-sm">✕ Clear</.link>
+      <% end %>
     </div>
   </.form>
 
@@ -93,7 +52,7 @@
     <table class="table">
       <thead>
         <tr>
-          <th>#</th>
+          <th style="width: 2.5rem;">#</th>
           <th>
             <.link navigate={dp(@domain_path_prefix, "/orders?#{URI.encode_query(Map.merge(@filters, %{sort_by: "customer_name", sort_dir: next_dir(@filters, "customer_name")}))}")}>
               Customer <span class="sort-arrow"><%= sort_arrow(@filters, "customer_name") %></span>
@@ -106,17 +65,16 @@
           </th>
           <th>
             <.link navigate={dp(@domain_path_prefix, "/orders?#{URI.encode_query(Map.merge(@filters, %{sort_by: "delivery_date", sort_dir: next_dir(@filters, "delivery_date")}))}")}>
-              Delivery Date <span class="sort-arrow"><%= sort_arrow(@filters, "delivery_date") %></span>
+              Delivery <span class="sort-arrow"><%= sort_arrow(@filters, "delivery_date") %></span>
             </.link>
           </th>
-          <th>Type</th>
           <th>
             <.link navigate={dp(@domain_path_prefix, "/orders?#{URI.encode_query(Map.merge(@filters, %{sort_by: "status", sort_dir: next_dir(@filters, "status")}))}")}>
               Status <span class="sort-arrow"><%= sort_arrow(@filters, "status") %></span>
             </.link>
           </th>
-          <th>Prep Location</th>
-          <th>Payment Status</th>
+          <th>Location</th>
+          <th>Payment</th>
           <th>Actions</th>
         </tr>
       </thead>
@@ -124,46 +82,46 @@
       <tbody>
         <%= if Enum.empty?(@orders) do %>
           <tr>
-            <td colspan="9">No active orders.</td>
+            <td colspan="8" style="text-align: center; padding: 2rem 1rem; color: var(--text-muted);">
+              No active orders.
+            </td>
           </tr>
         <% else %>
           <%= for order <- @orders do %>
-            <tr>
-              <td>
-                <.link navigate={dp(@domain_path_prefix, "/orders/#{order.id}")} class="link-text">
-                  <%= order.id %>
-                </.link>
+            <tr class="clickable-row" data-href={dp(@domain_path_prefix, "/orders/#{order.id}")}>
+              <td style="color: var(--text-muted); font-size: 0.8rem; font-variant-numeric: tabular-nums;">
+                <%= order.id %>
               </td>
-              <td><%= order.customer_name %></td>
+              <td style="font-weight: 500;"><%= order.customer_name %></td>
               <td>
-                <%= order.variant && (order.variant.product.name <> " · " <> order.variant.name) %><%= if (order.quantity || 1) > 1, do: " x#{order.quantity}" %>
+                <%= order.variant && (order.variant.product.name <> " · " <> order.variant.name) %><%= if (order.quantity || 1) > 1, do: " ×#{order.quantity}" %>
                 <%= if order.special_instructions && order.special_instructions != "" do %>
-                  <br /><span style="font-size: 0.78rem; color: #6b7280; font-style: italic;">📝 <%= order.special_instructions %></span>
+                  <div style="font-size: 0.75rem; color: var(--text-muted); font-style: italic; margin-top: 0.15rem;">📝 <%= order.special_instructions %></div>
                 <% end %>
               </td>
-              <td><%= order.delivery_date %></td>
-              <td><%= String.capitalize(order.delivery_type || "") %></td>
-
               <td>
-                <div style="display: flex; gap: 0.35rem; align-items: center; flex-wrap: wrap;">
+                <div><%= order.delivery_date %></div>
+                <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.1rem;"><%= String.capitalize(order.delivery_type || "") %></div>
+              </td>
+              <td>
+                <div style="display: flex; gap: 0.3rem; align-items: center; flex-wrap: wrap;">
                   <.status_badge status={order.status} />
                   <%= if order.is_gift do %>
                     <span style="display: inline-block; padding: 0.1rem 0.4rem; font-size: 0.73rem; font-weight: 600; border-radius: 999px; background: #fef3c7; color: #92400e;">🎁 Gift</span>
                   <% end %>
                 </div>
               </td>
-
               <td><.location_badge location={order.prep_location} /></td>
               <td>
                 <%= if order.is_gift do %>
-                  <span style="font-size: 0.8rem; color: #92400e; font-style: italic;">N/A</span>
+                  <span style="font-size: 0.8rem; color: var(--text-muted);">—</span>
                 <% else %>
                   <%= if order.payment_summary do %>
                     <%= cond do %>
                       <% order.payment_summary.fully_paid? -> %>
                         <span class="status-badge status-paid">Paid</span>
                       <% order.payment_summary.partially_paid? -> %>
-                        <span class="status-badge status-partial">Partially paid</span>
+                        <span class="status-badge status-partial">Partial</span>
                       <% true -> %>
                         <span class="status-badge status-unpaid">Unpaid</span>
                     <% end %>
@@ -173,45 +131,37 @@
                 <% end %>
               </td>
               <td>
-                <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
-                  <%!-- Quick Status Update Buttons (same logic as order show page) --%>
+                <div style="display: flex; gap: 0.35rem; align-items: center; flex-wrap: wrap;">
                   <%= if order.status == "new_order" do %>
-                    <.form for={%{}} as={:status} action={dp(@domain_path_prefix, "/orders/#{order.id}/status")} method="post" style="display: inline;" onsubmit="return confirm('Are you sure you want to move this order to In Prep?\n\nMake sure you have reviewed the ingredients. Inventory will be deducted and ingredients will be locked after this step.');">
+                    <.form for={%{}} as={:status} action={dp(@domain_path_prefix, "/orders/#{order.id}/status")} method="post" style="display: inline;" onsubmit="return confirm('Move this order to In Prep?\n\nInventory will be deducted and ingredients locked.');">
                       <input type="hidden" name="status[status]" value="in_prep" />
-                      <button class="btn btn-sm primary" type="submit" style="font-size: 0.75rem; padding: 0.25rem 0.5rem; white-space: nowrap;">Confirm & In Prep</button>
+                      <button class="btn btn-sm primary" type="submit">In Prep</button>
+                    </.form>
+                    <.form for={%{}} as={:status} action={dp(@domain_path_prefix, "/orders/#{order.id}/status")} method="post" style="display: inline;">
+                      <input type="hidden" name="status[status]" value="canceled" />
+                      <button class="btn btn-sm danger" type="submit">Cancel</button>
                     </.form>
                   <% end %>
 
                   <%= if order.status == "in_prep" do %>
                     <.form for={%{}} as={:status} action={dp(@domain_path_prefix, "/orders/#{order.id}/status")} method="post" style="display: inline;">
                       <input type="hidden" name="status[status]" value="ready" />
-                      <button class="btn btn-sm primary" type="submit" style="font-size: 0.75rem; padding: 0.25rem 0.5rem; white-space: nowrap;">Mark as Ready</button>
+                      <button class="btn btn-sm primary" type="submit">Ready</button>
                     </.form>
                   <% end %>
 
                   <%= if order.status == "ready" do %>
                     <.form for={%{}} as={:status} action={dp(@domain_path_prefix, "/orders/#{order.id}/status")} method="post" style="display: inline;">
                       <input type="hidden" name="status[status]" value="delivered" />
-                      <button class="btn btn-sm primary" type="submit" style="font-size: 0.75rem; padding: 0.25rem 0.5rem; white-space: nowrap;">Mark as Delivered</button>
+                      <button class="btn btn-sm primary" type="submit">Delivered</button>
                     </.form>
                   <% end %>
 
-                  <%= if order.status not in ["delivered", "canceled", "ready", "in_prep"] do %>
-                    <.form for={%{}} as={:status} action={dp(@domain_path_prefix, "/orders/#{order.id}/status")} method="post" style="display: inline;">
-                      <input type="hidden" name="status[status]" value="canceled" />
-                      <button class="btn btn-sm danger" type="submit" style="font-size: 0.75rem; padding: 0.25rem 0.5rem; white-space: nowrap;">Cancel Order</button>
-                    </.form>
-                  <% end %>
-
-                  <%!-- Quick Payment (hide for gifts) --%>
                   <%= if !order.is_gift and (!order.payment_summary || !order.payment_summary.fully_paid?) do %>
                     <.link
                       navigate={dp(@domain_path_prefix, "/orders/#{order.id}/payments/new")}
                       class="btn btn-sm"
-                      style="font-size: 0.75rem; padding: 0.25rem 0.5rem; white-space: nowrap;"
-                    >
-                      💰 Payment
-                    </.link>
+                    >💰 Pay</.link>
                   <% end %>
                 </div>
               </td>
@@ -223,52 +173,47 @@
   </div>
 </section>
 
-<!-- Completed Orders Section -->
-<section class="card" style="margin-top: 2rem;">
+<%!-- ── Completed Orders ── --%>
+<section class="card" style="margin-top: 1.5rem;">
   <div class="card-header">
-    <h2 class="card-title">Completed Orders (Delivered & Paid)</h2>
-    <p class="card-subtitle">
-      Orders that have been delivered and fully paid.
-    </p>
+    <h2 class="card-title">Completed</h2>
+    <p class="card-subtitle">Delivered and fully paid.</p>
   </div>
 
   <div class="table-wrapper">
     <table class="table">
       <thead>
         <tr>
-          <th>#</th>
+          <th style="width: 2.5rem;">#</th>
           <th>Customer</th>
           <th>Product</th>
-          <th>Delivery Date</th>
-          <th>Type</th>
+          <th>Delivery</th>
           <th>Status</th>
-          <th>Prep Location</th>
-          <th>Payment Status</th>
+          <th>Location</th>
+          <th>Payment</th>
         </tr>
       </thead>
 
       <tbody>
         <%= if Enum.empty?(@completed_orders) do %>
           <tr>
-            <td colspan="8">No completed orders.</td>
+            <td colspan="7" style="text-align: center; padding: 2rem 1rem; color: var(--text-muted);">
+              No completed orders.
+            </td>
           </tr>
         <% else %>
           <%= for order <- @completed_orders do %>
-            <tr>
-              <td>
-                <.link navigate={dp(@domain_path_prefix, "/orders/#{order.id}")} class="link-text">
-                  <%= order.id %>
-                </.link>
+            <tr class="clickable-row" data-href={dp(@domain_path_prefix, "/orders/#{order.id}")}>
+              <td style="color: var(--text-muted); font-size: 0.8rem; font-variant-numeric: tabular-nums;">
+                <%= order.id %>
               </td>
-              <td><%= order.customer_name %></td>
-              <td><%= order.variant && (order.variant.product.name <> " · " <> order.variant.name) %><%= if (order.quantity || 1) > 1, do: " x#{order.quantity}" %></td>
-              <td><%= order.delivery_date %></td>
-              <td><%= String.capitalize(order.delivery_type || "") %></td>
-
+              <td style="font-weight: 500;"><%= order.customer_name %></td>
+              <td><%= order.variant && (order.variant.product.name <> " · " <> order.variant.name) %><%= if (order.quantity || 1) > 1, do: " ×#{order.quantity}" %></td>
               <td>
-                <.status_badge status={order.status} />
+                <div><%= order.delivery_date %></div>
+                <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.1rem;"><%= String.capitalize(order.delivery_type || "") %></div>
               </td>
-
+              <td><.status_badge status={order.status} /></td>
               <td><.location_badge location={order.prep_location} /></td>
               <td>
                 <%= if order.payment_summary do %>
@@ -276,7 +221,7 @@
                     <% order.payment_summary.fully_paid? -> %>
                       <span class="status-badge status-paid">Paid</span>
                     <% order.payment_summary.partially_paid? -> %>
-                      <span class="status-badge status-partial">Partially paid</span>
+                      <span class="status-badge status-partial">Partial</span>
                     <% true -> %>
                       <span class="status-badge status-unpaid">Unpaid</span>
                   <% end %>
@@ -292,61 +237,55 @@
   </div>
 
   <%= if @has_more_completed do %>
-    <div class="actions" style="margin-top: 1rem; text-align: center;">
+    <div style="margin-top: 1rem; text-align: center;">
       <.link navigate={dp(@domain_path_prefix, "/orders?#{URI.encode_query(Map.merge(@filters, %{completed_offset: @completed_offset + 10}))}")} class="btn">
-        Load More
+        Load more
       </.link>
     </div>
   <% end %>
 </section>
 
-<!-- Finished Orders Section (Canceled) -->
+<%!-- ── Canceled Orders ── --%>
 <%= if @filters.status != "canceled" do %>
-<section class="card" style="margin-top: 2rem;">
+<section class="card" style="margin-top: 1.5rem;">
   <div class="card-header">
-    <h2 class="card-title">Canceled Orders</h2>
-    <p class="card-subtitle">
-      Orders that have been canceled.
-    </p>
+    <h2 class="card-title">Canceled</h2>
   </div>
 
   <div class="table-wrapper">
     <table class="table">
       <thead>
         <tr>
-          <th>#</th>
+          <th style="width: 2.5rem;">#</th>
           <th>Customer</th>
           <th>Product</th>
-          <th>Delivery Date</th>
-          <th>Type</th>
+          <th>Delivery</th>
           <th>Status</th>
-          <th>Prep Location</th>
-          <th>Payment Status</th>
+          <th>Location</th>
+          <th>Payment</th>
         </tr>
       </thead>
 
       <tbody>
         <%= if Enum.empty?(@canceled_orders) do %>
           <tr>
-            <td colspan="8">No canceled orders.</td>
+            <td colspan="7" style="text-align: center; padding: 2rem 1rem; color: var(--text-muted);">
+              No canceled orders.
+            </td>
           </tr>
         <% else %>
           <%= for order <- @canceled_orders do %>
-            <tr>
-              <td>
-                <.link navigate={dp(@domain_path_prefix, "/orders/#{order.id}")} class="link-text">
-                  <%= order.id %>
-                </.link>
+            <tr class="clickable-row" data-href={dp(@domain_path_prefix, "/orders/#{order.id}")}>
+              <td style="color: var(--text-muted); font-size: 0.8rem; font-variant-numeric: tabular-nums;">
+                <%= order.id %>
               </td>
-              <td><%= order.customer_name %></td>
-              <td><%= order.variant && (order.variant.product.name <> " · " <> order.variant.name) %><%= if (order.quantity || 1) > 1, do: " x#{order.quantity}" %></td>
-              <td><%= order.delivery_date %></td>
-              <td><%= String.capitalize(order.delivery_type || "") %></td>
-
+              <td style="font-weight: 500;"><%= order.customer_name %></td>
+              <td><%= order.variant && (order.variant.product.name <> " · " <> order.variant.name) %><%= if (order.quantity || 1) > 1, do: " ×#{order.quantity}" %></td>
               <td>
-                <.status_badge status={order.status} />
+                <div><%= order.delivery_date %></div>
+                <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.1rem;"><%= String.capitalize(order.delivery_type || "") %></div>
               </td>
-
+              <td><.status_badge status={order.status} /></td>
               <td><.location_badge location={order.prep_location} /></td>
               <td>
                 <%= if order.payment_summary do %>
@@ -354,7 +293,7 @@
                     <% order.payment_summary.fully_paid? -> %>
                       <span class="status-badge status-paid">Paid</span>
                     <% order.payment_summary.partially_paid? -> %>
-                      <span class="status-badge status-partial">Partially paid</span>
+                      <span class="status-badge status-partial">Partial</span>
                     <% true -> %>
                       <span class="status-badge status-unpaid">Unpaid</span>
                   <% end %>
@@ -370,11 +309,21 @@
   </div>
 
   <%= if @has_more_canceled do %>
-    <div class="actions" style="margin-top: 1rem; text-align: center;">
+    <div style="margin-top: 1rem; text-align: center;">
       <.link navigate={dp(@domain_path_prefix, "/orders?#{URI.encode_query(Map.merge(@filters, %{canceled_offset: @canceled_offset + 50}))}")} class="btn">
-        Load More
+        Load more
       </.link>
     </div>
   <% end %>
 </section>
 <% end %>
+
+<script>
+  document.querySelectorAll("tr.clickable-row").forEach(function(row) {
+    row.addEventListener("click", function(e) {
+      if (!e.target.closest("a, button, form, input")) {
+        window.location.href = row.dataset.href;
+      }
+    });
+  });
+</script>

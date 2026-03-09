@@ -1,8 +1,9 @@
 defmodule LedgrWeb.Storefront.CheckoutController do
   use LedgrWeb, :controller
 
-  alias Ledgr.Domains.MrMunchMe.Orders
-  alias Ledgr.Domains.MrMunchMe.Inventory
+  require Logger
+
+  alias Ledgr.Domains.MrMunchMe.{Orders, PendingCheckouts}
   alias Ledgr.Core.Customers
 
   @whatsapp_number "525543417149"
@@ -34,12 +35,10 @@ defmodule LedgrWeb.Storefront.CheckoutController do
     else
       {cart_items, cart_total} = load_cart_items(cart)
 
-      # Find or create customer by phone
       customer_phone = String.trim(checkout_params["customer_phone"] || "")
       customer_name = String.trim(checkout_params["customer_name"] || "")
       customer_email = String.trim(checkout_params["customer_email"] || "")
 
-      # Basic validation
       errors =
         %{}
         |> maybe_add_error(customer_name == "", :customer_name, "El nombre es requerido")
@@ -54,6 +53,11 @@ defmodule LedgrWeb.Storefront.CheckoutController do
           :delivery_date,
           "Por favor selecciona una fecha"
         )
+        |> maybe_add_error(
+          String.trim(checkout_params["payment_method"] || "") == "",
+          :payment_method,
+          "Por favor selecciona un método de pago"
+        )
 
       if map_size(errors) > 0 do
         conn
@@ -62,7 +66,6 @@ defmodule LedgrWeb.Storefront.CheckoutController do
         |> put_flash(:error, "Por favor corrige los errores a continuación.")
         |> render(:new, cart_items: cart_items, cart_total: cart_total, errors: errors, form_values: checkout_params)
       else
-        # Find or create customer
         customer_attrs = %{
           name: customer_name,
           email: if(customer_email != "", do: customer_email, else: nil),
@@ -71,7 +74,10 @@ defmodule LedgrWeb.Storefront.CheckoutController do
 
         case Customers.find_or_create_by_phone(customer_phone, customer_attrs) do
           {:ok, customer} ->
-            create_orders_for_cart(conn, cart, customer, checkout_params, cart_items, cart_total)
+            case checkout_params["payment_method"] do
+              "stripe" -> redirect_to_stripe(conn, cart, cart_items, customer, checkout_params)
+              "cod" -> create_cod_orders(conn, cart, cart_items, customer, checkout_params)
+            end
 
           {:error, _} ->
             conn
@@ -89,127 +95,344 @@ defmodule LedgrWeb.Storefront.CheckoutController do
     end
   end
 
-  defp create_orders_for_cart(conn, cart, customer, checkout_params, cart_items, cart_total) do
-    # Get default prep location
-    default_location = get_default_prep_location()
+  def success(conn, %{"session_id" => stripe_session_id}) do
+    orders = Orders.get_orders_by_stripe_session(stripe_session_id)
 
-    results =
-      Enum.map(cart, fn {variant_id_str, quantity} ->
-        delivery_time =
-          case checkout_params["delivery_time"] do
-            t when is_binary(t) and t != "" -> t
-            _ -> nil
-          end
+    orders =
+      if Enum.empty?(orders) do
+        case attempt_order_creation_fallback(stripe_session_id) do
+          :ok -> Orders.get_orders_by_stripe_session(stripe_session_id)
+          :skip -> []
+        end
+      else
+        orders
+      end
 
-        special_instructions =
-          case checkout_params["special_instructions"] do
-            s when is_binary(s) and s != "" -> String.trim(s)
-            _ -> nil
-          end
+    if Enum.empty?(orders) do
+      conn
+      |> assign(:storefront, true)
+      |> assign(:page_title, "Procesando tu pedido...")
+      |> render(:processing, stripe_session_id: stripe_session_id)
+    else
+      first_order = hd(orders)
+      customer_name = first_order.customer_name
+      delivery_type = first_order.delivery_type
+      delivery_date = first_order.delivery_date
+      special_instructions = Enum.find_value(orders, fn o -> o.special_instructions end)
 
-        order_attrs = %{
-          "customer_id" => customer.id,
-          "delivery_type" => checkout_params["delivery_type"],
-          "delivery_date" => checkout_params["delivery_date"],
-          "delivery_time" => delivery_time,
-          "delivery_address" => checkout_params["delivery_address"],
-          "special_instructions" => special_instructions,
-          "variant_id" => variant_id_str,
-          "prep_location_id" => to_string(default_location.id),
-          "quantity" => to_string(quantity),
-          "customer_paid_shipping" => to_string(checkout_params["delivery_type"] == "delivery")
+      items = Enum.map(orders, fn o ->
+        %{
+          product_name: o.variant.product.name,
+          variant_name: o.variant.name,
+          quantity: o.quantity || 1,
+          subtotal_cents: o.variant.price_cents * (o.quantity || 1)
         }
-
-        Orders.create_order(order_attrs)
       end)
 
-    failures =
-      Enum.filter(results, fn
-        {:ok, _} -> false
-        {:error, _} -> true
-      end)
-
-    if Enum.empty?(failures) do
-      created_orders = Enum.map(results, fn {:ok, order} -> order end)
-
-      # Build WhatsApp message
-      whatsapp_message = build_whatsapp_message(customer, cart_items, cart_total, checkout_params)
-      whatsapp_url = "https://wa.me/#{@whatsapp_number}?text=#{URI.encode(whatsapp_message)}"
+      order_ids = Enum.map(orders, & &1.id)
+      whatsapp_url = build_whatsapp_url(customer_name, order_ids, items, delivery_type, delivery_date, "stripe", special_instructions)
 
       conn
       |> delete_session(:cart)
       |> assign(:storefront, true)
-      |> assign(:page_title, "Order Confirmed")
-      |> render(:confirmation,
-        orders: created_orders,
-        customer_name: customer.name,
-        cart_items: cart_items,
-        cart_total: cart_total,
-        whatsapp_url: whatsapp_url,
-        delivery_type: checkout_params["delivery_type"],
-        delivery_date: checkout_params["delivery_date"]
+      |> assign(:page_title, "¡Pedido confirmado!")
+      |> render(:success,
+        orders: orders,
+        customer_name: customer_name,
+        delivery_type: delivery_type,
+        delivery_date: delivery_date,
+        whatsapp_url: whatsapp_url
       )
-    else
-      conn
-      |> assign(:storefront, true)
-      |> assign(:page_title, "Checkout")
-      |> put_flash(:error, "Hubo un problema al realizar tu pedido. Por favor intenta de nuevo.")
-      |> render(:new, cart_items: cart_items, cart_total: cart_total, errors: %{}, form_values: %{})
     end
   end
 
-  defp get_default_prep_location do
-    locations = Inventory.list_locations()
+  def success(conn, _params) do
+    redirect(conn, to: "/mr-munch-me/menu")
+  end
 
-    Enum.find(locations, hd(locations), fn loc ->
-      loc.code == "CASA_AG"
+  def pay_existing_with_stripe(conn, %{"order_ids" => order_id_strings}) do
+    order_ids =
+      order_id_strings
+      |> List.wrap()
+      |> Enum.map(&String.to_integer/1)
+
+    orders = Enum.map(order_ids, &Orders.get_order!(&1))
+
+    line_items =
+      Enum.map(orders, fn order ->
+        %{
+          price_data: %{
+            currency: "mxn",
+            unit_amount: order.variant.price_cents,
+            product_data: %{
+              name: "#{order.variant.product.name} — #{order.variant.name}"
+            }
+          },
+          quantity: order.quantity || 1
+        }
+      end)
+
+    order_ids_str = Enum.join(order_ids, ",")
+    base_url = "#{conn.scheme}://#{conn.host}#{if conn.port not in [80, 443], do: ":#{conn.port}", else: ""}"
+
+    case Stripe.Checkout.Session.create(%{
+           mode: "payment",
+           currency: "mxn",
+           line_items: line_items,
+           metadata: %{order_ids: order_ids_str},
+           success_url: "#{base_url}/mr-munch-me/checkout/success?session_id={CHECKOUT_SESSION_ID}",
+           cancel_url: "#{base_url}/mr-munch-me/checkout/cancel"
+         }) do
+      {:ok, session} ->
+        redirect(conn, external: session.url)
+
+      {:error, reason} ->
+        Logger.error("Stripe session creation failed for existing orders #{order_ids_str}: #{inspect(reason)}")
+
+        conn
+        |> put_flash(:error, "No se pudo iniciar el pago. Por favor intenta de nuevo.")
+        |> redirect(to: "/mr-munch-me/menu")
+    end
+  end
+
+  def pay_existing_with_stripe(conn, _params) do
+    conn
+    |> put_flash(:error, "No se encontraron pedidos para pagar.")
+    |> redirect(to: "/mr-munch-me/menu")
+  end
+
+  def cancel(conn, _params) do
+    conn
+    |> put_flash(:info, "El pago fue cancelado. Tu carrito sigue guardado.")
+    |> redirect(to: "/mr-munch-me/cart")
+  end
+
+  # ---------------------------------------------------------------------------
+  # Private helpers
+  # ---------------------------------------------------------------------------
+
+  defp attempt_order_creation_fallback(stripe_session_id) do
+    with {:ok, session} <- Stripe.Checkout.Session.retrieve(stripe_session_id),
+         "paid" <- session.payment_status do
+      order_ids_str = session.metadata["order_ids"]
+
+      if order_ids_str do
+        # COD → Stripe conversion path: create payments for existing orders
+        order_ids = order_ids_str |> String.split(",") |> Enum.map(&String.to_integer/1)
+
+        case Orders.create_payments_for_existing_orders(order_ids, stripe_session_id) do
+          {:ok, _} ->
+            :ok
+
+          {:error, reason} ->
+            Logger.error("Stripe payment for existing COD orders failed: #{inspect(reason)}")
+            :skip
+        end
+      else
+        # Normal PendingCheckout path
+        pending = PendingCheckouts.get_by_stripe_session(stripe_session_id)
+
+        if pending && !PendingCheckouts.already_processed?(pending) do
+          case Orders.create_orders_from_pending_checkout(pending, stripe_session_id) do
+            {:ok, _} ->
+              PendingCheckouts.mark_processed(pending)
+              :ok
+
+            {:error, reason} ->
+              Logger.error("Success page fallback order creation failed: #{inspect(reason)}")
+              :skip
+          end
+        else
+          :skip
+        end
+      end
+    else
+      _ -> :skip
+    end
+  end
+
+  defp redirect_to_stripe(conn, cart, cart_items, customer, checkout_params) do
+    checkout_attrs = %{
+      "delivery_type" => checkout_params["delivery_type"],
+      "delivery_date" => checkout_params["delivery_date"],
+      "delivery_time" => checkout_params["delivery_time"],
+      "delivery_address" => checkout_params["delivery_address"],
+      "special_instructions" => checkout_params["special_instructions"]
+    }
+
+    with {:ok, pending} <- PendingCheckouts.create(cart, customer.id, checkout_attrs),
+         line_items = build_stripe_line_items(cart_items),
+         {:ok, session} <- create_stripe_session(pending.id, line_items, conn),
+         {:ok, _} <- PendingCheckouts.set_stripe_session(pending, session.id) do
+      redirect(conn, external: session.url)
+    else
+      {:error, reason} ->
+        Logger.error("Stripe session creation failed: #{inspect(reason)}")
+
+        {cart_items, cart_total} = load_cart_items(cart)
+
+        conn
+        |> assign(:storefront, true)
+        |> assign(:page_title, "Checkout")
+        |> put_flash(:error, "No se pudo iniciar el pago. Por favor intenta de nuevo.")
+        |> render(:new,
+          cart_items: cart_items,
+          cart_total: cart_total,
+          errors: %{},
+          form_values: checkout_params
+        )
+    end
+  end
+
+  defp create_cod_orders(conn, cart, cart_items, customer, checkout_params) do
+    checkout_attrs = %{
+      "delivery_type" => checkout_params["delivery_type"],
+      "delivery_date" => checkout_params["delivery_date"],
+      "delivery_time" => checkout_params["delivery_time"],
+      "delivery_address" => checkout_params["delivery_address"],
+      "special_instructions" => checkout_params["special_instructions"]
+    }
+
+    case Orders.create_orders_cod(cart, customer.id, checkout_attrs) do
+      {:ok, orders} ->
+        delivery_type = checkout_params["delivery_type"]
+
+        delivery_date =
+          case Date.from_iso8601(checkout_params["delivery_date"] || "") do
+            {:ok, d} -> d
+            _ -> nil
+          end
+
+        cart_total = Enum.reduce(cart_items, 0, fn item, acc -> acc + item.subtotal end)
+        special_instructions = checkout_params["special_instructions"]
+
+        items =
+          Enum.map(cart_items, fn item ->
+            %{
+              product_name: item.product.name,
+              variant_name: item.variant.name,
+              quantity: item.quantity,
+              subtotal_cents: item.subtotal
+            }
+          end)
+
+        order_ids = Enum.map(orders, & &1.id)
+        whatsapp_url = build_whatsapp_url(customer.name, order_ids, items, delivery_type, delivery_date, "cod", special_instructions)
+
+        conn
+        |> delete_session(:cart)
+        |> assign(:storefront, true)
+        |> assign(:page_title, "¡Pedido registrado!")
+        |> render(:confirmation,
+          orders: orders,
+          customer_name: customer.name,
+          delivery_type: delivery_type,
+          delivery_date: delivery_date,
+          cart_items: cart_items,
+          cart_total: cart_total,
+          whatsapp_url: whatsapp_url
+        )
+
+      {:error, reason} ->
+        Logger.error("COD order creation failed: #{inspect(reason)}")
+
+        {cart_items_reload, cart_total} = load_cart_items(cart)
+
+        conn
+        |> assign(:storefront, true)
+        |> assign(:page_title, "Checkout")
+        |> put_flash(:error, "Hubo un error al crear tu pedido. Por favor intenta de nuevo.")
+        |> render(:new,
+          cart_items: cart_items_reload,
+          cart_total: cart_total,
+          errors: %{},
+          form_values: checkout_params
+        )
+    end
+  end
+
+  defp build_stripe_line_items(cart_items) do
+    Enum.map(cart_items, fn item ->
+      %{
+        price_data: %{
+          currency: "mxn",
+          unit_amount: item.variant.price_cents,
+          product_data: %{
+            name: "#{item.product.name} — #{item.variant.name}"
+          }
+        },
+        quantity: item.quantity
+      }
     end)
   end
 
-  defp build_whatsapp_message(customer, cart_items, cart_total, checkout_params) do
-    items_text =
-      cart_items
+  defp create_stripe_session(pending_checkout_id, line_items, conn) do
+    base_url = "#{conn.scheme}://#{conn.host}#{if conn.port not in [80, 443], do: ":#{conn.port}", else: ""}"
+
+    Stripe.Checkout.Session.create(%{
+      mode: "payment",
+      currency: "mxn",
+      line_items: line_items,
+      metadata: %{pending_checkout_id: pending_checkout_id},
+      success_url: "#{base_url}/mr-munch-me/checkout/success?session_id={CHECKOUT_SESSION_ID}",
+      cancel_url: "#{base_url}/mr-munch-me/checkout/cancel"
+    })
+  end
+
+  defp build_whatsapp_url(customer_name, order_ids, items, delivery_type, delivery_date, payment_method, special_instructions) do
+    delivery_label =
+      case delivery_type do
+        "pickup" -> "Recoger en local"
+        "delivery" -> "Envío a domicilio"
+        _ -> delivery_type
+      end
+
+    date_str = if delivery_date, do: Calendar.strftime(delivery_date, "%d/%m/%Y"), else: "—"
+
+    {intro, payment_line} =
+      if payment_method == "cod" do
+        {"¡Hola! Acabo de hacer un pedido en MrMunchMe.", "Pago: Al recibir (efectivo / transferencia)"}
+      else
+        {"¡Hola! Acabo de pagar mi pedido en MrMunchMe.", "Pago: Realizado con tarjeta en línea"}
+      end
+
+    order_ids_str = order_ids |> Enum.map(&"##{&1}") |> Enum.join(", ")
+
+    items_lines =
+      items
       |> Enum.map(fn item ->
-        item_name = "#{item.product.name} #{item.variant.name}"
-        "- #{item_name} x#{item.quantity} ($#{:erlang.float_to_binary(item.subtotal / 100, decimals: 2)})"
+        price_pesos = div(item.subtotal_cents, 100)
+        "• #{item.product_name} · #{item.variant_name} ×#{item.quantity} — $#{price_pesos}"
       end)
       |> Enum.join("\n")
 
-    total_text = "$#{:erlang.float_to_binary(cart_total / 100, decimals: 2)} MXN"
+    total_cents = Enum.reduce(items, 0, fn item, acc -> acc + item.subtotal_cents end)
+    total_pesos = div(total_cents, 100)
 
-    delivery_type =
-      case checkout_params["delivery_type"] do
-        "pickup" -> "Recoger (coordinar por WhatsApp)"
-        "delivery" -> "Envío a domicilio"
-        _ -> "N/A"
+    instructions_line =
+      if special_instructions && String.trim(special_instructions) != "" do
+        "\nInstrucciones especiales: #{String.trim(special_instructions)}"
+      else
+        ""
       end
 
-    delivery_time_text =
-      case checkout_params["delivery_time"] do
-        t when is_binary(t) and t != "" -> "\nHora preferida: #{t}"
-        _ -> ""
-      end
+    message = """
+    #{intro}
 
-    special_instructions_text =
-      case checkout_params["special_instructions"] do
-        s when is_binary(s) and s != "" -> "\nInstrucciones especiales: #{String.trim(s)}"
-        _ -> ""
-      end
+    Nombre: #{customer_name}
+    Pedido: #{order_ids_str}
+    Tipo de entrega: #{delivery_label}
+    Fecha: #{date_str}
+    #{payment_line}
 
+    Artículos:
+    #{items_lines}
+    Total: $#{total_pesos} MXN#{instructions_line}
+
+    ¿Pueden confirmar los detalles de entrega?
     """
-    ¡Hola! Acabo de realizar un pedido en la tienda MrMunchMe.
 
-    Nombre: #{customer.name}
-    Teléfono: #{customer.phone}
-
-    Pedido:
-    #{items_text}
-
-    Total: #{total_text}
-    #{delivery_type}: #{checkout_params["delivery_date"]}#{delivery_time_text}
-    #{if checkout_params["delivery_type"] == "delivery", do: "Dirección: #{checkout_params["delivery_address"]}", else: ""}#{special_instructions_text}
-    """
-    |> String.trim()
+    "https://wa.me/#{@whatsapp_number}?text=#{URI.encode(String.trim(message))}"
   end
 
   defp maybe_add_error(errors, true, field, message), do: Map.put(errors, field, message)

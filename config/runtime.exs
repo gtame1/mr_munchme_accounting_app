@@ -40,6 +40,15 @@ if volume = System.get_env("UPLOAD_VOLUME") do
   config :ledgr, :upload_serve_dir, "#{volume}/uploads"
 end
 
+# Stripe payment processing (env vars override dev.secret.exs in production)
+if stripe_key = System.get_env("STRIPE_SECRET_KEY") do
+  config :stripity_stripe, api_key: stripe_key
+end
+
+if webhook_secret = System.get_env("STRIPE_WEBHOOK_SECRET") do
+  config :ledgr, stripe_webhook_secret: webhook_secret
+end
+
 if config_env() == :prod do
   secret_key_base =
     System.get_env("SECRET_KEY_BASE") ||

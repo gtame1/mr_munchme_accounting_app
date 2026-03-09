@@ -17,7 +17,8 @@ defmodule LedgrWeb.SafeParser do
       parsers: [:urlencoded, :multipart, :json],
       pass: ["*/*"],
       json_decoder: Phoenix.json_library(),
-      length: @max_bytes
+      length: @max_bytes,
+      body_reader: {LedgrWeb.Plugs.RawBodyCache, :read_body, []}
     )
   end
 

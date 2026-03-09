@@ -44,6 +44,16 @@ defmodule LedgrWeb.Router do
     # Checkout
     get "/checkout", CheckoutController, :new
     post "/checkout", CheckoutController, :create
+    get "/checkout/success", CheckoutController, :success
+    get "/checkout/cancel", CheckoutController, :cancel
+    post "/checkout/pay-existing", CheckoutController, :pay_existing_with_stripe
+  end
+
+  # ── Stripe webhooks (no CSRF, no browser session) ───────────────────
+  scope "/webhooks", LedgrWeb.Storefront do
+    pipe_through :api
+
+    post "/stripe", StripeWebhookController, :handle
   end
 
   # ── MrMunchMe: public auth routes ──────────────────────────────────
@@ -63,6 +73,7 @@ defmodule LedgrWeb.Router do
 
     # MrMunchMe-specific routes
     get "/orders/calendar", Domains.MrMunchMe.OrderController, :calendar
+    get "/orders/:id/stripe-link", Domains.MrMunchMe.OrderController, :stripe_link
     resources "/orders", Domains.MrMunchMe.OrderController, only: [:index, :show, :new, :create, :edit, :update]
     post "/orders/:id/status", Domains.MrMunchMe.OrderController, :update_status
     post "/orders/:id/ingredients", Domains.MrMunchMe.OrderController, :update_ingredients

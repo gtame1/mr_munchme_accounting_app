@@ -85,3 +85,6 @@ config :phoenix_live_view,
 
 # Disable swoosh api client as it is only required for production adapters.
 config :swoosh, :api_client, false
+
+# Load local secrets (Stripe keys, etc.) — file is gitignored
+if File.exists?("config/dev.secret.exs"), do: import_config("dev.secret.exs")

@@ -17,7 +17,7 @@ defmodule LedgrWeb.Storefront.MenuHTML do
   def strip_markdown(text) do
     text
     # Headings: ## Title -> Title
-    |> then(&Regex.replace(~R/^#{1,6}\s+/m, &1, ""))
+    |> then(&Regex.replace(~r/^\#{1,6}\s+/m, &1, ""))
     # Bold/italic: **x**, __x__, *x*, _x_ -> x
     |> then(&Regex.replace(~r/(\*{1,2}|_{1,2})(.+?)\1/, &1, "\\2"))
     # Inline code: `x` -> x

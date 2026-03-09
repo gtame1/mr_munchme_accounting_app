@@ -5,6 +5,9 @@
     <h2 style="margin: 0; font-size: 1.15rem; font-weight: 600;">Record Payment</h2>
     <span style="font-size: 0.85rem; color: var(--text-muted);">Order #<%= @order.id %> · <%= @order.customer_name %></span>
   </div>
+  <.link navigate={dp(@domain_path_prefix, "/orders/#{@order.id}/stripe-link")} class="btn btn-secondary" style="font-size: 0.85rem;">
+    Generate Payment Link
+  </.link>
 </div>
 
 <%!-- ── Order context ── --%>

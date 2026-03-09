@@ -124,7 +124,33 @@
           ><%= @form_values["special_instructions"] %></textarea>
         </div>
 
-        <button type="submit" class="btn btn-primary checkout-submit">Realizar pedido</button>
+        <h2 class="checkout-section-title">Método de pago</h2>
+
+        <div class="checkout-field">
+          <div class="checkout-radio-group payment-options">
+            <label class="payment-option">
+              <input type="radio" name="checkout[payment_method]" value="stripe" required
+                checked={@form_values["payment_method"] == "stripe"} />
+              <div class="payment-option-content">
+                <span class="payment-option-title">💳 Pagar ahora</span>
+                <span class="payment-option-desc">Tarjeta de crédito o débito — procesado de forma segura con Stripe</span>
+              </div>
+            </label>
+            <label class="payment-option">
+              <input type="radio" name="checkout[payment_method]" value="cod"
+                checked={@form_values["payment_method"] == "cod"} />
+              <div class="payment-option-content">
+                <span class="payment-option-title">💵 Pagar al recibir</span>
+                <span class="payment-option-desc">Efectivo o transferencia al momento de la entrega</span>
+              </div>
+            </label>
+          </div>
+          <%= if @errors[:payment_method] do %>
+            <span class="checkout-error"><%= @errors[:payment_method] %></span>
+          <% end %>
+        </div>
+
+        <button type="submit" id="checkout-submit" class="btn btn-primary checkout-submit">Continuar</button>
       </form>
     </div>
 
@@ -161,6 +187,20 @@
       addressField.style.display = isDelivery ? 'block' : 'none';
       deliveryNote.style.display = isDelivery ? 'block' : 'none';
     });
+  });
+
+  // Update submit button label based on payment method
+  var submitBtn = document.getElementById('checkout-submit');
+  document.querySelectorAll('input[name="checkout[payment_method]"]').forEach(function(radio) {
+    radio.addEventListener('change', function() {
+      if (submitBtn) {
+        submitBtn.textContent = this.value === 'stripe' ? 'Continuar al pago →' : 'Confirmar pedido';
+      }
+    });
+    // Apply on page load if already selected (e.g. after validation error)
+    if (radio.checked && submitBtn) {
+      submitBtn.textContent = radio.value === 'stripe' ? 'Continuar al pago →' : 'Confirmar pedido';
+    }
   });
 
   // Disable submit button on form submission to prevent duplicate orders
