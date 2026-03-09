@@ -32,7 +32,7 @@
               <h3 class="product-card-name"><%= product.name %></h3>
             </a>
             <%= if product.description do %>
-              <p class="product-card-description"><%= truncate(product.description, 100) %></p>
+              <p class="product-card-description"><%= product.description |> strip_markdown() |> truncate(100) %></p>
             <% end %>
             <div class="product-card-footer">
               <div class="product-card-price">

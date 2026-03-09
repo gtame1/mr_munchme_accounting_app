@@ -11,6 +11,32 @@ defmodule LedgrWeb.Storefront.MenuHTML do
 
   def format_price(_), do: ""
 
+  @doc "Strip markdown formatting from text, returning plain text suitable for previews."
+  def strip_markdown(nil), do: ""
+  def strip_markdown(""), do: ""
+  def strip_markdown(text) do
+    text
+    # Headings: ## Title -> Title
+    |> then(&Regex.replace(~R/^#{1,6}\s+/m, &1, ""))
+    # Bold/italic: **x**, __x__, *x*, _x_ -> x
+    |> then(&Regex.replace(~r/(\*{1,2}|_{1,2})(.+?)\1/, &1, "\\2"))
+    # Inline code: `x` -> x
+    |> then(&Regex.replace(~r/`([^`]+)`/, &1, "\\1"))
+    # Links: [text](url) -> text
+    |> then(&Regex.replace(~r/\[([^\]]+)\]\([^\)]+\)/, &1, "\\1"))
+    # Images: ![alt](url) -> alt
+    |> then(&Regex.replace(~r/!\[([^\]]*)\]\([^\)]+\)/, &1, "\\1"))
+    # Blockquotes: > text -> text
+    |> then(&Regex.replace(~r/^>\s*/m, &1, ""))
+    # List bullets: - item or * item or 1. item -> item
+    |> then(&Regex.replace(~r/^(\s*[-*]|\s*\d+\.)\s+/m, &1, ""))
+    # Horizontal rules
+    |> then(&Regex.replace(~r/^[-*_]{3,}\s*$/m, &1, ""))
+    # Collapse multiple newlines/spaces into a single space
+    |> then(&Regex.replace(~r/\s+/, &1, " "))
+    |> String.trim()
+  end
+
   @doc "Truncate text to a maximum length, appending ellipsis if needed"
   def truncate(nil, _max), do: ""
   def truncate(text, max) when byte_size(text) <= max, do: text
