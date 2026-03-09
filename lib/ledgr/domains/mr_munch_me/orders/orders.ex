@@ -492,8 +492,8 @@ defmodule Ledgr.Domains.MrMunchMe.Orders do
       attrs =
         cond do
           customer_id ->
-            # Populate customer fields from the customer record
             customer = Customers.get_customer!(customer_id)
+            maybe_update_customer_address(customer, attrs)
             populate_customer_fields(attrs, customer)
 
           true ->
@@ -533,6 +533,18 @@ defmodule Ledgr.Domains.MrMunchMe.Orders do
     |> Map.put("customer_phone", customer.phone)
     |> Map.put("customer_email", customer.email || nil)
     |> populate_delivery_address_if_missing(customer)
+  end
+
+  # If the order attrs contain a non-blank delivery_address, write it back to the customer
+  # so the customer record always reflects their latest known address.
+  defp maybe_update_customer_address(customer, attrs) do
+    address = attrs["delivery_address"] || attrs[:delivery_address]
+
+    if address && String.trim(address) != "" do
+      Customers.update_customer(customer, %{delivery_address: address})
+    end
+
+    :ok
   end
 
   # Helper to populate delivery_address from customer if not already provided in order
@@ -596,8 +608,8 @@ defmodule Ledgr.Domains.MrMunchMe.Orders do
 
     cond do
       customer_id ->
-        # Existing customer selected — sync denormalized fields from customer record
         customer = Customers.get_customer!(customer_id)
+        maybe_update_customer_address(customer, attrs)
         attrs = populate_customer_fields(attrs, customer)
         order |> Order.changeset(attrs) |> Repo.update()
 

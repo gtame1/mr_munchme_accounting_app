@@ -124,21 +124,18 @@ defmodule Ledgr.Core.Customers do
 
   @doc """
   Finds a customer by phone number, or creates a new one if not found.
-  If customer exists and doesn't have a delivery_address but one is provided in attrs,
-  updates the customer with the delivery_address.
+  If a delivery_address is provided and differs from the customer's current address,
+  the customer record is updated so it always reflects the latest address.
   """
   def find_or_create_by_phone(phone, attrs \\ %{}) do
     case Repo.get_by(Customer, phone: phone) do
       nil ->
-        # Create new customer with all provided attrs
         create_customer(Map.merge(%{phone: phone}, attrs))
 
       customer ->
-        # If customer exists but doesn't have delivery_address, and one is provided, update it
         delivery_address = Map.get(attrs, :delivery_address) || Map.get(attrs, "delivery_address")
 
-        if delivery_address && String.trim(delivery_address) != "" &&
-             (!customer.delivery_address || String.trim(customer.delivery_address) == "") do
+        if delivery_address && String.trim(delivery_address) != "" do
           case update_customer(customer, %{delivery_address: delivery_address}) do
             {:ok, updated_customer} -> {:ok, updated_customer}
             {:error, _changeset} -> {:ok, customer}
