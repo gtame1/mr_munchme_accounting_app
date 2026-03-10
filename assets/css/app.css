@@ -3790,13 +3790,31 @@
       display: none;
     }
 
+    /* Header — tighter + larger touch targets */
+    .storefront-header { padding: 0.6rem 0; }
+    .storefront-header-inner { padding: 0 1rem; }
+    .storefront-logo-img { height: 36px; }
+    .storefront-cart-link { padding: 0.4rem 0.3rem; min-width: 44px; min-height: 44px; justify-content: center; }
+    .storefront-search-btn { min-width: 36px; min-height: 36px; }
+
+    /* Navbar search responsive */
+    .storefront-search-form {
+      max-width: none;
+      margin: 0 0.75rem;
+    }
+
+    .storefront-content {
+      padding: 1.5rem 1rem;
+    }
+
+    /* Menu grid — improved product cards */
     .menu-title {
       font-size: 1.75rem;
     }
 
     .menu-grid {
       grid-template-columns: repeat(2, 1fr);
-      gap: 0.75rem;
+      gap: 0.6rem;
     }
 
     .product-card-image {
@@ -3804,33 +3822,36 @@
     }
 
     .product-card-body {
-      padding: 0.75rem;
+      padding: 0.5rem 0.6rem 0.65rem;
     }
 
     .product-card-name {
-      font-size: 0.9rem;
+      font-size: 0.875rem;
+      line-height: 1.3;
+      margin-bottom: 0.1rem;
     }
 
+    /* Hide description — not readable at ~170px card width in 2-col layout */
     .product-card-description {
       display: none;
     }
 
+    /* Stack price above button; button full-width */
+    .product-card-footer {
+      flex-direction: column;
+      gap: 0.35rem;
+      align-items: stretch;
+    }
+
     .product-card-price {
-      font-size: 1rem;
+      font-size: 0.9rem;
     }
 
-    .storefront-content {
-      padding: 1.5rem 1rem;
-    }
-
-    .product-detail-name {
-      font-size: 1.5rem;
-    }
-
-    /* Navbar search responsive */
-    .storefront-search-form {
-      max-width: none;
-      margin: 0 0.75rem;
+    .btn-add-to-cart {
+      width: 100%;
+      text-align: center;
+      padding: 0.45rem 0.5rem;
+      font-size: 0.8rem;
     }
 
     /* Legacy menu search bar */
@@ -3842,12 +3863,38 @@
       min-width: 0;
     }
 
-    /* Cart responsive */
+    /* Product detail — full-width add-to-cart */
+    .product-detail-name { font-size: 1.4rem; }
+    .product-detail-price { font-size: 1.25rem; margin-bottom: 1rem; }
+    .product-detail-cart-form { margin-top: 1rem; padding-top: 1rem; gap: 0.75rem; }
+    .product-detail-back { margin-bottom: 1rem; }
+
+    /* Stack quantity + button vertically; button full-width */
+    .product-detail-add-row {
+      flex-direction: column;
+      gap: 0.75rem;
+      align-items: stretch;
+    }
+
+    .btn-add-to-cart-lg {
+      width: 100%;
+      padding: 0.9rem;
+      font-size: 1.05rem;
+      font-weight: 700;
+    }
+
+    /* Cart — prominent checkout CTA at top */
+    .cart-title { font-size: 1.5rem; margin-bottom: 1rem; }
+    .cart-summary { padding: 1rem; }
+    .cart-total { font-size: 1.15rem; }
+
     .cart-item {
-      grid-template-columns: 50px 1fr;
+      grid-template-columns: 56px 1fr;
       grid-template-rows: auto auto;
       gap: 0.5rem;
     }
+
+    .cart-item-image { width: 56px; height: 56px; }
 
     .cart-item-quantity,
     .cart-item-subtotal,
@@ -3855,15 +3902,43 @@
       grid-row: 2;
     }
 
+    /* column-reverse puts "Proceder a pedido" (primary) above "Seguir comprando" */
     .cart-actions {
-      flex-direction: column;
+      flex-direction: column-reverse;
     }
 
     .cart-actions .btn {
       text-align: center;
+      width: 100%;
+      padding: 0.875rem;
     }
 
-    /* Checkout responsive */
+    .cart-actions .btn-primary {
+      font-size: 1.05rem;
+      font-weight: 700;
+    }
+
+    /* Checkout — prevent iOS zoom + full-width submit */
+    .checkout-title { font-size: 1.5rem; margin-bottom: 1rem; }
+
+    /* font-size: 16px prevents iOS from auto-zooming on field focus */
+    .checkout-field input[type="text"],
+    .checkout-field input[type="tel"],
+    .checkout-field input[type="email"],
+    .checkout-field input[type="date"],
+    .checkout-field input[type="time"],
+    .checkout-field textarea {
+      font-size: 16px;
+      padding: 0.75rem 1rem;
+    }
+
+    .checkout-submit {
+      width: 100%;
+      padding: 0.875rem;
+      font-size: 1.05rem;
+      font-weight: 700;
+    }
+
     .checkout-layout {
       grid-template-columns: 1fr;
     }
@@ -3871,13 +3946,18 @@
     .checkout-summary {
       position: static;
       order: -1;
+      padding: 0.875rem;
     }
 
     .checkout-radio-group {
       flex-direction: column;
     }
 
-    /* Confirmation responsive */
+    /* Confirmation / success — green WhatsApp button + full-width actions */
+    .confirmation-page { padding: 0 0.25rem; }
+    .confirmation-title { font-size: 1.5rem; }
+    .confirmation-icon { width: 56px; height: 56px; font-size: 1.75rem; }
+
     .confirmation-actions {
       flex-direction: column;
       align-items: stretch;
@@ -3887,6 +3967,28 @@
     .confirmation-actions .whatsapp-btn {
       text-align: center;
     }
+
+    .whatsapp-btn {
+      background-color: #25d366 !important;
+      color: white !important;
+      font-weight: 700;
+    }
+
+    .whatsapp-btn:hover {
+      background-color: #1ebe5a !important;
+    }
+
+    /* Quantity controls — bigger tap targets */
+    .qty-btn { min-width: 36px; min-height: 36px; font-size: 1.1rem; }
+    .qty-value { min-width: 2rem; text-align: center; }
+  }
+
+  /* Single-column grid on very small phones (iPhone SE, ~320-380px) */
+  @media (max-width: 380px) {
+    .storefront-content { padding: 1rem 0.75rem; }
+    .menu-grid { grid-template-columns: 1fr; gap: 0.75rem; }
+    .product-card-image { aspect-ratio: 3 / 2; }
+    .product-card-description { display: block; }
   }
 
   /* ==============================
