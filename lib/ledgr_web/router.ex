@@ -11,6 +11,7 @@ defmodule LedgrWeb.Router do
     plug :protect_from_forgery
     plug :put_secure_browser_headers
     plug LedgrWeb.Plugs.DomainPlug
+    plug LedgrWeb.Plugs.LedgrAccessPlug
   end
 
   pipeline :require_auth do
@@ -27,6 +28,8 @@ defmodule LedgrWeb.Router do
 
     get "/", PageController, :home
     get "/apps", PageController, :apps
+    get "/unlock", UnlockController, :new
+    post "/unlock", UnlockController, :create
   end
 
   # ── MrMunchMe: public storefront ────────────────────────────────────

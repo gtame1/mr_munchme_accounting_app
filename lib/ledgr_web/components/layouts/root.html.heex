@@ -9,6 +9,8 @@
     </.live_title>
     <%= if assigns[:current_domain] && assigns[:current_domain].theme()[:favicon] do %>
       <link rel="icon" type="image/png" href={assigns[:current_domain].theme()[:favicon]} />
+    <% else %>
+      <link rel="icon" type="image/png" href={~p"/images/ledgr-logos/icon/ledgr-icon.png"} />
     <% end %>
     <%!-- OG / Twitter Card meta tags (storefront pages only) --%>
     <%= if assigns[:current_domain] && assigns[:storefront] do %>

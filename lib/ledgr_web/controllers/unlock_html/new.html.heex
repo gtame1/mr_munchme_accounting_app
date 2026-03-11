@@ -1,0 +1,25 @@
+<div class="login-card">
+  <div class="login-card-header">
+    <img src={~p"/images/ledgr-logos/logo/ledgr-logo.png"} alt="Ledgr" class="login-logo" onerror="this.style.display='none'" />
+  </div>
+
+  <h2 class="login-title">Enter Password</h2>
+
+  <%= if @error do %>
+    <div class="login-error"><%= @error %></div>
+  <% end %>
+
+  <form action="/unlock" method="post" class="login-form">
+    <input type="hidden" name="_csrf_token" value={get_csrf_token()} />
+
+    <div class="login-field">
+      <label for="password">Password</label>
+      <input type="password" name="password" id="password" required autofocus
+        placeholder="Enter site password" />
+    </div>
+
+    <button type="submit" class="login-btn">Continue</button>
+  </form>
+
+  <a href="/" class="login-back-link">← Back to home</a>
+</div>
