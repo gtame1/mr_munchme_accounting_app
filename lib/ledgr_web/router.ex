@@ -26,6 +26,7 @@ defmodule LedgrWeb.Router do
     pipe_through :browser
 
     get "/", PageController, :home
+    get "/apps", PageController, :apps
   end
 
   # ── MrMunchMe: public storefront ────────────────────────────────────
