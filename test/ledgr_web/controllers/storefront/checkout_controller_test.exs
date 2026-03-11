@@ -134,7 +134,8 @@ defmodule LedgrWeb.Storefront.CheckoutControllerTest do
             "customer_phone" => "5551112222",
             "delivery_type" => "pickup",
             "delivery_date" => Date.to_iso8601(Date.utc_today()),
-            "delivery_address" => ""
+            "delivery_address" => "",
+            "payment_method" => "cod"
           }
         })
 
