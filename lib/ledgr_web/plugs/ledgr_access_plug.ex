@@ -1,9 +1,10 @@
 defmodule LedgrWeb.Plugs.LedgrAccessPlug do
   @moduledoc """
-  Gates access to ledgr.mx behind a simple site password.
+  Gates the Ledgr landing page (/ and /apps) behind a simple site password.
 
-  Requests that DomainPlug identified via hostname (domain_from_host: true)
-  bypass this check entirely — those custom domains have their own per-app auth.
+  Only protects the two Ledgr-specific landing paths. All app routes (/app/*),
+  storefronts (/<slug>/*), and custom domains bypass this entirely — they have
+  their own per-app authentication.
 
   If LEDGR_PASSWORD is not set, the plug is a no-op (no protection).
   """
@@ -12,6 +13,9 @@ defmodule LedgrWeb.Plugs.LedgrAccessPlug do
   import Phoenix.Controller
 
   @unlock_path "/unlock"
+
+  # Only these paths require the ledgr site password.
+  @protected_paths [[], ["apps"]]
 
   def init(opts), do: opts
 
@@ -23,13 +27,8 @@ defmodule LedgrWeb.Plugs.LedgrAccessPlug do
       is_nil(password) or password == "" ->
         conn
 
-      # Custom domain (e.g. mrmunchme.com) — skip, handled by per-app auth.
-      # Detected by DomainPlug via hostname match (domain_from_host assign).
-      conn.assigns[:domain_from_host] == true ->
-        conn
-
-      # The unlock page itself — always allow through
-      conn.path_info == ["unlock"] ->
+      # Only protect the landing page (/) and app picker (/apps)
+      conn.path_info not in @protected_paths ->
         conn
 
       # Already authenticated
