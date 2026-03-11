@@ -28,7 +28,9 @@ defmodule LedgrWeb.Plugs.DomainPlug do
     host_slug = conn.host |> String.downcase() |> resolve_host_slug()
 
     if host_slug do
-      set_domain_context(conn, host_slug)
+      conn
+      |> assign(:domain_from_host, true)
+      |> set_domain_context(host_slug)
     else
       case conn.path_info do
         ["app", slug | _rest] ->
