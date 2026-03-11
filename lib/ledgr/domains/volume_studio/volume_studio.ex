@@ -59,7 +59,7 @@ defmodule Ledgr.Domains.VolumeStudio do
       sidebar_logo: "/images/volume-studio-logos/logo/main-logo.png",
       card_logo: "/images/volume-studio-logos/logo/main-logo.png",
       tab_title: "Volume Studio",
-      favicon: "/images/favicon-volume-studio.png"
+      favicon: "/images/volume-studio-logos/icon/PNG/ISOTIPO-1.png"
     }
   end
 
