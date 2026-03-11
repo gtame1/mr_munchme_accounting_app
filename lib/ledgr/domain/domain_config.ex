@@ -68,6 +68,14 @@ defmodule Ledgr.Domain.DomainConfig do
   @callback path_prefix() :: String.t()
 
   @doc """
+  Public-facing home path for the domain, used when a custom domain hits root (/).
+
+  Returns a path string for domains with a public storefront (e.g. "/mr-munch-me/menu"),
+  or nil for admin-only domains that should fall back to the login page.
+  """
+  @callback public_home() :: String.t() | nil
+
+  @doc """
   Emoji or short string used as a logo in the sidebar.
   """
   @callback logo() :: String.t()

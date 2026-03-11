@@ -24,6 +24,10 @@ defmodule Ledgr.Domains.MrMunchMe do
   def path_prefix, do: "/app/mr-munch-me"
 
   @impl Ledgr.Domain.DomainConfig
+  # Public storefront landing page (used when accessed via custom domain root)
+  def public_home, do: "/mr-munch-me/menu"
+
+  @impl Ledgr.Domain.DomainConfig
   def logo, do: "🍪"
 
   @impl Ledgr.Domain.DomainConfig

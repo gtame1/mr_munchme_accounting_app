@@ -3,8 +3,18 @@ defmodule LedgrWeb.PageController do
 
   def home(conn, _params) do
     case conn.assigns[:current_domain] do
-      nil -> render(conn, :home)
-      domain -> redirect(conn, to: "#{domain.path_prefix()}/login")
+      nil ->
+        render(conn, :home)
+
+      domain ->
+        path =
+          if conn.assigns[:domain_from_host] && domain.public_home() do
+            domain.public_home()
+          else
+            "#{domain.path_prefix()}/login"
+          end
+
+        redirect(conn, to: path)
     end
   end
 

@@ -30,6 +30,10 @@ defmodule Ledgr.Domains.VolumeStudio do
   def path_prefix, do: "/app/volume-studio"
 
   @impl Ledgr.Domain.DomainConfig
+  # No public storefront — custom domain root falls back to login
+  def public_home, do: nil
+
+  @impl Ledgr.Domain.DomainConfig
   def logo, do: "🏋🏻"
 
   @impl Ledgr.Domain.DomainConfig
