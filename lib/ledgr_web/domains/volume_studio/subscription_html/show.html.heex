@@ -1,3 +1,4 @@
+<%!-- ── Header / Subscription info ──────────────────────────────────── --%>
 <section class="card" style="margin-bottom: 1.5rem;">
   <div class="card-header">
     <div>
@@ -63,6 +64,75 @@
   </div>
 </section>
 
+<%!-- ── Classes Taken ────────────────────────────────────────────────── --%>
+<section class="card" style="margin-bottom: 1.5rem;">
+  <div class="card-header">
+    <h3 class="card-title" style="font-size: 1rem;">Classes Taken</h3>
+    <span class="status-badge" style="font-size: 0.75rem;">
+      <%= @subscription.classes_used %> used
+      <%= if @subscription.subscription_plan.class_limit, do: "/ #{@subscription.subscription_plan.class_limit}", else: "" %>
+    </span>
+  </div>
+
+  <%= if @bookings == [] do %>
+    <p style="margin-top: 0.75rem; color: var(--text-muted); font-size: 0.875rem;">No classes attended yet.</p>
+  <% else %>
+    <div style="margin-top: 0.75rem; overflow-x: auto;">
+      <table class="table" style="width: 100%;">
+        <thead>
+          <tr>
+            <th>Date & Time</th>
+            <th>Class</th>
+            <th>Instructor</th>
+            <th style="text-align: center;">Status</th>
+            <th style="text-align: right;">Fee Paid</th>
+          </tr>
+        </thead>
+        <tbody>
+          <%= for booking <- @bookings do %>
+            <tr>
+              <td style="white-space: nowrap; font-size: 0.875rem;">
+                <%= if booking.class_session do %>
+                  <%= Calendar.strftime(booking.class_session.scheduled_at, "%b %d, %Y %H:%M") %>
+                <% else %>
+                  —
+                <% end %>
+              </td>
+              <td>
+                <%= if booking.class_session do %>
+                  <%= booking.class_session.name %>
+                <% else %>
+                  <span style="color: var(--text-muted);">Session removed</span>
+                <% end %>
+              </td>
+              <td style="color: var(--text-muted); font-size: 0.875rem;">
+                <%= if booking.class_session && booking.class_session.instructor do %>
+                  <%= booking.class_session.instructor.name %>
+                <% else %>
+                  —
+                <% end %>
+              </td>
+              <td style="text-align: center;">
+                <span class={"status-badge #{booking_status_class(booking.status)}"}>
+                  <%= String.capitalize(booking.status) %>
+                </span>
+              </td>
+              <td style="text-align: right; font-size: 0.875rem;">
+                <%= if booking.paid_cents > 0 do %>
+                  <%= format_currency(booking.paid_cents) %>
+                <% else %>
+                  <span style="color: var(--text-muted);">—</span>
+                <% end %>
+              </td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  <% end %>
+</section>
+
+<%!-- ── Revenue Summary ─────────────────────────────────────────────── --%>
 <section class="card" style="margin-bottom: 1.5rem;">
   <div class="card-header">
     <h3 class="card-title" style="font-size: 1rem;">Revenue Summary</h3>
@@ -89,11 +159,68 @@
   </div>
 </section>
 
+<%!-- ── Notes ──────────────────────────────────────────────────────── --%>
 <%= if @subscription.notes do %>
-  <section class="card">
+  <section class="card" style="margin-bottom: 1.5rem;">
     <div class="card-header">
       <h3 class="card-title" style="font-size: 1rem;">Notes</h3>
     </div>
     <p style="margin-top: 0.5rem; color: var(--text-muted);"><%= @subscription.notes %></p>
   </section>
 <% end %>
+
+<%!-- ── Payment History ──────────────────────────────────────────────── --%>
+<section class="card">
+  <div class="card-header">
+    <h3 class="card-title" style="font-size: 1rem;">Payment History</h3>
+    <%= if @subscription.status != "cancelled" && @subscription.status != "expired" do %>
+      <.link navigate={dp(@domain_path_prefix, "/subscriptions/#{@subscription.id}/payment/new")} class="btn primary" style="font-size: 0.8rem;">
+        + Record Payment
+      </.link>
+    <% end %>
+  </div>
+
+  <%= if @payments == [] do %>
+    <p style="margin-top: 0.75rem; color: var(--text-muted); font-size: 0.875rem;">No payments recorded yet.</p>
+  <% else %>
+    <div style="margin-top: 0.75rem; overflow-x: auto;">
+      <table class="table" style="width: 100%;">
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Description</th>
+            <th style="text-align: right;">Amount</th>
+            <th style="text-align: center; width: 100px;">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <%= for entry <- @payments do %>
+            <%
+              amount_cents = entry.journal_lines
+                |> Enum.find(&(&1.debit_cents > 0))
+                |> case do
+                  nil -> 0
+                  line -> line.debit_cents
+                end
+            %>
+            <tr>
+              <td style="white-space: nowrap;"><%= entry.date %></td>
+              <td style="color: var(--text-muted); font-size: 0.875rem;"><%= entry.description %></td>
+              <td style="text-align: right; font-weight: 600;"><%= format_currency(amount_cents) %></td>
+              <td style="text-align: center;">
+                <div style="display: flex; gap: 0.4rem; justify-content: center;">
+                  <.link navigate={dp(@domain_path_prefix, "/subscriptions/#{@subscription.id}/payment/#{entry.id}/edit")} class="btn" style="font-size: 0.75rem; padding: 0.2rem 0.6rem;">
+                    Edit
+                  </.link>
+                  <.link href={dp(@domain_path_prefix, "/subscriptions/#{@subscription.id}/payment/#{entry.id}")} method="delete" data-confirm="Delete this payment? This will reverse the deferred revenue." class="btn danger" style="font-size: 0.75rem; padding: 0.2rem 0.6rem;">
+                    Delete
+                  </.link>
+                </div>
+              </td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  <% end %>
+</section>

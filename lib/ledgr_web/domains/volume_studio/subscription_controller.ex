@@ -17,8 +17,15 @@ defmodule LedgrWeb.Domains.VolumeStudio.SubscriptionController do
 
   def show(conn, %{"id" => id}) do
     subscription = Subscriptions.get_subscription!(id)
-    summary = Subscriptions.payment_summary(subscription)
-    render(conn, :show, subscription: subscription, summary: summary)
+    summary      = Subscriptions.payment_summary(subscription)
+    payments     = Subscriptions.list_payments_for_subscription(subscription)
+    bookings     = Subscriptions.list_bookings_for_subscription(subscription)
+    render(conn, :show,
+      subscription: subscription,
+      summary:      summary,
+      payments:     payments,
+      bookings:     bookings
+    )
   end
 
   def new(conn, params) do
@@ -203,6 +210,78 @@ defmodule LedgrWeb.Domains.VolumeStudio.SubscriptionController do
     end
   end
 
+  def edit_payment(conn, %{"id" => id, "entry_id" => entry_id}) do
+    subscription = Subscriptions.get_subscription!(id)
+    entry        = Accounting.get_journal_entry!(entry_id)
+
+    # Pull amount from the debit (Cash DR) line
+    amount_cents =
+      entry.journal_lines
+      |> Enum.find(&(&1.debit_cents > 0))
+      |> case do
+        nil -> 0
+        line -> line.debit_cents
+      end
+
+    render(conn, :edit_payment,
+      subscription:  subscription,
+      entry:         entry,
+      amount_cents:  amount_cents,
+      action:        dp(conn, "/subscriptions/#{id}/payment/#{entry_id}")
+    )
+  end
+
+  def update_payment(conn, %{"id" => id, "entry_id" => entry_id, "payment" => params}) do
+    subscription     = Subscriptions.get_subscription!(id)
+    entry            = Accounting.get_journal_entry!(entry_id)
+    amount_str       = Map.get(params, "amount", "")
+    date_str         = Map.get(params, "payment_date", "")
+    note             = Map.get(params, "note")
+
+    with {amount_float, _} <- Float.parse(amount_str),
+         amount_cents = round(amount_float * 100),
+         true <- amount_cents > 0,
+         {:ok, payment_date} <- Date.from_iso8601(date_str) do
+      case Subscriptions.update_payment(subscription, entry, %{
+        amount_cents: amount_cents,
+        payment_date: payment_date,
+        note:         note
+      }) do
+        {:ok, _} ->
+          conn
+          |> put_flash(:info, "Payment updated successfully.")
+          |> redirect(to: dp(conn, "/subscriptions/#{id}"))
+
+        {:error, reason} ->
+          conn
+          |> put_flash(:error, "Could not update payment: #{inspect(reason)}")
+          |> redirect(to: dp(conn, "/subscriptions/#{id}/payment/#{entry_id}/edit"))
+      end
+    else
+      _ ->
+        conn
+        |> put_flash(:error, "Invalid amount or date.")
+        |> redirect(to: dp(conn, "/subscriptions/#{id}/payment/#{entry_id}/edit"))
+    end
+  end
+
+  def delete_payment(conn, %{"id" => id, "entry_id" => entry_id}) do
+    subscription = Subscriptions.get_subscription!(id)
+    entry        = Accounting.get_journal_entry!(entry_id)
+
+    case Subscriptions.delete_payment(subscription, entry) do
+      {:ok, _} ->
+        conn
+        |> put_flash(:info, "Payment deleted.")
+        |> redirect(to: dp(conn, "/subscriptions/#{id}"))
+
+      {:error, reason} ->
+        conn
+        |> put_flash(:error, "Could not delete payment: #{inspect(reason)}")
+        |> redirect(to: dp(conn, "/subscriptions/#{id}"))
+    end
+  end
+
   def cancel(conn, %{"id" => id}) do
     subscription = Subscriptions.get_subscription!(id)
 
@@ -251,4 +330,10 @@ defmodule LedgrWeb.Domains.VolumeStudio.SubscriptionHTML do
   def plan_type_badge("membership"), do: "status-paid"
   def plan_type_badge("extra"), do: ""
   def plan_type_badge(_), do: ""
+
+  def booking_status_class("checked_in"), do: "status-paid"
+  def booking_status_class("booked"), do: "status-partial"
+  def booking_status_class("cancelled"), do: "status-unpaid"
+  def booking_status_class("no_show"), do: "status-unpaid"
+  def booking_status_class(_), do: ""
 end
