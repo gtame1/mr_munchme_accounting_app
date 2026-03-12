@@ -13,13 +13,24 @@
         </div>
 
         <div class="field">
+          <label>Type</label>
+          <.input type="select" field={f[:plan_type]}
+            options={[{"Package", "package"}, {"Promo", "promo"}, {"Membership", "membership"}, {"Extra Service", "extra"}]} />
+        </div>
+
+        <div class="field">
           <label>Price (MXN) *</label>
           <.input type="number" field={f[:price_cents]} step="0.01" min="0" />
         </div>
 
         <div class="field">
-          <label>Duration (months)</label>
+          <label>Duration (months) <small style="font-weight:normal;">(for memberships)</small></label>
           <.input type="number" field={f[:duration_months]} min="1" />
+        </div>
+
+        <div class="field">
+          <label>Expiry (days) <small style="font-weight:normal;">(for packages — overrides months)</small></label>
+          <.input type="number" field={f[:duration_days]} min="1" />
         </div>
 
         <div class="field">

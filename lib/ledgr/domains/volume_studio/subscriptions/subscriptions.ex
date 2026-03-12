@@ -55,37 +55,42 @@ defmodule Ledgr.Domains.VolumeStudio.Subscriptions do
   end
 
   @doc """
-  Records a subscription payment.
+  Records a subscription payment for the given amount.
 
   In a transaction:
-    1. Adds plan.price_cents to deferred_revenue_cents
+    1. Adds amount_cents to deferred_revenue_cents on the subscription
     2. Creates journal entry: DR Cash / CR Deferred Sub Revenue
+
+  Options:
+    - `:payment_date` — defaults to today
+    - `:method`       — payment method string (e.g. "cash", "card")
+    - `:note`         — optional note for the journal entry line
 
   The subscription must have subscription_plan preloaded.
   """
-  def record_payment(%Subscription{subscription_plan: plan} = sub)
-      when not is_nil(plan) do
-    Repo.transaction(fn ->
-      amount = plan.price_cents
+  def record_payment(sub, amount_cents, opts \\ [])
 
+  def record_payment(%Subscription{subscription_plan: plan} = sub, amount_cents, opts)
+      when not is_nil(plan) and is_integer(amount_cents) and amount_cents > 0 do
+    Repo.transaction(fn ->
       updated =
         sub
         |> Subscription.changeset(%{
-          deferred_revenue_cents: sub.deferred_revenue_cents + amount
+          deferred_revenue_cents: sub.deferred_revenue_cents + amount_cents
         })
         |> Repo.update!()
 
-      VolumeStudioAccounting.record_subscription_payment(sub)
+      VolumeStudioAccounting.record_subscription_payment(sub, amount_cents, opts)
 
       updated
     end)
   end
 
-  def record_payment(%Subscription{} = sub) do
-    # Plan not preloaded — reload with plan and retry
+  def record_payment(%Subscription{} = sub, amount_cents, opts) do
+    # Plan not preloaded — reload and retry
     sub
     |> Repo.preload(:subscription_plan)
-    |> record_payment()
+    |> record_payment(amount_cents, opts)
   end
 
   @doc """
@@ -131,15 +136,24 @@ defmodule Ledgr.Domains.VolumeStudio.Subscriptions do
   @doc """
   Returns a payment summary map for a subscription.
 
-  Keys: :deferred, :recognized, :total_paid, :remaining
+  Keys: :deferred, :recognized, :total_paid, :remaining, :outstanding_cents
   """
-  def payment_summary(%Subscription{} = sub) do
+  def payment_summary(%Subscription{subscription_plan: plan} = sub) when not is_nil(plan) do
+    total_paid = Subscription.total_paid_cents(sub)
+
     %{
-      deferred: sub.deferred_revenue_cents,
-      recognized: sub.recognized_revenue_cents,
-      total_paid: Subscription.total_paid_cents(sub),
-      remaining: Subscription.remaining_deferred(sub)
+      deferred:          sub.deferred_revenue_cents,
+      recognized:        sub.recognized_revenue_cents,
+      total_paid:        total_paid,
+      remaining:         Subscription.remaining_deferred(sub),
+      outstanding_cents: max(plan.price_cents - total_paid, 0)
     }
+  end
+
+  def payment_summary(%Subscription{} = sub) do
+    sub
+    |> Repo.preload(:subscription_plan)
+    |> payment_summary()
   end
 
   # ── Private helpers ──────────────────────────────────────────────────

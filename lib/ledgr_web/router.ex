@@ -187,6 +187,7 @@ defmodule LedgrWeb.Router do
     # Subscription plans & member subscriptions
     resources "/subscription-plans", Domains.VolumeStudio.SubscriptionPlanController, only: [:index, :new, :create, :edit, :update, :delete]
     resources "/subscriptions", Domains.VolumeStudio.SubscriptionController, only: [:index, :show, :new, :create, :edit, :update]
+    get  "/subscriptions/:id/payment/new", Domains.VolumeStudio.SubscriptionController, :new_payment
     post "/subscriptions/:id/payment", Domains.VolumeStudio.SubscriptionController, :record_payment
     post "/subscriptions/:id/cancel", Domains.VolumeStudio.SubscriptionController, :cancel
 

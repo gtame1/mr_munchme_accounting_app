@@ -22,6 +22,14 @@ defmodule Ledgr.Domains.VolumeStudio.Accounting.VolumeStudioAccounting do
       DR  Cash (1000)                           [plan.price_cents]
       CR  Deferred Sub Revenue (2200)           [plan.price_cents]
 
+    record_owed_change_ap(subscription, overpayment_cents):
+      DR  Deferred Sub Revenue (2200)           [overpayment_cents]
+      CR  Owed Change Payable (2300)            [overpayment_cents]
+
+    record_change_given(subscription, change_given_cents, from_account_id):
+      DR  Deferred Sub Revenue (2200)           [change_given_cents]
+      CR  {from_account}                        [change_given_cents]
+
     recognize_subscription_revenue(subscription, amount_cents):
       DR  Deferred Sub Revenue (2200)           [amount_cents]
       CR  Subscription Revenue (4000)           [amount_cents]
@@ -50,6 +58,7 @@ defmodule Ledgr.Domains.VolumeStudio.Accounting.VolumeStudioAccounting do
   @cash_code                "1000"
   @iva_payable_code         "2100"
   @deferred_sub_rev_code    "2200"
+  @owed_change_ap_code      "2300"
   @sub_revenue_code         "4000"
   @class_revenue_code       "4010"
   @consultation_revenue_code "4020"
@@ -58,39 +67,123 @@ defmodule Ledgr.Domains.VolumeStudio.Accounting.VolumeStudioAccounting do
   # ── Subscription Payment ─────────────────────────────────────────────
 
   @doc """
-  Records a subscription payment.
+  Records a subscription payment for the given amount.
 
-    DR  Cash (1000)                  [plan.price_cents]
-    CR  Deferred Sub Revenue (2200)  [plan.price_cents]
+    DR  Cash (1000)                  [amount_cents]
+    CR  Deferred Sub Revenue (2200)  [amount_cents]
 
-  The subscription must have `:subscription_plan` preloaded.
+  Options:
+    - `:payment_date` — defaults to today
+    - `:note`         — optional description for the debit line
+
+  Each call creates a unique journal entry (unique reference per payment),
+  so multiple payments can be recorded on the same subscription.
   """
-  def record_subscription_payment(subscription) do
-    plan = subscription.subscription_plan || Repo.preload(subscription, :subscription_plan).subscription_plan
-    amount = plan.price_cents
+  def record_subscription_payment(subscription, amount_cents, opts \\ []) do
+    plan = subscription.subscription_plan ||
+      Repo.preload(subscription, :subscription_plan).subscription_plan
 
-    reference = "vs_sub_payment_#{subscription.id}"
-    entry_type = "subscription_payment"
+    payment_date = Keyword.get(opts, :payment_date, Date.utc_today())
+    note         = Keyword.get(opts, :note)
+    seq          = :erlang.unique_integer([:positive, :monotonic])
+    reference    = "vs_sub_payment_#{subscription.id}_#{seq}"
+    entry_type   = "subscription_payment"
 
-    idempotent(reference, entry_type, fn ->
-      cash     = Accounting.get_account_by_code!(@cash_code)
-      deferred = Accounting.get_account_by_code!(@deferred_sub_rev_code)
+    cash     = Accounting.get_account_by_code!(@cash_code)
+    deferred = Accounting.get_account_by_code!(@deferred_sub_rev_code)
 
-      Accounting.create_journal_entry_with_lines(
-        %{
-          date:        Date.utc_today(),
-          description: "Subscription payment — #{plan.name} (sub ##{subscription.id})",
-          reference:   reference,
-          entry_type:  entry_type
-        },
-        [
-          %{account_id: cash.id,     debit_cents: amount, credit_cents: 0,
-            description: "Cash received — subscription ##{subscription.id}"},
-          %{account_id: deferred.id, debit_cents: 0,      credit_cents: amount,
-            description: "Deferred subscription revenue — sub ##{subscription.id}"}
-        ]
-      )
-    end)
+    Accounting.create_journal_entry_with_lines(
+      %{
+        date:        payment_date,
+        description: "Subscription payment — #{plan.name} (sub ##{subscription.id})",
+        reference:   reference,
+        entry_type:  entry_type
+      },
+      [
+        %{account_id: cash.id,     debit_cents: amount_cents, credit_cents: 0,
+          description: note || "Cash received — subscription ##{subscription.id}"},
+        %{account_id: deferred.id, debit_cents: 0,            credit_cents: amount_cents,
+          description: "Deferred subscription revenue — sub ##{subscription.id}"}
+      ]
+    )
+  end
+
+  # ── Owed Change AP ────────────────────────────────────────────────────
+
+  @doc """
+  When a subscription payment exceeds the amount owed, reclassifies the
+  overpayment from Deferred Sub Revenue back to an AP liability.
+
+    DR  Deferred Sub Revenue (2200)  [overpayment_cents]
+    CR  Owed Change Payable (2300)   [overpayment_cents]
+
+  Options:
+    - `:payment_date` — defaults to today
+  """
+  def record_owed_change_ap(subscription, overpayment_cents, opts \\ []) do
+    payment_date = Keyword.get(opts, :payment_date, Date.utc_today())
+    seq          = :erlang.unique_integer([:positive, :monotonic])
+    reference    = "vs_sub_owed_change_#{subscription.id}_#{seq}"
+    entry_type   = "owed_change_ap"
+
+    plan        = subscription.subscription_plan ||
+      Repo.preload(subscription, :subscription_plan).subscription_plan
+    deferred    = Accounting.get_account_by_code!(@deferred_sub_rev_code)
+    owed_change = Accounting.get_account_by_code!(@owed_change_ap_code)
+
+    Accounting.create_journal_entry_with_lines(
+      %{
+        date:        payment_date,
+        description: "Owed change — #{plan.name} (sub ##{subscription.id})",
+        reference:   reference,
+        entry_type:  entry_type
+      },
+      [
+        %{account_id: deferred.id,    debit_cents: overpayment_cents, credit_cents: 0,
+          description: "Reverse excess deferred revenue — sub ##{subscription.id}"},
+        %{account_id: owed_change.id, debit_cents: 0, credit_cents: overpayment_cents,
+          description: "Owed change payable — sub ##{subscription.id}"}
+      ]
+    )
+  end
+
+  # ── Change Given Back ─────────────────────────────────────────────────
+
+  @doc """
+  When staff physically gives the member their change back, this reclassifies
+  the overpayment from Deferred Sub Revenue to the source cash/bank account.
+
+    DR  Deferred Sub Revenue (2200)  [change_given_cents]
+    CR  {from_account}               [change_given_cents]
+
+  Options:
+    - `:payment_date` — defaults to today
+  """
+  def record_change_given(subscription, change_given_cents, from_account_id, opts \\ []) do
+    payment_date = Keyword.get(opts, :payment_date, Date.utc_today())
+    seq          = :erlang.unique_integer([:positive, :monotonic])
+    reference    = "vs_sub_change_given_#{subscription.id}_#{seq}"
+    entry_type   = "change_given"
+
+    plan         = subscription.subscription_plan ||
+      Repo.preload(subscription, :subscription_plan).subscription_plan
+    deferred     = Accounting.get_account_by_code!(@deferred_sub_rev_code)
+    from_account = Accounting.get_account!(from_account_id)
+
+    Accounting.create_journal_entry_with_lines(
+      %{
+        date:        payment_date,
+        description: "Change given back — #{plan.name} (sub ##{subscription.id})",
+        reference:   reference,
+        entry_type:  entry_type
+      },
+      [
+        %{account_id: deferred.id,      debit_cents: change_given_cents, credit_cents: 0,
+          description: "Reverse excess deferred revenue — sub ##{subscription.id}"},
+        %{account_id: from_account.id,  debit_cents: 0, credit_cents: change_given_cents,
+          description: "Change given back to member — sub ##{subscription.id}"}
+      ]
+    )
   end
 
   # ── Subscription Revenue Recognition ─────────────────────────────────

@@ -8,10 +8,13 @@ defmodule Ledgr.Domains.VolumeStudio.SubscriptionPlans do
   alias Ledgr.Repo
   alias Ledgr.Domains.VolumeStudio.SubscriptionPlans.SubscriptionPlan
 
-  @doc "Returns all subscription plans, ordered by price."
+  @doc "Returns all subscription plans, ordered by type then price."
   def list_subscription_plans do
     SubscriptionPlan
-    |> order_by(asc: :price_cents)
+    |> order_by([sp], [
+      asc: fragment("CASE ? WHEN 'package' THEN 0 WHEN 'promo' THEN 1 WHEN 'membership' THEN 2 ELSE 3 END", sp.plan_type),
+      asc: sp.price_cents
+    ])
     |> Repo.all()
   end
 
@@ -19,12 +22,18 @@ defmodule Ledgr.Domains.VolumeStudio.SubscriptionPlans do
   def list_active_subscription_plans do
     SubscriptionPlan
     |> where(active: true)
-    |> order_by(asc: :price_cents)
+    |> order_by([sp], [
+      asc: fragment("CASE ? WHEN 'package' THEN 0 WHEN 'promo' THEN 1 WHEN 'membership' THEN 2 ELSE 3 END", sp.plan_type),
+      asc: sp.price_cents
+    ])
     |> Repo.all()
   end
 
   @doc "Gets a single subscription plan. Raises if not found."
   def get_subscription_plan!(id), do: Repo.get!(SubscriptionPlan, id)
+
+  @doc "Gets a subscription plan by exact name, returns nil if not found."
+  def get_plan_by_name(name), do: Repo.get_by(SubscriptionPlan, name: name)
 
   @doc "Returns a changeset for the given plan and attrs."
   def change_subscription_plan(%SubscriptionPlan{} = plan, attrs \\ %{}) do

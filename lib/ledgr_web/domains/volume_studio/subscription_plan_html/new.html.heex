@@ -8,7 +8,13 @@
       <div class="form-block">
         <div class="field">
           <label>Plan Name *</label>
-          <.input type="text" field={f[:name]} placeholder="e.g. Monthly Unlimited" />
+          <.input type="text" field={f[:name]} placeholder="e.g. 1 Month Unlimited" />
+        </div>
+
+        <div class="field">
+          <label>Type</label>
+          <.input type="select" field={f[:plan_type]}
+            options={[{"Package", "package"}, {"Promo", "promo"}, {"Membership", "membership"}, {"Extra Service", "extra"}]} />
         </div>
 
         <div class="field">
@@ -17,8 +23,13 @@
         </div>
 
         <div class="field">
-          <label>Duration (months)</label>
+          <label>Duration (months) <small style="font-weight:normal;">(for memberships)</small></label>
           <.input type="number" field={f[:duration_months]} min="1" />
+        </div>
+
+        <div class="field">
+          <label>Expiry (days) <small style="font-weight:normal;">(for packages — overrides months)</small></label>
+          <.input type="number" field={f[:duration_days]} min="1" />
         </div>
 
         <div class="field">

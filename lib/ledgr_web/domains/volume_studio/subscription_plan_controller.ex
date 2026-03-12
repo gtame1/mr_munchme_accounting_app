@@ -80,4 +80,10 @@ defmodule LedgrWeb.Domains.VolumeStudio.SubscriptionPlanHTML do
   use LedgrWeb, :html
 
   embed_templates "subscription_plan_html/*"
+
+  def plan_type_class("package"), do: "status-partial"
+  def plan_type_class("promo"), do: "status-partial"
+  def plan_type_class("membership"), do: "status-paid"
+  def plan_type_class("extra"), do: ""
+  def plan_type_class(_), do: ""
 end

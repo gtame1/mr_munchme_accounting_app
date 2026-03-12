@@ -1,31 +1,113 @@
-<section class="card">
+<section class="card new-subscription-card">
   <div class="card-header">
-    <h2 class="card-title">New Subscription</h2>
+    <div>
+      <h2 class="card-title">New Subscription</h2>
+      <p class="card-subtitle">Enroll a member in a plan</p>
+    </div>
   </div>
 
   <.form for={@changeset} action={@action} as={:subscription} :let={f}>
-    <div class="form-grid">
+    <input type="hidden" name="subscription[mode]" id="sub_mode" value={@mode} />
+
+    <%!-- ── Member ─────────────────────────────────────────── --%>
+    <div class="form-section">
+      <div class="sub-section-header">
+        <h3 class="section-title">Member</h3>
+        <div class="mode-toggle" role="group">
+          <button type="button"
+            class={"mode-toggle-btn #{if @mode != "new", do: "active"}"}
+            id="btn-existing"
+            onclick="setMemberMode('existing')">Existing</button>
+          <button type="button"
+            class={"mode-toggle-btn #{if @mode == "new", do: "active"}"}
+            id="btn-new"
+            onclick="setMemberMode('new')">+ New Member</button>
+        </div>
+      </div>
+
+      <div id="section-existing" style={if @mode == "new", do: "display:none"}>
+        <div class="field">
+          <label>Select Member *</label>
+          <.input type="select" field={f[:customer_id]}
+            options={[{"Search member...", ""} | @customers]} />
+        </div>
+      </div>
+
+      <div id="section-new" style={if @mode != "new", do: "display:none"}>
+        <div class="form-block" style="gap: 0.75rem 1rem;">
+          <div class="field" style="flex: 1 1 200px;">
+            <label>Full Name *</label>
+            <input class="input" type="text"
+              name="subscription[new_customer][name]"
+              placeholder="e.g. María García"
+              value={Ecto.Changeset.get_field(@customer_changeset, :name)} />
+            <%= if e = @customer_changeset.errors[:name] do %><span class="phx-field-error"><%= elem(e, 0) %></span><% end %>
+          </div>
+          <div class="field" style="flex: 1 1 160px;">
+            <label>Phone *</label>
+            <input class="input" type="tel"
+              name="subscription[new_customer][phone]"
+              placeholder="+52 55 1234 5678"
+              value={Ecto.Changeset.get_field(@customer_changeset, :phone)} />
+            <%= if e = @customer_changeset.errors[:phone] do %><span class="phx-field-error"><%= elem(e, 0) %></span><% end %>
+          </div>
+          <div class="field" style="flex: 1 1 200px;">
+            <label>Email <small style="font-weight:normal;">(optional)</small></label>
+            <input class="input" type="email"
+              name="subscription[new_customer][email]"
+              placeholder="email@example.com"
+              value={Ecto.Changeset.get_field(@customer_changeset, :email)} />
+            <%= if e = @customer_changeset.errors[:email] do %><span class="phx-field-error"><%= elem(e, 0) %></span><% end %>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <%!-- ── Plan ──────────────────────────────────────────── --%>
+    <div class="form-section">
+      <h3 class="section-title">Plan</h3>
+      <div class="field">
+        <label>Subscription Plan *</label>
+        <.input type="select" field={f[:subscription_plan_id]}
+          options={[{"Choose a plan...", ""} | Enum.map(@plans, &{plan_label(&1), &1.id})]}
+          onchange="updatePlanPreview(this.value)" />
+      </div>
+
+      <div id="plan-preview" class="plan-preview" style="display:none;">
+        <div class="plan-preview-row">
+          <span class="status-badge" id="plan-preview-badge"></span>
+          <strong id="plan-preview-name"></strong>
+        </div>
+        <div class="plan-preview-stats">
+          <div class="plan-stat">
+            <span class="plan-stat-label">Price</span>
+            <span class="plan-stat-value" id="plan-preview-price"></span>
+          </div>
+          <div class="plan-stat">
+            <span class="plan-stat-label">Duration</span>
+            <span class="plan-stat-value" id="plan-preview-duration"></span>
+          </div>
+          <div class="plan-stat">
+            <span class="plan-stat-label">Classes</span>
+            <span class="plan-stat-value" id="plan-preview-classes"></span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <%!-- ── Period & Status ──────────────────────────────── --%>
+    <div class="form-section">
+      <h3 class="section-title">Period & Status</h3>
       <div class="form-block">
-        <div class="field">
-          <label>Member *</label>
-          <.input type="select" field={f[:customer_id]} options={[{"Select member...", ""} | @customers]} />
-        </div>
-
-        <div class="field">
-          <label>Plan *</label>
-          <.input type="select" field={f[:subscription_plan_id]} options={[{"Select plan...", ""} | Enum.map(@plans, &{&1.name, &1.id})]} />
-        </div>
-
         <div class="field">
           <label>Start Date *</label>
           <.input type="date" field={f[:starts_on]} />
         </div>
-
         <div class="field">
           <label>End Date *</label>
-          <.input type="date" field={f[:ends_on]} />
+          <.input type="date" field={f[:ends_on]} id="sub-ends-on" />
+          <span id="end-date-hint" class="field-hint" style="display:none;">Calculated from plan</span>
         </div>
-
         <div class="field">
           <label>Status</label>
           <.input type="select" field={f[:status]} options={[
@@ -35,17 +117,125 @@
             {"Expired", "expired"}
           ]} />
         </div>
-
-        <div class="field" style="grid-column: 1 / -1;">
-          <label>Notes</label>
-          <.input type="textarea" field={f[:notes]} />
-        </div>
       </div>
     </div>
 
-    <div class="actions" style="margin-top: 1rem;">
+    <%!-- ── Notes ───────────────────────────────────────── --%>
+    <div class="form-section">
+      <h3 class="section-title">
+        Notes <small style="font-weight: normal; font-size: 0.8rem; color: var(--text-muted);">(optional)</small>
+      </h3>
+      <div class="field">
+        <.input type="textarea" field={f[:notes]} placeholder="Any notes about this subscription..." />
+      </div>
+    </div>
+
+    <div class="actions" style="margin-top: 0.5rem;">
       <button type="submit" class="btn primary">Create Subscription</button>
       <.link navigate={dp(@domain_path_prefix, "/subscriptions")} class="btn">Cancel</.link>
     </div>
   </.form>
 </section>
+
+<script>
+  const subPlans = <%= raw(Jason.encode!(Enum.map(@plans, fn p -> %{
+    id: p.id,
+    name: p.name,
+    plan_type: p.plan_type,
+    price_cents: p.price_cents,
+    duration_months: p.duration_months,
+    duration_days: p.duration_days,
+    class_limit: p.class_limit
+  } end))) %>;
+
+  const typeBadge = {
+    package: "status-badge status-partial",
+    promo: "status-badge status-partial",
+    membership: "status-badge status-paid",
+    extra: "status-badge"
+  };
+
+  function setMemberMode(mode) {
+    document.getElementById('sub_mode').value = mode;
+    document.getElementById('section-existing').style.display = mode === 'existing' ? '' : 'none';
+    document.getElementById('section-new').style.display = mode === 'new' ? '' : 'none';
+    document.getElementById('btn-existing').classList.toggle('active', mode !== 'new');
+    document.getElementById('btn-new').classList.toggle('active', mode === 'new');
+  }
+
+  let selectedPlan = null;
+
+  function updatePlanPreview(planId) {
+    const preview = document.getElementById('plan-preview');
+    if (!planId) { preview.style.display = 'none'; selectedPlan = null; return; }
+    const plan = subPlans.find(p => String(p.id) === String(planId));
+    if (!plan) { preview.style.display = 'none'; selectedPlan = null; return; }
+
+    selectedPlan = plan;
+
+    const badge = document.getElementById('plan-preview-badge');
+    badge.className = typeBadge[plan.plan_type] || 'status-badge';
+    badge.textContent = capitalize(plan.plan_type);
+
+    document.getElementById('plan-preview-name').textContent = plan.name;
+
+    const whole = Math.floor(plan.price_cents / 100);
+    const frac = plan.price_cents % 100;
+    document.getElementById('plan-preview-price').textContent =
+      '$' + whole.toLocaleString('es-MX') + '.' + String(frac).padStart(2, '0') + ' MXN';
+
+    const dur = plan.duration_days
+      ? plan.duration_days + ' day' + (plan.duration_days !== 1 ? 's' : '')
+      : plan.duration_months
+        ? plan.duration_months + ' month' + (plan.duration_months !== 1 ? 's' : '')
+        : '—';
+    document.getElementById('plan-preview-duration').textContent = dur;
+
+    document.getElementById('plan-preview-classes').textContent =
+      plan.class_limit ? plan.class_limit + ' max' : 'Unlimited';
+
+    preview.style.display = '';
+    recalcEndDate();
+  }
+
+  function recalcEndDate() {
+    if (!selectedPlan) return;
+    const startInput = document.querySelector('input[name="subscription[starts_on]"]');
+    const endInput = document.querySelector('input[name="subscription[ends_on]"]');
+    if (!startInput || !startInput.value || !endInput) return;
+
+    const start = new Date(startInput.value + 'T00:00:00');
+
+    if (selectedPlan.duration_days) {
+      start.setDate(start.getDate() + selectedPlan.duration_days - 1);
+    } else if (selectedPlan.duration_months) {
+      start.setMonth(start.getMonth() + selectedPlan.duration_months);
+      start.setDate(start.getDate() - 1);
+    } else {
+      return; // extras — no auto end date
+    }
+
+    endInput.value = start.toISOString().slice(0, 10);
+    showEndDateHint(true);
+  }
+
+  function showEndDateHint(show) {
+    const hint = document.getElementById('end-date-hint');
+    if (hint) hint.style.display = show ? '' : 'none';
+  }
+
+  function capitalize(s) { return s ? s.charAt(0).toUpperCase() + s.slice(1) : ''; }
+
+  // Recalculate when start date changes
+  document.addEventListener('DOMContentLoaded', () => {
+    const startInput = document.querySelector('input[name="subscription[starts_on]"]');
+    if (startInput) startInput.addEventListener('change', recalcEndDate);
+
+    const endInput = document.querySelector('input[name="subscription[ends_on]"]');
+    if (endInput) endInput.addEventListener('input', () => showEndDateHint(false));
+
+    // Trigger preview if plan already selected (e.g. on error re-render)
+    const sel = document.querySelector('select[name="subscription[subscription_plan_id]"]');
+    if (sel && sel.value) updatePlanPreview(sel.value);
+  });
+</script>

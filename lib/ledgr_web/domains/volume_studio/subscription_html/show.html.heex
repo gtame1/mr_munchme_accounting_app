@@ -4,6 +4,10 @@
       <h2 class="card-title"><%= @subscription.customer.name %></h2>
       <p class="card-subtitle">
         <%= @subscription.subscription_plan.name %> ·
+        <span class={"status-badge #{plan_type_badge(@subscription.subscription_plan.plan_type)}"}>
+          <%= String.capitalize(@subscription.subscription_plan.plan_type) %>
+        </span>
+        ·
         <span class={"status-badge #{status_class(@subscription.status)}"}>
           <%= String.capitalize(@subscription.status) %>
         </span>
@@ -12,7 +16,7 @@
 
     <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
       <%= if @subscription.status != "cancelled" && @subscription.status != "expired" do %>
-        <.link href={dp(@domain_path_prefix, "/subscriptions/#{@subscription.id}/payment")} method="post" data-confirm="Record a subscription payment?" class="btn primary">
+        <.link navigate={dp(@domain_path_prefix, "/subscriptions/#{@subscription.id}/payment/new")} class="btn primary">
           Record Payment
         </.link>
         <.link href={dp(@domain_path_prefix, "/subscriptions/#{@subscription.id}/cancel")} method="post" data-confirm="Cancel this subscription?" class="btn danger">
@@ -28,25 +32,33 @@
     </div>
   </div>
 
-  <div class="detail-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 1rem; margin-top: 1rem;">
-    <div class="detail-item">
-      <span class="label">Period</span>
-      <span><%= @subscription.starts_on %> → <%= @subscription.ends_on %></span>
+  <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 1rem; margin-top: 1rem;">
+    <div class="metric-card">
+      <span class="metric-label">Period</span>
+      <span class="metric-value" style="font-size: 0.9rem;">
+        <%= @subscription.starts_on %> → <%= @subscription.ends_on %>
+      </span>
     </div>
-    <div class="detail-item">
-      <span class="label">Classes Used</span>
-      <span>
+    <div class="metric-card">
+      <span class="metric-label">Classes Used</span>
+      <span class="metric-value">
         <%= @subscription.classes_used %>
         <%= if @subscription.subscription_plan.class_limit do %>
           / <%= @subscription.subscription_plan.class_limit %>
         <% else %>
-          (unlimited)
+          (∞)
         <% end %>
       </span>
     </div>
-    <div class="detail-item">
-      <span class="label">Plan Price</span>
-      <span><%= format_currency(@subscription.subscription_plan.price_cents) %></span>
+    <div class="metric-card">
+      <span class="metric-label">Plan Price</span>
+      <span class="metric-value"><%= format_currency(@subscription.subscription_plan.price_cents) %></span>
+    </div>
+    <div class="metric-card">
+      <span class="metric-label">Outstanding</span>
+      <span class={"metric-value #{if @summary.outstanding_cents > 0, do: "text-danger", else: ""}"}>
+        <%= format_currency(@summary.outstanding_cents) %>
+      </span>
     </div>
   </div>
 </section>
@@ -55,18 +67,24 @@
   <div class="card-header">
     <h3 class="card-title" style="font-size: 1rem;">Revenue Summary</h3>
   </div>
-  <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 1rem; margin-top: 0.5rem;">
-    <div class="stat-card">
-      <span class="label">Total Paid</span>
-      <span class="value"><%= format_currency(@summary.total_paid) %></span>
+  <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 0.75rem; margin-top: 0.75rem;">
+    <div class="summary-item">
+      <span class="summary-label">Total Paid</span>
+      <span class="summary-value"><%= format_currency(@summary.total_paid) %></span>
     </div>
-    <div class="stat-card">
-      <span class="label">Deferred Revenue</span>
-      <span class="value"><%= format_currency(@summary.deferred) %></span>
+    <div class="summary-item">
+      <span class="summary-label">Deferred Revenue</span>
+      <span class="summary-value"><%= format_currency(@summary.deferred) %></span>
     </div>
-    <div class="stat-card">
-      <span class="label">Recognized Revenue</span>
-      <span class="value"><%= format_currency(@summary.recognized) %></span>
+    <div class="summary-item">
+      <span class="summary-label">Recognized Revenue</span>
+      <span class="summary-value"><%= format_currency(@summary.recognized) %></span>
+    </div>
+    <div class="summary-item">
+      <span class={"summary-label #{if @summary.outstanding_cents > 0, do: "text-danger", else: ""}"}>Outstanding</span>
+      <span class={"summary-value #{if @summary.outstanding_cents > 0, do: "text-danger", else: ""}"}>
+        <%= format_currency(@summary.outstanding_cents) %>
+      </span>
     </div>
   </div>
 </section>
