@@ -32,7 +32,7 @@ defmodule Ledgr.Release do
   """
   def migrate do
     IO.puts("==> Running migrations...")
-    {:ok, _} = Application.ensure_all_started(@app)
+    load_app()
 
     for repo <- repos() do
       IO.puts("    Migrating #{inspect(repo)}...")
@@ -143,5 +143,13 @@ defmodule Ledgr.Release do
 
   defp repos do
     Application.fetch_env!(@app, :ecto_repos)
+  end
+
+  # Loads the app's module tree and runtime config without starting any
+  # GenServers or connection pools. Used by migrate/0 so that
+  # Ecto.Migrator.with_repo/2 can start each repo temporarily — with its
+  # own minimal pool — rather than competing with the full supervision tree.
+  defp load_app do
+    Application.load(@app)
   end
 end
