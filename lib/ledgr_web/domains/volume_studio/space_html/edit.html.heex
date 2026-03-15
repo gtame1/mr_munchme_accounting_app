@@ -22,7 +22,19 @@
             </div>
 
             <div class="field">
-              <.input type="checkbox" field={f[:active]} label="Available for rental" />
+              <input type="hidden" name={f[:active].name} value="false" />
+              <label class="toggle-switch-label">
+                <input
+                  type="checkbox"
+                  id={f[:active].id}
+                  name={f[:active].name}
+                  value="true"
+                  checked={f[:active].value in [true, "true"]}
+                  class="toggle-switch-input"
+                />
+                <span class="toggle-switch-track"></span>
+                <span class="toggle-switch-text">Available for rental</span>
+              </label>
             </div>
 
             <div class="field full">

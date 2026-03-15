@@ -6,7 +6,7 @@ defmodule Ledgr.Domains.VolumeStudio.Spaces do
   import Ecto.Query
 
   alias Ledgr.Repo
-  alias Ledgr.Domains.VolumeStudio.Spaces.{Space, SpaceRental}
+  alias Ledgr.Domains.VolumeStudio.Spaces.{Space, SpaceRental, SpaceRentalPayment}
   alias Ledgr.Domains.VolumeStudio.Accounting.VolumeStudioAccounting
 
   # ── Spaces ────────────────────────────────────────────────────────────
@@ -161,10 +161,28 @@ defmodule Ledgr.Domains.VolumeStudio.Spaces do
         |> SpaceRental.payment_changeset(%{paid_cents: new_paid, paid_at: paid_at})
         |> Repo.update!()
 
+      %SpaceRentalPayment{}
+      |> SpaceRentalPayment.changeset(%{
+        space_rental_id: rental.id,
+        amount_cents:    amount,
+        payment_date:    Map.get(attrs, :payment_date, Date.utc_today()),
+        method:          Map.get(attrs, :method),
+        note:            Map.get(attrs, :note)
+      })
+      |> Repo.insert!()
+
       VolumeStudioAccounting.record_space_rental_payment(updated, attrs)
 
       updated
     end)
+  end
+
+  @doc "Returns all payments for a space rental, ordered oldest first."
+  def list_rental_payments(%SpaceRental{} = rental) do
+    SpaceRentalPayment
+    |> where(space_rental_id: ^rental.id)
+    |> order_by(asc: :payment_date, asc: :inserted_at)
+    |> Repo.all()
   end
 
   # ── Private helpers ──────────────────────────────────────────────────

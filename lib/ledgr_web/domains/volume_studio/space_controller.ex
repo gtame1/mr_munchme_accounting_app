@@ -31,7 +31,7 @@ defmodule LedgrWeb.Domains.VolumeStudio.SpaceController do
 
   def edit(conn, %{"id" => id}) do
     space = Spaces.get_space!(id)
-    attrs = %{"hourly_rate_cents" => MoneyHelper.cents_to_pesos(space.hourly_rate_cents || 0)}
+    attrs = %{"hourly_rate_cents" => div(space.hourly_rate_cents || 0, 100)}
     changeset = Spaces.change_space(space, attrs)
     render(conn, :edit,
       space: space,

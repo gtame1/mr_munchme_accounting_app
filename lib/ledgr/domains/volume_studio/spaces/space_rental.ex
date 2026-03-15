@@ -3,11 +3,13 @@ defmodule Ledgr.Domains.VolumeStudio.Spaces.SpaceRental do
   import Ecto.Changeset
 
   alias Ledgr.Domains.VolumeStudio.Spaces.Space
+  alias Ledgr.Domains.VolumeStudio.Spaces.SpaceRentalPayment
   alias Ledgr.Core.Customers.Customer
 
   schema "space_rentals" do
     belongs_to :space, Space
     belongs_to :customer, Customer
+    has_many :payments, SpaceRentalPayment, foreign_key: :space_rental_id
 
     field :renter_name, :string
     field :renter_phone, :string

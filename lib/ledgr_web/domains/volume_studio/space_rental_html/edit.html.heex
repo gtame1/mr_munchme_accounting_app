@@ -1,114 +1,122 @@
-<section class="card">
-  <div class="card-header">
-    <h2 class="card-title">Edit Space Rental</h2>
-    <p class="card-subtitle"><%= @rental.renter_name %></p>
-  </div>
+<section class="content">
+  <header class="content-header">
+    <div>
+      <h1 class="page-title">Edit Space Rental</h1>
+      <p class="page-subtitle"><%= @rental.renter_name %> · <%= @rental.space.name %></p>
+    </div>
+    <div class="actions">
+      <.link navigate={dp(@domain_path_prefix, "/space-rentals/#{@rental.id}")} class="btn">← Back</.link>
+    </div>
+  </header>
 
-  <.form for={@changeset} action={@action} as={:space_rental} method="put" :let={f}>
-    <div class="form-grid">
-      <div class="form-block">
+  <div class="content-body">
+    <section class="card">
+      <.form for={@changeset} action={@action} as={:space_rental} method="put" :let={f}>
 
-        <div class="field">
-          <label>Space *</label>
-          <.input type="select" field={f[:space_id]} options={[{"Select space...", ""} | Enum.map(@spaces, &{&1.name, &1.id})]} />
-        </div>
-
-        <div class="field">
-          <label>Renter Name *</label>
-          <.input type="text" field={f[:renter_name]} />
-        </div>
-
-        <div class="field">
-          <label>Renter Phone</label>
-          <.input type="text" field={f[:renter_phone]} />
-        </div>
-
-        <div class="field">
-          <label>Renter Email</label>
-          <.input type="email" field={f[:renter_email]} />
-        </div>
-
-        <div class="field">
-          <label>Member <small style="font-weight:normal;">(optional)</small></label>
-          <.input type="select" field={f[:customer_id]} options={@customers} />
-        </div>
-
-        <div class="field">
-          <label>Start Date &amp; Time</label>
-          <.input type="datetime-local" field={f[:starts_at]} id="starts_at_input" />
-        </div>
-
-        <div class="field">
-          <label>End Date &amp; Time</label>
-          <.input type="datetime-local" field={f[:ends_at]} id="ends_at_input" />
-          <span id="date-error" style="color: var(--red, #dc2626); font-size: 0.8rem; display: none;">
-            End date must be after start date.
-          </span>
-        </div>
-
-        <div class="field">
-          <label>Amount (MXN) *</label>
-          <.input type="number" field={f[:amount_cents]} step="0.01" min="0" id="amount_input" />
-        </div>
-
-        <div class="field">
-          <label>IVA (16%)</label>
-          <input
-            type="text"
-            id="iva_preview"
-            class="form-input"
-            readonly
-            disabled
-            style="background: var(--bg-muted, #f9fafb); color: var(--text-muted); cursor: not-allowed;"
-            value={"$#{:erlang.float_to_binary((@rental.iva_cents || 0) / 100, [{:decimals, 2}])} MXN"}
-          />
-          <span style="font-size: 0.75rem; color: var(--text-muted);">Automatically 16% of amount — not editable.</span>
-        </div>
-
-        <div class="field">
-          <label>Discount <small style="font-weight: normal;">(optional)</small></label>
-          <div style="display: flex; gap: 0.5rem; align-items: center;">
-            <select id="discount_type_select" class="form-input" style="width: auto;">
-              <option value="fixed">$ Fixed</option>
-              <option value="percent">% Percent</option>
-            </select>
-            <input
-              id="discount_value_input"
-              type="number" step="0.01" min="0"
-              value={:erlang.float_to_binary((@rental.discount_cents || 0) / 100, [{:decimals, 2}])}
-              class="form-input"
-              style="width: 120px;"
-            />
-            <input type="hidden" id="discount_cents_hidden"
-                   name="space_rental[discount_cents]"
-                   value={@rental.discount_cents || 0} />
+        <%!-- Rental details --%>
+        <div class="form-section-title">Rental</div>
+        <div class="form-block" style="margin-bottom: 1.25rem;">
+          <div class="field">
+            <.input type="select" field={f[:space_id]} label="Space *"
+              options={[{"Select space...", ""} | Enum.map(@spaces, &{&1.name, &1.id})]} />
           </div>
-          <span id="discount_preview" style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.25rem; display: block;"></span>
+          <div class="field">
+            <.input type="select" field={f[:status]} label="Status" options={[
+              {"Confirmed", "confirmed"},
+              {"Active", "active"},
+              {"Completed", "completed"},
+              {"Cancelled", "cancelled"}
+            ]} />
+          </div>
         </div>
 
-        <div class="field">
-          <label>Status</label>
-          <.input type="select" field={f[:status]} options={[
-            {"Confirmed", "confirmed"},
-            {"Active", "active"},
-            {"Completed", "completed"},
-            {"Cancelled", "cancelled"}
-          ]} />
+        <%!-- Renter info --%>
+        <div class="form-section-title">Renter</div>
+        <div class="form-block" style="margin-bottom: 1.25rem;">
+          <div class="field">
+            <.input type="text" field={f[:renter_name]} label="Name *" />
+          </div>
+          <div class="field">
+            <.input type="text" field={f[:renter_phone]} label="Phone" />
+          </div>
+          <div class="field">
+            <.input type="email" field={f[:renter_email]} label="Email" />
+          </div>
+          <div class="field">
+            <.input type="select" field={f[:customer_id]} label="Member (optional)" options={@customers} />
+          </div>
         </div>
 
-        <div class="field" style="grid-column: 1 / -1;">
-          <label>Notes</label>
-          <.input type="textarea" field={f[:notes]} />
+        <%!-- Schedule --%>
+        <div class="form-section-title">Schedule</div>
+        <div class="form-block" style="margin-bottom: 1.25rem;">
+          <div class="field">
+            <.input type="datetime-local" field={f[:starts_at]} label="Start Date & Time" id="starts_at_input" />
+          </div>
+          <div class="field">
+            <.input type="datetime-local" field={f[:ends_at]} label="End Date & Time" id="ends_at_input" />
+            <span id="date-error" class="field-hint" style="color: var(--red, #dc2626); display: none;">
+              End date must be after start date.
+            </span>
+          </div>
         </div>
 
-      </div>
-    </div>
+        <%!-- Pricing --%>
+        <div class="form-section-title">Pricing</div>
+        <div class="form-block" style="margin-bottom: 1.25rem;">
+          <div class="field">
+            <.input type="number" field={f[:amount_cents]} label="Amount (MXN) *" step="0.01" min="0" id="amount_input" />
+          </div>
+          <div class="field">
+            <label>IVA (16%)</label>
+            <input
+              type="text"
+              id="iva_preview"
+              class="form-input"
+              readonly
+              disabled
+              style="background: var(--bg-muted, #f9fafb); color: var(--text-muted); cursor: not-allowed;"
+              value={"$#{:erlang.float_to_binary((@rental.iva_cents || 0) / 100, [{:decimals, 2}])} MXN"}
+            />
+            <span class="field-hint">Automatically 16% of amount — not editable.</span>
+          </div>
+          <div class="field full">
+            <label>Discount <small style="font-weight: normal; color: var(--text-muted);">(optional)</small></label>
+            <div style="display: flex; gap: 0.5rem; align-items: center;">
+              <select id="discount_type_select" class="form-input" style="width: auto; flex-shrink: 0;">
+                <option value="fixed">$ Fixed</option>
+                <option value="percent">% Percent</option>
+              </select>
+              <input
+                id="discount_value_input"
+                type="number" step="0.01" min="0"
+                value={:erlang.float_to_binary((@rental.discount_cents || 0) / 100, [{:decimals, 2}])}
+                class="form-input"
+                style="max-width: 140px;"
+              />
+              <input type="hidden" id="discount_cents_hidden"
+                     name="space_rental[discount_cents]"
+                     value={:erlang.float_to_binary((@rental.discount_cents || 0) / 100, [{:decimals, 2}])} />
+            </div>
+            <span id="discount_preview" class="field-hint"></span>
+          </div>
+        </div>
 
-    <div class="actions" style="margin-top: 1rem;">
-      <button type="submit" id="submit-btn" class="btn primary">Update Space Rental</button>
-      <.link navigate={dp(@domain_path_prefix, "/space-rentals/#{@rental.id}")} class="btn">Cancel</.link>
-    </div>
-  </.form>
+        <%!-- Notes --%>
+        <div class="form-section-title">Notes</div>
+        <div class="form-block" style="margin-bottom: 1.25rem;">
+          <div class="field full">
+            <.input type="textarea" field={f[:notes]} label="" />
+          </div>
+        </div>
+
+        <div class="form-actions">
+          <button type="submit" id="submit-btn" class="btn primary">Update Space Rental</button>
+          <.link navigate={dp(@domain_path_prefix, "/space-rentals/#{@rental.id}")} class="btn">Cancel</.link>
+        </div>
+      </.form>
+    </section>
+  </div>
 </section>
 
 <script>
@@ -164,7 +172,7 @@
       cents = Math.round(totalCents * value / 100);
     }
     cents = Math.min(Math.max(cents, 0), totalCents);
-    hidden.value = cents;
+    hidden.value = (cents / 100).toFixed(2);
     if (preview) {
       var effective = totalCents - cents;
       preview.textContent = cents > 0
@@ -182,7 +190,6 @@
   if (discountType)  discountType.addEventListener("change", resolveDiscount);
   if (discountValue) discountValue.addEventListener("input",  resolveDiscount);
 
-  // Initial render
   updateIvaPreview();
   validateDates();
 </script>

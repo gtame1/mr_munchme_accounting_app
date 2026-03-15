@@ -19,49 +19,44 @@
   </section>
 
   <section class="card" style="margin-bottom: 1.5rem;">
-    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 0.75rem;">
-      <div class="summary-item">
-        <span class="summary-label">Base Amount</span>
-        <span class="summary-value"><%= format_currency(@rental.amount_cents) %></span>
+    <h3 class="ledger-title">Payment Summary</h3>
+    <div class="ledger-rows">
+      <div class="ledger-row">
+        <span class="ledger-label">Base Amount</span>
+        <span class="ledger-value"><%= format_currency(@rental.amount_cents) %></span>
       </div>
-      <div class="summary-item">
-        <span class="summary-label">IVA (16%)</span>
-        <span class="summary-value"><%= format_currency(@rental.iva_cents || 0) %></span>
+      <div class="ledger-row">
+        <span class="ledger-label">IVA (16%)</span>
+        <span class="ledger-value"><%= format_currency(@rental.iva_cents || 0) %></span>
       </div>
       <%= if @summary.discount_cents > 0 do %>
-        <div class="summary-item">
-          <span class="summary-label">Discount</span>
-          <span class="summary-value" style="color: var(--green, #16a34a);">
-            − <%= format_currency(@summary.discount_cents) %>
-          </span>
+        <div class="ledger-row">
+          <span class="ledger-label">Discount</span>
+          <span class="ledger-value ledger-value--discount">− <%= format_currency(@summary.discount_cents) %></span>
         </div>
-        <div class="summary-item">
-          <span class="summary-label">Effective Total</span>
-          <span class="summary-value"><%= format_currency(@summary.total_cents) %></span>
+        <div class="ledger-row ledger-row--total">
+          <span class="ledger-label">Effective Total</span>
+          <span class="ledger-value"><%= format_currency(@summary.total_cents) %></span>
         </div>
       <% else %>
-        <div class="summary-item">
-          <span class="summary-label">Total Due</span>
-          <span class="summary-value"><%= format_currency(@summary.total_cents) %></span>
+        <div class="ledger-row ledger-row--total">
+          <span class="ledger-label">Total Due</span>
+          <span class="ledger-value"><%= format_currency(@summary.total_cents) %></span>
         </div>
       <% end %>
-      <div class="summary-item">
-        <span class="summary-label">Already Paid</span>
-        <span class="summary-value"><%= format_currency(@summary.paid_cents) %></span>
+      <div class="ledger-row">
+        <span class="ledger-label">Already Paid</span>
+        <span class="ledger-value"><%= format_currency(@summary.paid_cents) %></span>
       </div>
-      <div class="summary-item">
-        <span class={"summary-label #{if @outstanding_cents > 0, do: "text-danger", else: ""}"}>
-          Outstanding
-        </span>
-        <span class={"summary-value #{if @outstanding_cents > 0, do: "text-danger", else: ""}"}>
-          <%= format_currency(@outstanding_cents) %>
-        </span>
+      <div class={"ledger-row #{if @outstanding_cents > 0, do: "ledger-row--danger", else: "ledger-row--success"}"}>
+        <span class="ledger-label">Outstanding</span>
+        <span class="ledger-value"><%= format_currency(@outstanding_cents) %></span>
       </div>
       <%= if @rental.starts_at || @rental.ends_at do %>
-        <div class="summary-item">
-          <span class="summary-label">Period</span>
-          <span class="summary-value" style="font-size: 0.85rem;">
-            <%= format_datetime(@rental.starts_at) %> →<br /><%= format_datetime(@rental.ends_at) %>
+        <div class="ledger-row" style="margin-top: 0.6rem; padding-top: 0.5rem; border-top: 1px solid var(--border-subtle);">
+          <span class="ledger-label">Period</span>
+          <span class="ledger-value" style="text-align: right; font-size: 0.85rem; line-height: 1.5;">
+            <%= format_datetime(@rental.starts_at) %><br /><%= format_datetime(@rental.ends_at) %>
           </span>
         </div>
       <% end %>
@@ -93,6 +88,9 @@
               class="form-input"
             />
           </div>
+          <span style="font-size: 0.75rem; color: var(--text-muted);">
+            You can enter a partial amount for monthly installments.
+          </span>
         </div>
 
         <div class="field">

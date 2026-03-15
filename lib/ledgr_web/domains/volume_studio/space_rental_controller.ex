@@ -15,9 +15,10 @@ defmodule LedgrWeb.Domains.VolumeStudio.SpaceRentalController do
   end
 
   def show(conn, %{"id" => id}) do
-    rental  = Spaces.get_space_rental!(id)
-    summary = Spaces.payment_summary(rental)
-    render(conn, :show, rental: rental, summary: summary)
+    rental   = Spaces.get_space_rental!(id)
+    summary  = Spaces.payment_summary(rental)
+    payments = Spaces.list_rental_payments(rental)
+    render(conn, :show, rental: rental, summary: summary, payments: payments)
   end
 
   def new(conn, _params) do

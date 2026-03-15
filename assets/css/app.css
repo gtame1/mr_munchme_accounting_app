@@ -575,6 +575,60 @@
     margin-right: 0.5rem;
   }
 
+  /* Toggle switch */
+  .toggle-switch-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.65rem;
+    cursor: pointer;
+    user-select: none;
+  }
+
+  .toggle-switch-input {
+    position: absolute;
+    opacity: 0;
+    width: 0;
+    height: 0;
+    pointer-events: none;
+  }
+
+  .toggle-switch-track {
+    position: relative;
+    display: inline-block;
+    width: 2.5rem;
+    height: 1.375rem;
+    background: var(--border-subtle, #d1d5db);
+    border-radius: 9999px;
+    transition: background 0.2s ease;
+    flex-shrink: 0;
+  }
+
+  .toggle-switch-track::after {
+    content: "";
+    position: absolute;
+    top: 0.1875rem;
+    left: 0.1875rem;
+    width: 1rem;
+    height: 1rem;
+    background: white;
+    border-radius: 9999px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+    transition: transform 0.2s ease;
+  }
+
+  .toggle-switch-input:checked + .toggle-switch-track {
+    background: var(--color-primary, #6366f1);
+  }
+
+  .toggle-switch-input:checked + .toggle-switch-track::after {
+    transform: translateX(1.125rem);
+  }
+
+  .toggle-switch-text {
+    font-size: 0.9rem;
+    color: var(--text-base);
+  }
+
   /* form footer: submit + cancel row */
   .form-actions {
     display: flex;
@@ -931,6 +985,66 @@
   .stat-value--success { color: #2d7d46; }
   .stat-value--warning { color: #b45309; }
   .stat-value--danger  { color: #c0392b; }
+
+  /* ==============================
+     Ledger rows (payment summary)
+     ============================== */
+
+  .ledger-title {
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-muted);
+    margin: 0 0 0.6rem 0;
+  }
+
+  .ledger-rows {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+    font-size: 0.9rem;
+  }
+
+  .ledger-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 1rem;
+    color: var(--text-muted);
+  }
+
+  .ledger-row--total {
+    font-weight: 600;
+    color: var(--text-main);
+    padding-top: 0.4rem;
+    margin-top: 0.1rem;
+    border-top: 1px solid var(--border-subtle);
+  }
+
+  .ledger-row--success {
+    color: #2d7d46;
+    font-weight: 600;
+  }
+
+  .ledger-row--danger {
+    color: #c0392b;
+    font-weight: 600;
+  }
+
+  .ledger-label {
+    flex: 1;
+  }
+
+  .ledger-value {
+    white-space: nowrap;
+    flex-shrink: 0;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .ledger-value--discount {
+    color: #2d7d46;
+  }
 
   /* Plain body text inside a card (e.g. notes) */
   .card-body-text {
@@ -1438,7 +1552,10 @@
   .calendar-order-status-new_order::before,
   .calendar-order-status-in_prep::before,
   .calendar-order-status-ready::before,
-  .calendar-order-status-delivered::before {
+  .calendar-order-status-delivered::before,
+  .calendar-session-status-scheduled::before,
+  .calendar-session-status-completed::before,
+  .calendar-session-status-cancelled::before {
     content: "";
     display: inline-block;
     width: 10px;
@@ -1462,6 +1579,18 @@
 
   .calendar-order-status-delivered::before {
     background: #6b7280;
+  }
+
+  .calendar-session-status-scheduled::before {
+    background: #3b82f6;
+  }
+
+  .calendar-session-status-completed::before {
+    background: #10b981;
+  }
+
+  .calendar-session-status-cancelled::before {
+    background: #ef4444;
   }
 
   .calendar-order-link {
@@ -1549,6 +1678,18 @@
 
   .calendar-legend-item .calendar-order-status-delivered {
     background: #6b7280;
+  }
+
+  .calendar-legend-item .calendar-session-status-scheduled {
+    background: #3b82f6;
+  }
+
+  .calendar-legend-item .calendar-session-status-completed {
+    background: #10b981;
+  }
+
+  .calendar-legend-item .calendar-session-status-cancelled {
+    background: #ef4444;
   }
 
   /* -------------------------
