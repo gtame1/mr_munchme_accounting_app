@@ -12,7 +12,13 @@
     <div class="product-detail-gallery">
       <div class="product-detail-main-image" id="main-image-container">
         <%= if Enum.any?(all_images) do %>
-          <img src={List.first(all_images)} alt={@product.name} id="main-product-image" onerror="this.onerror=null;this.src='/images/mr-munchme-logos/mr-munchme-icon.png';this.className='placeholder-logo'" />
+          <div class="product-detail-slides" id="product-slides">
+            <%= for {url, idx} <- Enum.with_index(all_images) do %>
+              <div class="product-detail-slide" data-index={idx}>
+                <img src={url} alt={"#{@product.name}#{if idx > 0, do: " - imagen #{idx + 1}", else: ""}"} onerror="this.onerror=null;this.src='/images/mr-munchme-logos/mr-munchme-icon.png';this.className='placeholder-logo'" />
+              </div>
+            <% end %>
+          </div>
         <% else %>
           <div class="product-detail-placeholder">
             <img src="/images/mr-munchme-logos/mr-munchme-icon.png" alt="MrMunchMe" class="placeholder-logo" />
@@ -21,29 +27,28 @@
       </div>
 
       <%= if length(all_images) > 1 do %>
+        <div class="product-detail-dots" id="product-dots">
+          <%= for {_url, idx} <- Enum.with_index(all_images) do %>
+            <button
+              class={"product-detail-dot #{if idx == 0, do: "active", else: ""}"}
+              data-index={idx}
+              type="button"
+              onclick={"goToSlide(#{idx})"}
+            ></button>
+          <% end %>
+        </div>
+
         <div class="product-detail-thumbstrip">
           <%= for {url, idx} <- Enum.with_index(all_images) do %>
             <button
               class={"product-detail-thumb #{if idx == 0, do: "active", else: ""}"}
-              onclick={"selectThumb(this, '#{url}')"}
+              onclick={"goToSlide(#{idx})"}
               type="button"
             >
               <img src={url} alt={"#{@product.name} - imagen #{idx + 1}"} onerror="this.onerror=null;this.src='/images/mr-munchme-logos/mr-munchme-icon.png'" />
             </button>
           <% end %>
         </div>
-
-        <script>
-          function selectThumb(btn, url) {
-            // Update main image
-            const mainImg = document.getElementById('main-product-image');
-            if (mainImg) mainImg.src = url;
-
-            // Update active state
-            document.querySelectorAll('.product-detail-thumb').forEach(t => t.classList.remove('active'));
-            btn.classList.add('active');
-          }
-        </script>
       <% end %>
     </div>
 
@@ -89,6 +94,7 @@
           <button type="submit" class="btn btn-primary btn-add-to-cart-lg">Agregar al carrito</button>
         </div>
       </form>
+      <a href="/mr-munch-me/checkout" class="btn-go-to-checkout">Ir al carrito →</a>
 
       <%= if @product.description && @product.description != "" do %>
         <hr class="product-detail-divider" />
@@ -122,4 +128,44 @@
     var expanded = desc.classList.toggle('expanded');
     btn.textContent = expanded ? 'Ver menos' : 'Ver más';
   }
+
+  // ── Image carousel ──────────────────────────────────────
+  function goToSlide(idx) {
+    var slides = document.getElementById('product-slides');
+    if (!slides) return;
+    var slide = slides.children[idx];
+    if (!slide) return;
+
+    // Scroll the slides container to the target slide
+    slides.scrollTo({ left: slide.offsetLeft, behavior: 'smooth' });
+
+    // Sync dots
+    document.querySelectorAll('.product-detail-dot').forEach(function(d, i) {
+      d.classList.toggle('active', i === idx);
+    });
+
+    // Sync thumbstrip
+    document.querySelectorAll('.product-detail-thumb').forEach(function(t, i) {
+      t.classList.toggle('active', i === idx);
+    });
+  }
+
+  // Update dots + thumbs when the user swipes on mobile
+  (function() {
+    var slides = document.getElementById('product-slides');
+    if (!slides) return;
+    var timer;
+    slides.addEventListener('scroll', function() {
+      clearTimeout(timer);
+      timer = setTimeout(function() {
+        var idx = Math.round(slides.scrollLeft / slides.clientWidth);
+        document.querySelectorAll('.product-detail-dot').forEach(function(d, i) {
+          d.classList.toggle('active', i === idx);
+        });
+        document.querySelectorAll('.product-detail-thumb').forEach(function(t, i) {
+          t.classList.toggle('active', i === idx);
+        });
+      }, 60);
+    }, { passive: true });
+  })();
 </script>
