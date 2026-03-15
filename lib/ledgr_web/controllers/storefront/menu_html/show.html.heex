@@ -27,17 +27,6 @@
       </div>
 
       <%= if length(all_images) > 1 do %>
-        <div class="product-detail-dots" id="product-dots">
-          <%= for {_url, idx} <- Enum.with_index(all_images) do %>
-            <button
-              class={"product-detail-dot #{if idx == 0, do: "active", else: ""}"}
-              data-index={idx}
-              type="button"
-              onclick={"goToSlide(#{idx})"}
-            ></button>
-          <% end %>
-        </div>
-
         <div class="product-detail-thumbstrip">
           <%= for {url, idx} <- Enum.with_index(all_images) do %>
             <button

@@ -3262,11 +3262,6 @@
     display: block;
   }
 
-  /* Dots — hidden on desktop, shown on mobile */
-  .product-detail-dots {
-    display: none;
-  }
-
   .product-detail-placeholder {
     width: 100%;
     height: 100%;
@@ -4497,31 +4492,6 @@
 
     .product-detail-slide {
       scroll-snap-align: start;
-    }
-
-    /* Show dots on mobile, hide thumbstrip */
-    .product-detail-dots {
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      gap: 0.45rem;
-      padding: 0.55rem 0 0;
-    }
-
-    .product-detail-dot {
-      width: 7px;
-      height: 7px;
-      border-radius: 50%;
-      background: var(--border-subtle, #e8cac5);
-      border: none;
-      padding: 0;
-      cursor: pointer;
-      transition: background 0.2s, transform 0.2s;
-    }
-
-    .product-detail-dot.active {
-      background: var(--primary, #6b2d2d);
-      transform: scale(1.25);
     }
 
     .product-detail-thumb {
