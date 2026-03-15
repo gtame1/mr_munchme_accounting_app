@@ -3053,6 +3053,8 @@
   .product-detail {
     max-width: 1000px;
     margin: 0 auto;
+    /* Contain any markdown content that overflows (long URLs, tables, pre blocks) */
+    overflow-x: hidden;
   }
 
   .product-detail-back {
@@ -3179,6 +3181,9 @@
     color: var(--text-main, #3b1c1c);
     line-height: 1.7;
     margin-bottom: 1.5rem;
+    overflow-wrap: break-word;
+    word-break: break-word;
+    min-width: 0;
   }
 
   .product-detail-description p {
@@ -3215,6 +3220,26 @@
 
   .product-detail-description li {
     margin-bottom: 0.25rem;
+  }
+
+  /* Contain block-level markdown content so it never escapes the column */
+  .product-detail-description img {
+    max-width: 100%;
+    height: auto;
+    display: block;
+  }
+
+  .product-detail-description pre {
+    overflow-x: auto;
+    max-width: 100%;
+    white-space: pre-wrap;
+    word-break: break-all;
+  }
+
+  .product-detail-description table {
+    max-width: 100%;
+    overflow-x: auto;
+    display: block;
   }
 
   .product-detail-divider {
@@ -3437,6 +3462,8 @@
 
   .variant-name {
     flex: 1;
+    min-width: 0;
+    overflow-wrap: break-word;
     font-weight: 600;
     font-size: 0.975rem;
     color: var(--text-main, #3b1c1c);
@@ -3445,6 +3472,8 @@
   .variant-price {
     font-weight: 700;
     font-size: 0.975rem;
+    white-space: nowrap;
+    flex-shrink: 0;
     color: var(--primary, #6b2d2d);
   }
 
@@ -3937,12 +3966,16 @@
   .checkout-summary-item {
     display: flex;
     justify-content: space-between;
-    align-items: center;
+    align-items: flex-start;
+    gap: 0.75rem;
     font-size: 0.95rem;
   }
 
   .checkout-summary-item-name {
+    flex: 1;
+    min-width: 0;
     color: var(--text-main, #3d2318);
+    line-height: 1.4;
   }
 
   .checkout-summary-qty {
@@ -3952,6 +3985,8 @@
 
   .checkout-summary-item-price {
     font-weight: 600;
+    white-space: nowrap;
+    flex-shrink: 0;
     color: var(--text-main, #3d2318);
   }
 
@@ -4048,8 +4083,22 @@
   .confirmation-item {
     display: flex;
     justify-content: space-between;
+    align-items: flex-start;
+    gap: 0.75rem;
     padding: 0.35rem 0;
     font-size: 0.95rem;
+  }
+
+  .confirmation-item span:first-child {
+    flex: 1;
+    min-width: 0;
+    line-height: 1.4;
+  }
+
+  .confirmation-item span:last-child {
+    white-space: nowrap;
+    flex-shrink: 0;
+    font-weight: 600;
   }
 
   .confirmation-total {

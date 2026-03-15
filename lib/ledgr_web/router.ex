@@ -207,7 +207,8 @@ defmodule LedgrWeb.Router do
     # Studio spaces & rental agreements
     resources "/spaces", Domains.VolumeStudio.SpaceController, only: [:index, :new, :create, :edit, :update, :delete]
     resources "/space-rentals", Domains.VolumeStudio.SpaceRentalController, only: [:index, :show, :new, :create, :edit, :update]
-    post "/space-rentals/:id/payment", Domains.VolumeStudio.SpaceRentalController, :record_payment
+    get  "/space-rentals/:id/payment/new", Domains.VolumeStudio.SpaceRentalController, :new_payment
+    post "/space-rentals/:id/payment",     Domains.VolumeStudio.SpaceRentalController, :record_payment
   end
 
   # ── API endpoints (core) ─────────────────────────────────────────────

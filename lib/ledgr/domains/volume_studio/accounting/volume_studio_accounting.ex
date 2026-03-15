@@ -308,51 +308,135 @@ defmodule Ledgr.Domains.VolumeStudio.Accounting.VolumeStudioAccounting do
   # ── Space Rental Payment ──────────────────────────────────────────────
 
   @doc """
-  Records a space rental payment.
+  Records a (partial or full) space rental payment.
 
-    DR  Cash (1000)                     [amount_cents + iva_cents]
-    CR  Space Rental Revenue (4030)     [amount_cents]
-    CR  IVA Payable (2100)              [iva_cents]  (only if iva_cents > 0)
+  Each call creates a unique journal entry, allowing multiple partial payments.
+  The paid amount is split proportionally between rental revenue and IVA payable.
+
+    DR  Cash (1000)                 [attrs.amount_cents]
+    CR  Space Rental Revenue (4030) [revenue_portion]   (proportional)
+    CR  IVA Payable (2100)          [iva_portion]       (proportional, only if > 0)
+
+  attrs:
+    - `:amount_cents`  — amount paid in this transaction
+    - `:payment_date`  — defaults to today
+    - `:note`          — optional description override
   """
-  def record_space_rental_payment(rental) do
-    amount     = rental.amount_cents
-    iva        = rental.iva_cents || 0
-    total      = amount + iva
-    reference  = "vs_rental_payment_#{rental.id}"
+  def record_space_rental_payment(rental, attrs) do
+    paid        = Map.fetch!(attrs, :amount_cents)
+    base        = rental.amount_cents
+    iva         = rental.iva_cents || 0
+    total       = base + iva
+    payment_date = Map.get(attrs, :payment_date, Date.utc_today())
+    note        = Map.get(attrs, :note)
+
+    # Proportional split: revenue gets (base/total) share, iva gets the rest
+    {revenue_portion, iva_portion} =
+      if total > 0 do
+        rev = round(paid * base / total)
+        {rev, paid - rev}
+      else
+        {paid, 0}
+      end
+
+    seq        = :erlang.unique_integer([:positive, :monotonic])
+    reference  = "vs_rental_payment_#{rental.id}_#{seq}"
     entry_type = "space_rental_payment"
 
-    idempotent(reference, entry_type, fn ->
-      cash    = Accounting.get_account_by_code!(@cash_code)
-      revenue = Accounting.get_account_by_code!(@rental_revenue_code)
+    cash    = Accounting.get_account_by_code!(@cash_code)
+    revenue = Accounting.get_account_by_code!(@rental_revenue_code)
 
-      base_lines = [
-        %{account_id: cash.id,    debit_cents: total,  credit_cents: 0,
-          description: "Cash received — rental ##{rental.id}"},
-        %{account_id: revenue.id, debit_cents: 0,      credit_cents: amount,
-          description: "Space rental revenue — rental ##{rental.id}"}
+    base_lines = [
+      %{account_id: cash.id,    debit_cents: paid,             credit_cents: 0,
+        description: note || "Cash received — rental ##{rental.id}"},
+      %{account_id: revenue.id, debit_cents: 0, credit_cents: revenue_portion,
+        description: "Space rental revenue — rental ##{rental.id}"}
+    ]
+
+    lines =
+      if iva_portion > 0 do
+        iva_payable = Accounting.get_account_by_code!(@iva_payable_code)
+        base_lines ++ [
+          %{account_id: iva_payable.id, debit_cents: 0, credit_cents: iva_portion,
+            description: "IVA payable — rental ##{rental.id}"}
+        ]
+      else
+        base_lines
+      end
+
+    Accounting.create_journal_entry_with_lines(
+      %{
+        date:        payment_date,
+        description: "Space rental payment — rental ##{rental.id}",
+        reference:   reference,
+        entry_type:  entry_type
+      },
+      lines
+    )
+  end
+
+  @doc """
+  When a rental payment exceeds the amount owed, reclassifies the overpayment
+  from Rental Revenue to an AP liability.
+
+    DR  Space Rental Revenue (4030)  [overpayment_cents]
+    CR  Owed Change Payable (2300)   [overpayment_cents]
+  """
+  def record_rental_owed_change_ap(rental, overpayment_cents, opts \\ []) do
+    payment_date = Keyword.get(opts, :payment_date, Date.utc_today())
+    seq          = :erlang.unique_integer([:positive, :monotonic])
+    reference    = "vs_rental_owed_change_#{rental.id}_#{seq}"
+    entry_type   = "rental_owed_change_ap"
+
+    revenue     = Accounting.get_account_by_code!(@rental_revenue_code)
+    owed_change = Accounting.get_account_by_code!(@owed_change_ap_code)
+
+    Accounting.create_journal_entry_with_lines(
+      %{
+        date:        payment_date,
+        description: "Owed change — rental ##{rental.id}",
+        reference:   reference,
+        entry_type:  entry_type
+      },
+      [
+        %{account_id: revenue.id,     debit_cents: overpayment_cents, credit_cents: 0,
+          description: "Reverse excess rental revenue — rental ##{rental.id}"},
+        %{account_id: owed_change.id, debit_cents: 0, credit_cents: overpayment_cents,
+          description: "Owed change payable — rental ##{rental.id}"}
       ]
+    )
+  end
 
-      lines =
-        if iva > 0 do
-          iva_payable = Accounting.get_account_by_code!(@iva_payable_code)
-          base_lines ++ [
-            %{account_id: iva_payable.id, debit_cents: 0, credit_cents: iva,
-              description: "IVA payable — rental ##{rental.id}"}
-          ]
-        else
-          base_lines
-        end
+  @doc """
+  When staff physically gives the renter their change, reclassifies the overpayment
+  from Rental Revenue to the source cash/bank account.
 
-      Accounting.create_journal_entry_with_lines(
-        %{
-          date:        Date.utc_today(),
-          description: "Space rental payment — rental ##{rental.id}",
-          reference:   reference,
-          entry_type:  entry_type
-        },
-        lines
-      )
-    end)
+    DR  Space Rental Revenue (4030)  [change_given_cents]
+    CR  {from_account}               [change_given_cents]
+  """
+  def record_rental_change_given(rental, change_given_cents, from_account_id, opts \\ []) do
+    payment_date = Keyword.get(opts, :payment_date, Date.utc_today())
+    seq          = :erlang.unique_integer([:positive, :monotonic])
+    reference    = "vs_rental_change_given_#{rental.id}_#{seq}"
+    entry_type   = "rental_change_given"
+
+    revenue      = Accounting.get_account_by_code!(@rental_revenue_code)
+    from_account = Accounting.get_account!(from_account_id)
+
+    Accounting.create_journal_entry_with_lines(
+      %{
+        date:        payment_date,
+        description: "Change given back — rental ##{rental.id}",
+        reference:   reference,
+        entry_type:  entry_type
+      },
+      [
+        %{account_id: revenue.id,      debit_cents: change_given_cents, credit_cents: 0,
+          description: "Reverse excess rental revenue — rental ##{rental.id}"},
+        %{account_id: from_account.id, debit_cents: 0, credit_cents: change_given_cents,
+          description: "Change given back to renter — rental ##{rental.id}"}
+      ]
+    )
   end
 
   # ── Subscription Refund ──────────────────────────────────────────────

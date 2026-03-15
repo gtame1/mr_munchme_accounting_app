@@ -11,11 +11,9 @@
     </div>
 
     <div class="actions">
-      <%= if is_nil(@rental.paid_at) && @rental.status != "cancelled" do %>
+      <%= if @summary.outstanding_cents > 0 && @rental.status != "cancelled" do %>
         <.link
-          href={dp(@domain_path_prefix, "/space-rentals/#{@rental.id}/payment")}
-          method="post"
-          data-confirm="Record payment for this rental?"
+          navigate={dp(@domain_path_prefix, "/space-rentals/#{@rental.id}/payment/new")}
           class="btn primary"
         >
           Record Payment
@@ -31,6 +29,45 @@
   </header>
 
   <div class="content-body">
+
+    <%!-- Payment summary --%>
+    <section class="card" style="margin-bottom: 1.25rem;">
+      <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 0.75rem;">
+        <div class="summary-item">
+          <span class="summary-label">Base Amount</span>
+          <span class="summary-value"><%= format_currency(@rental.amount_cents) %></span>
+        </div>
+        <div class="summary-item">
+          <span class="summary-label">IVA (16%)</span>
+          <span class="summary-value"><%= format_currency(@rental.iva_cents || 0) %></span>
+        </div>
+        <%= if (@rental.discount_cents || 0) > 0 do %>
+          <div class="summary-item">
+            <span class="summary-label">Discount</span>
+            <span class="summary-value" style="color: var(--green, #16a34a);">
+              − <%= format_currency(@rental.discount_cents) %>
+            </span>
+          </div>
+        <% end %>
+        <div class="summary-item">
+          <span class="summary-label">Total Due</span>
+          <span class="summary-value"><%= format_currency(@summary.total_cents) %></span>
+        </div>
+        <div class="summary-item">
+          <span class="summary-label">Paid</span>
+          <span class="summary-value"><%= format_currency(@summary.paid_cents) %></span>
+        </div>
+        <div class="summary-item">
+          <span class={"summary-label #{if @summary.outstanding_cents > 0, do: "text-danger", else: ""}"}>
+            Outstanding
+          </span>
+          <span class={"summary-value #{if @summary.outstanding_cents > 0, do: "text-danger", else: ""}"}>
+            <%= format_currency(@summary.outstanding_cents) %>
+          </span>
+        </div>
+      </div>
+    </section>
+
     <section class="card">
       <div class="info-grid">
         <div class="info-item">
@@ -41,20 +78,6 @@
           <span class="info-label">Ends</span>
           <span class="info-value"><%= format_datetime(@rental.ends_at) %></span>
         </div>
-        <div class="info-item">
-          <span class="info-label">Amount</span>
-          <span class="info-value"><%= format_currency(@rental.amount_cents) %></span>
-        </div>
-        <%= if @rental.iva_cents && @rental.iva_cents > 0 do %>
-          <div class="info-item">
-            <span class="info-label">IVA</span>
-            <span class="info-value"><%= format_currency(@rental.iva_cents) %></span>
-          </div>
-          <div class="info-item">
-            <span class="info-label">Total</span>
-            <span class="info-value"><%= format_currency(@rental.amount_cents + @rental.iva_cents) %></span>
-          </div>
-        <% end %>
         <%= if @rental.renter_phone do %>
           <div class="info-item">
             <span class="info-label">Phone</span>
@@ -74,15 +97,17 @@
           </div>
         <% end %>
         <div class="info-item">
-          <span class="info-label">Payment</span>
+          <span class="info-label">Payment Status</span>
           <span class="info-value">
-            <%= if @rental.paid_at do %>
-              <span class="status-badge status-paid">Paid</span>
-              <span style="font-size: 0.8rem; color: var(--text-muted); margin-left: 0.35rem;">
-                <%= format_date(@rental.paid_at) %>
-              </span>
+            <%= if @summary.outstanding_cents == 0 do %>
+              <span class="status-badge status-paid">Fully Paid</span>
+              <%= if @rental.paid_at do %>
+                <span style="font-size: 0.8rem; color: var(--text-muted); margin-left: 0.35rem;">
+                  <%= format_date(@rental.paid_at) %>
+                </span>
+              <% end %>
             <% else %>
-              <span class="status-badge status-unpaid">Unpaid</span>
+              <span class="status-badge status-unpaid">Outstanding</span>
             <% end %>
           </span>
         </div>
@@ -97,5 +122,6 @@
         <p class="card-body-text"><%= @rental.notes %></p>
       </section>
     <% end %>
+
   </div>
 </section>

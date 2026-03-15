@@ -107,27 +107,64 @@ defmodule Ledgr.Domains.VolumeStudio.Spaces do
   end
 
   @doc """
-  Records payment for a space rental.
+  Returns a payment summary map for a space rental.
+
+    %{
+      base_cents:        integer,   # amount_cents (pre-IVA)
+      iva_cents:         integer,   # 16% of base
+      discount_cents:    integer,   # flat discount on total
+      total_cents:       integer,   # base + iva − discount, ≥ 0
+      paid_cents:        integer,   # total cash received so far
+      outstanding_cents: integer    # total − paid, ≥ 0
+    }
+  """
+  def payment_summary(%SpaceRental{} = r) do
+    base     = r.amount_cents   || 0
+    iva      = r.iva_cents      || 0
+    discount = r.discount_cents || 0
+    total    = max(base + iva - discount, 0)
+    paid     = r.paid_cents     || 0
+
+    %{
+      base_cents:        base,
+      iva_cents:         iva,
+      discount_cents:    discount,
+      total_cents:       total,
+      paid_cents:        paid,
+      outstanding_cents: max(total - paid, 0)
+    }
+  end
+
+  @doc """
+  Records a (partial or full) payment for a space rental.
+
+  `attrs` map:
+    - `:amount_cents`    — required, amount being paid now
+    - `:payment_date`    — defaults to today
+    - `:method`         — optional string (cash/card/transfer/other)
+    - `:note`           — optional string
 
   In a transaction:
-    1. Sets paid_at to today's date
-    2. Creates journal entry: DR Cash / CR Rental Revenue + optionally CR IVA Payable
+    1. Increments paid_cents by amount_cents
+    2. Sets paid_at when fully paid
+    3. Creates journal entry via VolumeStudioAccounting
   """
-  def record_payment(%SpaceRental{paid_at: nil} = rental) do
+  def record_payment(%SpaceRental{} = rental, attrs) do
+    amount  = Map.fetch!(attrs, :amount_cents)
+    summary = payment_summary(rental)
+    new_paid = rental.paid_cents + amount
+    paid_at  = if new_paid >= summary.total_cents, do: Map.get(attrs, :payment_date, Date.utc_today()), else: nil
+
     Repo.transaction(fn ->
       updated =
         rental
-        |> SpaceRental.changeset(%{paid_at: Date.utc_today()})
+        |> SpaceRental.payment_changeset(%{paid_cents: new_paid, paid_at: paid_at})
         |> Repo.update!()
 
-      VolumeStudioAccounting.record_space_rental_payment(updated)
+      VolumeStudioAccounting.record_space_rental_payment(updated, attrs)
 
       updated
     end)
-  end
-
-  def record_payment(%SpaceRental{} = _rental) do
-    {:error, :already_paid}
   end
 
   # ── Private helpers ──────────────────────────────────────────────────
