@@ -123,17 +123,17 @@ defmodule Ledgr.Domains.VolumeStudio do
 
     [
       %{group: "Main Menu", items: [
-        %{label: "Dashboard",      path: prefix,                       icon: :dashboard},
-        %{label: "Class Sessions", path: "#{prefix}/class-sessions?status=scheduled",   icon: :bookings},
-        %{label: "Class Calendar", path: "#{prefix}/class-sessions/calendar", icon: :bookings},
-        %{label: "Customers",      path: "#{prefix}/customers",        icon: :customers},
-        %{label: "Subscriptions",  path: "#{prefix}/subscriptions?status=active",    icon: :subscriptions}
+        %{label: "Dashboard",      path: prefix,                                       icon: :dashboard},
+        %{label: "Class Sessions", path: "#{prefix}/class-sessions?status=scheduled", icon: :bookings},
+        %{label: "Class Calendar", path: "#{prefix}/class-sessions/calendar",         icon: :bookings},
+        %{label: "Subscriptions",  path: "#{prefix}/subscriptions?status=active",     icon: :subscriptions},
+        %{label: "Quick Sale",     path: "#{prefix}/quick-sale/new",                  icon: :receipt}
       ]},
       %{group: "Studio & Spaces", items: [
+        %{label: "Members",             path: "#{prefix}/customers",           icon: :customers},
         %{label: "Instructors",         path: "#{prefix}/instructors",         icon: :users},
         %{label: "Consultations",       path: "#{prefix}/consultations",       icon: :documents},
         %{label: "Subscription Plans",  path: "#{prefix}/subscription-plans",  icon: :services},
-        %{label: "Quick Sale",          path: "#{prefix}/quick-sale/new",      icon: :receipt},
         %{label: "Spaces",              path: "#{prefix}/spaces",              icon: :services},
         %{label: "Rentals",             path: "#{prefix}/space-rentals",       icon: :receipt}
       ]},
