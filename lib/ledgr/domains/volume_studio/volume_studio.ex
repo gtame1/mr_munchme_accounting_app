@@ -110,10 +110,10 @@ defmodule Ledgr.Domains.VolumeStudio do
     [
       %{group: "Main Menu", items: [
         %{label: "Dashboard",      path: prefix,                       icon: :dashboard},
-        %{label: "Class Sessions", path: "#{prefix}/class-sessions",   icon: :bookings},
+        %{label: "Class Sessions", path: "#{prefix}/class-sessions?status=scheduled",   icon: :bookings},
         %{label: "Class Calendar", path: "#{prefix}/class-sessions/calendar", icon: :bookings},
         %{label: "Customers",      path: "#{prefix}/customers",        icon: :customers},
-        %{label: "Subscriptions",  path: "#{prefix}/subscriptions",    icon: :subscriptions}
+        %{label: "Subscriptions",  path: "#{prefix}/subscriptions?status=active",    icon: :subscriptions}
       ]},
       %{group: "Studio & Spaces", items: [
         %{label: "Instructors",         path: "#{prefix}/instructors",         icon: :users},
@@ -135,6 +135,33 @@ defmodule Ledgr.Domains.VolumeStudio do
 
   @impl Ledgr.Domain.DomainConfig
   def has_active_dependencies?(_customer_id), do: false
+
+  @doc """
+  Cascades a soft-delete to all Volume Studio records belonging to the given customer.
+  Called automatically by Customers.delete_customer/1 before soft-deleting the customer row.
+  """
+  def on_customer_soft_delete(customer_id, now) do
+    import Ecto.Query
+    alias Ledgr.Repo
+    alias Ledgr.Domains.VolumeStudio.Subscriptions.Subscription
+    alias Ledgr.Domains.VolumeStudio.ClassSessions.ClassBooking
+    alias Ledgr.Domains.VolumeStudio.Consultations.Consultation
+    alias Ledgr.Domains.VolumeStudio.Spaces.SpaceRental
+
+    from(r in Subscription, where: r.customer_id == ^customer_id and is_nil(r.deleted_at))
+    |> Repo.update_all(set: [deleted_at: now, updated_at: now])
+
+    from(r in ClassBooking, where: r.customer_id == ^customer_id and is_nil(r.deleted_at))
+    |> Repo.update_all(set: [deleted_at: now, updated_at: now])
+
+    from(r in Consultation, where: r.customer_id == ^customer_id and is_nil(r.deleted_at))
+    |> Repo.update_all(set: [deleted_at: now, updated_at: now])
+
+    from(r in SpaceRental, where: r.customer_id == ^customer_id and is_nil(r.deleted_at))
+    |> Repo.update_all(set: [deleted_at: now, updated_at: now])
+
+    :ok
+  end
 
   # ── RevenueHandler callbacks (stubs) ──────────────────────────────
 

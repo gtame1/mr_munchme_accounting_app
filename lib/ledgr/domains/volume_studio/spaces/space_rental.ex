@@ -23,6 +23,7 @@ defmodule Ledgr.Domains.VolumeStudio.Spaces.SpaceRental do
     field :paid_cents, :integer, default: 0
     field :paid_at, :date
     field :notes, :string
+    field :deleted_at, :utc_datetime
 
     timestamps(type: :utc_datetime)
   end

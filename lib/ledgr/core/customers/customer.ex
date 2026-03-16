@@ -7,6 +7,7 @@ defmodule Ledgr.Core.Customers.Customer do
     field :email, :string
     field :phone, :string
     field :delivery_address, :string
+    field :deleted_at, :utc_datetime
 
     timestamps(type: :utc_datetime)
   end

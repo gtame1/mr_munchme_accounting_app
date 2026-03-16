@@ -13,6 +13,7 @@ defmodule Ledgr.Domains.VolumeStudio.SubscriptionPlans do
     plan_type = Keyword.get(opts, :plan_type)
 
     SubscriptionPlan
+    |> where([sp], is_nil(sp.deleted_at))
     |> maybe_filter_plan_type(plan_type)
     |> order_by([sp], [
       asc: fragment("CASE ? WHEN 'package' THEN 0 WHEN 'promo' THEN 1 WHEN 'membership' THEN 2 ELSE 3 END", sp.plan_type),
@@ -27,7 +28,7 @@ defmodule Ledgr.Domains.VolumeStudio.SubscriptionPlans do
   @doc "Returns only active subscription plans. Useful for select dropdowns."
   def list_active_subscription_plans do
     SubscriptionPlan
-    |> where(active: true)
+    |> where([sp], sp.active == true and is_nil(sp.deleted_at))
     |> order_by([sp], [
       asc: fragment("CASE ? WHEN 'package' THEN 0 WHEN 'promo' THEN 1 WHEN 'membership' THEN 2 ELSE 3 END", sp.plan_type),
       asc: sp.price_cents
@@ -38,16 +39,22 @@ defmodule Ledgr.Domains.VolumeStudio.SubscriptionPlans do
   @doc "Returns only active extra-type plans, ordered by price. Used by Quick Sale."
   def list_active_extra_plans do
     SubscriptionPlan
-    |> where(active: true, plan_type: "extra")
+    |> where([sp], sp.active == true and sp.plan_type == "extra" and is_nil(sp.deleted_at))
     |> order_by([sp], asc: sp.price_cents)
     |> Repo.all()
   end
 
   @doc "Gets a single subscription plan. Raises if not found."
-  def get_subscription_plan!(id), do: Repo.get!(SubscriptionPlan, id)
+  def get_subscription_plan!(id) do
+    from(sp in SubscriptionPlan, where: sp.id == ^id and is_nil(sp.deleted_at))
+    |> Repo.one!()
+  end
 
   @doc "Gets a subscription plan by exact name, returns nil if not found."
-  def get_plan_by_name(name), do: Repo.get_by(SubscriptionPlan, name: name)
+  def get_plan_by_name(name) do
+    from(sp in SubscriptionPlan, where: sp.name == ^name and is_nil(sp.deleted_at))
+    |> Repo.one()
+  end
 
   @doc "Returns a changeset for the given plan and attrs."
   def change_subscription_plan(%SubscriptionPlan{} = plan, attrs \\ %{}) do
@@ -68,13 +75,12 @@ defmodule Ledgr.Domains.VolumeStudio.SubscriptionPlans do
     |> Repo.update()
   end
 
-  @doc "Deletes a subscription plan. Returns {:error, changeset} if subscriptions reference it."
+  @doc "Soft-deletes a subscription plan. Always succeeds — plans are archived, not hard-deleted."
   def delete_subscription_plan(%SubscriptionPlan{} = plan) do
+    now = DateTime.utc_now() |> DateTime.truncate(:second)
+
     plan
-    |> Ecto.Changeset.change()
-    |> Ecto.Changeset.foreign_key_constraint(:id,
-        name: "subscriptions_subscription_plan_id_fkey",
-        message: "Cannot delete — active subscriptions reference this plan.")
-    |> Repo.delete()
+    |> Ecto.Changeset.change(deleted_at: now)
+    |> Repo.update()
   end
 end

@@ -19,6 +19,7 @@ defmodule Ledgr.Domains.VolumeStudio.Subscriptions.Subscription do
     field :iva_cents, :integer, default: 0
     field :paid_cents, :integer, default: 0
     field :notes, :string
+    field :deleted_at, :utc_datetime
 
     timestamps(type: :utc_datetime)
   end

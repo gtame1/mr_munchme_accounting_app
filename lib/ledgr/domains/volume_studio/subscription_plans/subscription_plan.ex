@@ -11,6 +11,7 @@ defmodule Ledgr.Domains.VolumeStudio.SubscriptionPlans.SubscriptionPlan do
     field :duration_days, :integer  # nil = not used; overrides duration_months for packages/promos
     field :class_limit, :integer    # nil = unlimited
     field :active, :boolean, default: true
+    field :deleted_at, :utc_datetime
 
     timestamps(type: :utc_datetime)
   end

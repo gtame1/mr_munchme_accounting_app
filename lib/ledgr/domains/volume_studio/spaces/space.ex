@@ -12,6 +12,7 @@ defmodule Ledgr.Domains.VolumeStudio.Spaces.Space do
     field :capacity, :integer
     field :hourly_rate_cents, :integer
     field :active, :boolean, default: true
+    field :deleted_at, :utc_datetime
 
     timestamps(type: :utc_datetime)
   end

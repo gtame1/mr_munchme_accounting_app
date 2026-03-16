@@ -15,6 +15,7 @@ defmodule Ledgr.Domains.VolumeStudio.ClassSessions.ClassSession do
     field :capacity, :integer
     field :status, :string, default: "scheduled"
     field :notes, :string
+    field :deleted_at, :utc_datetime
 
     timestamps(type: :utc_datetime)
   end

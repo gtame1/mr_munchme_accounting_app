@@ -12,6 +12,7 @@ defmodule Ledgr.Domains.VolumeStudio.ClassSessions.ClassBooking do
     belongs_to :subscription, Subscription
 
     field :status, :string, default: "booked"
+    field :deleted_at, :utc_datetime
 
     timestamps(type: :utc_datetime)
   end

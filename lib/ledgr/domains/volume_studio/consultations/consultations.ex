@@ -24,6 +24,7 @@ defmodule Ledgr.Domains.VolumeStudio.Consultations do
     to_dt = Keyword.get(opts, :to)
 
     Consultation
+    |> where([c], is_nil(c.deleted_at))
     |> maybe_filter_status(status)
     |> maybe_filter_from(from_dt)
     |> maybe_filter_to(to_dt)
@@ -34,9 +35,9 @@ defmodule Ledgr.Domains.VolumeStudio.Consultations do
 
   @doc "Gets a single consultation with customer and instructor preloaded. Raises if not found."
   def get_consultation!(id) do
-    Consultation
+    from(c in Consultation, where: c.id == ^id and is_nil(c.deleted_at))
     |> preload([:customer, :instructor])
-    |> Repo.get!(id)
+    |> Repo.one!()
   end
 
   @doc "Returns a changeset for the given consultation and attrs."

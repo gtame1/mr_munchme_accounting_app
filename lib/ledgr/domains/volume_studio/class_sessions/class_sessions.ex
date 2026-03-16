@@ -26,6 +26,7 @@ defmodule Ledgr.Domains.VolumeStudio.ClassSessions do
     to_dt = Keyword.get(opts, :to)
 
     ClassSession
+    |> where([s], is_nil(s.deleted_at))
     |> maybe_filter_status(status)
     |> maybe_filter_from(from_dt)
     |> maybe_filter_to(to_dt)
@@ -36,9 +37,9 @@ defmodule Ledgr.Domains.VolumeStudio.ClassSessions do
 
   @doc "Gets a single class session with instructor and bookings preloaded. Raises if not found."
   def get_class_session!(id) do
-    ClassSession
+    from(s in ClassSession, where: s.id == ^id and is_nil(s.deleted_at))
     |> preload([:instructor, class_bookings: [:customer, subscription: :subscription_plan]])
-    |> Repo.get!(id)
+    |> Repo.one!()
   end
 
   @doc "Returns a changeset for the given session and attrs."
@@ -60,9 +61,18 @@ defmodule Ledgr.Domains.VolumeStudio.ClassSessions do
     |> Repo.update()
   end
 
-  @doc "Deletes a class session."
+  @doc "Soft-deletes a class session and all its bookings."
   def delete_class_session(%ClassSession{} = session) do
-    Repo.delete(session)
+    now = DateTime.utc_now() |> DateTime.truncate(:second)
+
+    Repo.transaction(fn ->
+      from(b in ClassBooking, where: b.class_session_id == ^session.id and is_nil(b.deleted_at))
+      |> Repo.update_all(set: [deleted_at: now, updated_at: now])
+
+      session
+      |> Ecto.Changeset.change(deleted_at: now)
+      |> Repo.update!()
+    end)
   end
 
   # ── Bookings ──────────────────────────────────────────────────────────
@@ -71,6 +81,7 @@ defmodule Ledgr.Domains.VolumeStudio.ClassSessions do
   def list_bookings_for_session(session_id) do
     ClassBooking
     |> where(class_session_id: ^session_id)
+    |> where([b], is_nil(b.deleted_at))
     |> preload([:customer, :subscription])
     |> Repo.all()
   end
@@ -213,6 +224,7 @@ defmodule Ledgr.Domains.VolumeStudio.ClassSessions do
     bookings =
       ClassBooking
       |> where(class_session_id: ^session.id)
+      |> where([b], is_nil(b.deleted_at))
       |> Repo.all()
 
     counts = Enum.frequencies_by(bookings, & &1.status)
@@ -252,6 +264,7 @@ defmodule Ledgr.Domains.VolumeStudio.ClassSessions do
 
     ClassSession
     |> where([s], s.scheduled_at >= ^from_dt and s.scheduled_at < ^to_dt)
+    |> where([s], is_nil(s.deleted_at))
     |> order_by(asc: :scheduled_at)
     |> preload(:instructor)
     |> Repo.all()

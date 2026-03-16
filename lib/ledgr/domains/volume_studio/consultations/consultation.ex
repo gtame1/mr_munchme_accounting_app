@@ -16,6 +16,7 @@ defmodule Ledgr.Domains.VolumeStudio.Consultations.Consultation do
     field :amount_cents, :integer
     field :iva_cents, :integer, default: 0
     field :paid_at, :date
+    field :deleted_at, :utc_datetime
 
     timestamps(type: :utc_datetime)
   end

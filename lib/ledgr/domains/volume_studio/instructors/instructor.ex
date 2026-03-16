@@ -9,6 +9,7 @@ defmodule Ledgr.Domains.VolumeStudio.Instructors.Instructor do
     field :specialty, :string
     field :bio, :string
     field :active, :boolean, default: true
+    field :deleted_at, :utc_datetime
 
     timestamps(type: :utc_datetime)
   end

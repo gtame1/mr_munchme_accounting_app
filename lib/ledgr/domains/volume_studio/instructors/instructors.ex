@@ -11,6 +11,7 @@ defmodule Ledgr.Domains.VolumeStudio.Instructors do
   @doc "Returns all instructors, ordered by name."
   def list_instructors do
     Instructor
+    |> where([i], is_nil(i.deleted_at))
     |> order_by(asc: :name)
     |> Repo.all()
   end
@@ -18,13 +19,16 @@ defmodule Ledgr.Domains.VolumeStudio.Instructors do
   @doc "Returns only active instructors, ordered by name. Useful for select dropdowns."
   def list_active_instructors do
     Instructor
-    |> where(active: true)
+    |> where([i], i.active == true and is_nil(i.deleted_at))
     |> order_by(asc: :name)
     |> Repo.all()
   end
 
   @doc "Gets a single instructor. Raises if not found."
-  def get_instructor!(id), do: Repo.get!(Instructor, id)
+  def get_instructor!(id) do
+    from(i in Instructor, where: i.id == ^id and is_nil(i.deleted_at))
+    |> Repo.one!()
+  end
 
   @doc "Returns a changeset for the given instructor and attrs."
   def change_instructor(%Instructor{} = instructor, attrs \\ %{}) do
@@ -45,8 +49,12 @@ defmodule Ledgr.Domains.VolumeStudio.Instructors do
     |> Repo.update()
   end
 
-  @doc "Deletes an instructor. FK constraints will surface errors if referenced by sessions/consultations."
+  @doc "Soft-deletes an instructor."
   def delete_instructor(%Instructor{} = instructor) do
-    Repo.delete(instructor)
+    now = DateTime.utc_now() |> DateTime.truncate(:second)
+
+    instructor
+    |> Ecto.Changeset.change(deleted_at: now)
+    |> Repo.update()
   end
 end

@@ -14,6 +14,7 @@ defmodule Ledgr.Domains.VolumeStudio.Spaces do
   @doc "Returns all spaces, ordered by name."
   def list_spaces do
     Space
+    |> where([s], is_nil(s.deleted_at))
     |> order_by(asc: :name)
     |> Repo.all()
   end
@@ -21,13 +22,16 @@ defmodule Ledgr.Domains.VolumeStudio.Spaces do
   @doc "Returns only active spaces, ordered by name. Useful for select dropdowns."
   def list_active_spaces do
     Space
-    |> where(active: true)
+    |> where([s], s.active == true and is_nil(s.deleted_at))
     |> order_by(asc: :name)
     |> Repo.all()
   end
 
   @doc "Gets a single space. Raises if not found."
-  def get_space!(id), do: Repo.get!(Space, id)
+  def get_space!(id) do
+    from(s in Space, where: s.id == ^id and is_nil(s.deleted_at))
+    |> Repo.one!()
+  end
 
   @doc "Returns a changeset for the given space and attrs."
   def change_space(%Space{} = space, attrs \\ %{}) do
@@ -48,9 +52,13 @@ defmodule Ledgr.Domains.VolumeStudio.Spaces do
     |> Repo.update()
   end
 
-  @doc "Deletes a space."
+  @doc "Soft-deletes a space."
   def delete_space(%Space{} = space) do
-    Repo.delete(space)
+    now = DateTime.utc_now() |> DateTime.truncate(:second)
+
+    space
+    |> Ecto.Changeset.change(deleted_at: now)
+    |> Repo.update()
   end
 
   # ── Space Rentals ─────────────────────────────────────────────────────
@@ -71,6 +79,7 @@ defmodule Ledgr.Domains.VolumeStudio.Spaces do
     to_dt = Keyword.get(opts, :to)
 
     SpaceRental
+    |> where([r], is_nil(r.deleted_at))
     |> maybe_filter_status(status)
     |> maybe_filter_space(space_id)
     |> maybe_filter_from(from_dt)
@@ -82,9 +91,9 @@ defmodule Ledgr.Domains.VolumeStudio.Spaces do
 
   @doc "Gets a single space rental with space and customer preloaded. Raises if not found."
   def get_space_rental!(id) do
-    SpaceRental
+    from(r in SpaceRental, where: r.id == ^id and is_nil(r.deleted_at))
     |> preload([:space, :customer])
-    |> Repo.get!(id)
+    |> Repo.one!()
   end
 
   @doc "Returns a changeset for the given rental and attrs."

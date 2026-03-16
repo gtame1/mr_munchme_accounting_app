@@ -9,52 +9,33 @@ defmodule Ledgr.Core.Customers do
   alias Ledgr.Core.Customers.Customer
 
   @doc """
-  Returns the list of customers.
-
-  ## Examples
-
-      iex> list_customers()
-      [%Customer{}, ...]
-
+  Returns the list of non-deleted customers, ordered by name.
   """
   def list_customers do
-    Repo.all(Customer)
+    Customer
+    |> where([c], is_nil(c.deleted_at))
+    |> order_by(asc: :name)
+    |> Repo.all()
   end
 
   @doc """
-  Gets a single customer.
-
-  Raises `Ecto.NoResultsError` if the Customer does not exist.
-
-  ## Examples
-
-      iex> get_customer!(123)
-      %Customer{}
-
-      iex> get_customer!(456)
-      ** (Ecto.NoResultsError)
-
+  Gets a single non-deleted customer. Raises `Ecto.NoResultsError` if not found or deleted.
   """
-  def get_customer!(id), do: Repo.get!(Customer, id)
+  def get_customer!(id) do
+    from(c in Customer, where: c.id == ^id and is_nil(c.deleted_at))
+    |> Repo.one!()
+  end
 
   @doc """
-  Gets a single customer by phone number. Returns nil if not found.
+  Gets a single non-deleted customer by phone number. Returns nil if not found or deleted.
   """
   def get_customer_by_phone(phone) do
-    Repo.get_by(Customer, phone: phone)
+    from(c in Customer, where: c.phone == ^phone and is_nil(c.deleted_at))
+    |> Repo.one()
   end
 
   @doc """
   Creates a customer.
-
-  ## Examples
-
-      iex> create_customer(%{field: value})
-      {:ok, %Customer{}}
-
-      iex> create_customer(%{field: bad_value})
-      {:error, %Ecto.Changeset{}}
-
   """
   def create_customer(attrs) do
     %Customer{}
@@ -64,15 +45,6 @@ defmodule Ledgr.Core.Customers do
 
   @doc """
   Updates a customer.
-
-  ## Examples
-
-      iex> update_customer(customer, %{field: new_value})
-      {:ok, %Customer{}}
-
-      iex> update_customer(customer, %{field: bad_value})
-      {:error, %Ecto.Changeset{}}
-
   """
   def update_customer(%Customer{} = customer, attrs) do
     customer
@@ -81,16 +53,13 @@ defmodule Ledgr.Core.Customers do
   end
 
   @doc """
-  Deletes a customer.
-  Returns {:error, :has_active_orders} if the customer has active orders.
+  Soft-deletes a customer.
 
-  ## Examples
+  If the current domain signals active dependencies (e.g. unpaid orders), returns
+  {:error, :has_active_orders} without deleting.
 
-      iex> delete_customer(customer)
-      {:ok, %Customer{}}
-
-      iex> delete_customer(customer_with_orders)
-      {:error, :has_active_orders}
+  Otherwise sets deleted_at on the customer and cascades the soft-delete to all
+  domain-specific records via the optional on_customer_soft_delete/2 callback.
   """
   def delete_customer(%Customer{} = customer) do
     domain = Ledgr.Domain.current()
@@ -105,30 +74,32 @@ defmodule Ledgr.Core.Customers do
     if has_deps do
       {:error, :has_active_orders}
     else
-      Repo.delete(customer)
+      now = DateTime.utc_now() |> DateTime.truncate(:second)
+
+      Repo.transaction(fn ->
+        if domain && function_exported?(domain, :on_customer_soft_delete, 2) do
+          domain.on_customer_soft_delete(customer.id, now)
+        end
+
+        customer
+        |> Ecto.Changeset.change(deleted_at: now)
+        |> Repo.update!()
+      end)
     end
   end
 
   @doc """
   Returns an `%Ecto.Changeset{}` for tracking customer changes.
-
-  ## Examples
-
-      iex> change_customer(customer)
-      %Ecto.Changeset{data: %Customer{}}
-
   """
   def change_customer(%Customer{} = customer, attrs \\ %{}) do
     Customer.changeset(customer, attrs)
   end
 
   @doc """
-  Finds a customer by phone number, or creates a new one if not found.
-  If a delivery_address is provided and differs from the customer's current address,
-  the customer record is updated so it always reflects the latest address.
+  Finds a non-deleted customer by phone number, or creates a new one if not found.
   """
   def find_or_create_by_phone(phone, attrs \\ %{}) do
-    case Repo.get_by(Customer, phone: phone) do
+    case get_customer_by_phone(phone) do
       nil ->
         create_customer(Map.merge(%{phone: phone}, attrs))
 
@@ -147,7 +118,7 @@ defmodule Ledgr.Core.Customers do
   end
 
   @doc """
-  Returns a list of customer options for select dropdowns.
+  Returns a list of customer options for select dropdowns (non-deleted only).
   Format: [{name (phone), id}]
   """
   def customer_select_options do

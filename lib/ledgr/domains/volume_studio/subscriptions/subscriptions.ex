@@ -27,6 +27,7 @@ defmodule Ledgr.Domains.VolumeStudio.Subscriptions do
     plan_type = Keyword.get(opts, :plan_type)
 
     Subscription
+    |> where([s], is_nil(s.deleted_at))
     |> maybe_filter_status(status)
     |> maybe_filter_customer(customer_id)
     |> maybe_filter_plan_type(plan_type)
@@ -37,9 +38,9 @@ defmodule Ledgr.Domains.VolumeStudio.Subscriptions do
 
   @doc "Gets a single subscription with customer and plan preloaded. Raises if not found."
   def get_subscription!(id) do
-    Subscription
+    from(s in Subscription, where: s.id == ^id and is_nil(s.deleted_at))
     |> preload([:customer, :subscription_plan])
-    |> Repo.get!(id)
+    |> Repo.one!()
   end
 
   @doc "Returns a changeset for the given subscription and attrs."
