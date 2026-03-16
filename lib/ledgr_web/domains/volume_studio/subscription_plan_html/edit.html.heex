@@ -78,29 +78,26 @@
 <style>
   .dur-toggle {
     display: inline-flex;
-    border: 1px solid var(--border-strong);
-    border-radius: var(--radius-sm);
-    overflow: hidden;
+    gap: 0.4rem;
     margin-top: 4px;
   }
   .dur-toggle-btn {
-    padding: 0.35rem 1rem;
-    font-size: 0.85rem;
+    padding: 0.3rem 0.9rem;
+    font-size: 0.83rem;
     font-weight: 500;
     font-family: inherit;
-    border: none;
+    border: 1px solid var(--border-strong);
+    border-radius: 999px;
     background: transparent;
     cursor: pointer;
     color: var(--text-muted);
-    transition: background 0.12s, color 0.12s;
-  }
-  .dur-toggle-btn + .dur-toggle-btn {
-    border-left: 1px solid var(--border-strong);
+    transition: background 0.12s, color 0.12s, border-color 0.12s;
   }
   .dur-toggle-btn.active {
     background: var(--primary);
     color: #fff;
     font-weight: 600;
+    border-color: var(--primary);
   }
 </style>
 
