@@ -44,7 +44,7 @@
             <tr>
               <td><%= c.customer.name %></td>
               <td><%= c.instructor.name %></td>
-              <td style="white-space: nowrap;"><%= c.scheduled_at %></td>
+              <td style="white-space: nowrap;"><%= Calendar.strftime(c.scheduled_at, "%b %d, %Y · %H:%M") %></td>
               <td><%= format_currency(c.amount_cents) %></td>
               <td>
                 <span class={"status-badge #{status_class(c.status)}"}>
@@ -58,10 +58,29 @@
                   <span class="status-badge status-unpaid">Unpaid</span>
                 <% end %>
               </td>
-              <td>
-                <.link navigate={dp(@domain_path_prefix, "/consultations/#{c.id}")} class="btn btn-sm">
-                  View
-                </.link>
+              <td style="vertical-align: middle;">
+                <div class="row-actions" style="display: flex; align-items: center; gap: 0.4rem; flex-wrap: nowrap;">
+                  <.link navigate={dp(@domain_path_prefix, "/consultations/#{c.id}")} class="btn btn-sm">View</.link>
+                  <%= if c.status == "scheduled" do %>
+                    <form action={dp(@domain_path_prefix, "/consultations/#{c.id}/status")} method="post" style="display:contents;">
+                      <input type="hidden" name="_csrf_token" value={Phoenix.Controller.get_csrf_token()} />
+                      <input type="hidden" name="status" value="completed" />
+                      <button type="submit" class="btn btn-sm primary" onclick="return confirm('Mark this consultation as completed?')">Complete</button>
+                    </form>
+                    <form action={dp(@domain_path_prefix, "/consultations/#{c.id}/status")} method="post" style="display:contents;">
+                      <input type="hidden" name="_csrf_token" value={Phoenix.Controller.get_csrf_token()} />
+                      <input type="hidden" name="status" value="no_show" />
+                      <button type="submit" class="btn btn-sm danger" onclick="return confirm('Mark as no-show?')">No Show</button>
+                    </form>
+                  <% end %>
+                  <%= if c.status in ["completed", "cancelled", "no_show"] do %>
+                    <form action={dp(@domain_path_prefix, "/consultations/#{c.id}/status")} method="post" style="display:contents;">
+                      <input type="hidden" name="_csrf_token" value={Phoenix.Controller.get_csrf_token()} />
+                      <input type="hidden" name="status" value="scheduled" />
+                      <button type="submit" class="btn btn-sm" onclick="return confirm('Reopen this consultation as scheduled?')">Reopen</button>
+                    </form>
+                  <% end %>
+                </div>
               </td>
             </tr>
           <% end %>

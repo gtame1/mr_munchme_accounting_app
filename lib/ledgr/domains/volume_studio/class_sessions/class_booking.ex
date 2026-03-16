@@ -12,13 +12,12 @@ defmodule Ledgr.Domains.VolumeStudio.ClassSessions.ClassBooking do
     belongs_to :subscription, Subscription
 
     field :status, :string, default: "booked"
-    field :paid_cents, :integer, default: 0
 
     timestamps(type: :utc_datetime)
   end
 
   @required_fields [:customer_id, :class_session_id]
-  @optional_fields [:subscription_id, :status, :paid_cents]
+  @optional_fields [:subscription_id, :status]
 
   @valid_statuses ~w(booked checked_in no_show cancelled)
 
@@ -27,7 +26,6 @@ defmodule Ledgr.Domains.VolumeStudio.ClassSessions.ClassBooking do
     |> cast(attrs, @required_fields ++ @optional_fields)
     |> validate_required(@required_fields)
     |> validate_inclusion(:status, @valid_statuses)
-    |> validate_number(:paid_cents, greater_than_or_equal_to: 0)
     |> foreign_key_constraint(:customer_id)
     |> foreign_key_constraint(:class_session_id)
     |> foreign_key_constraint(:subscription_id, on_delete: :nilify_all)

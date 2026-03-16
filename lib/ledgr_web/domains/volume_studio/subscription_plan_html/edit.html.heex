@@ -56,3 +56,40 @@
     </div>
   </.form>
 </section>
+
+<script>
+  (function() {
+    var sel    = document.getElementById("subscription_plan_plan_type");
+    var months = document.getElementById("subscription_plan_duration_months");
+    var days   = document.getElementById("subscription_plan_duration_days");
+    var limit  = document.getElementById("subscription_plan_class_limit");
+
+    var rules = {
+      membership: { months: true,  days: false, limit: false },
+      package:    { months: false, days: true,  limit: true  },
+      promo:      { months: true,  days: true,  limit: true  },
+      extra:      { months: false, days: false, limit: false }
+    };
+
+    function toggle(input, enabled, clear) {
+      if (!input) return;
+      var field = input.closest(".field");
+      input.disabled = !enabled;
+      if (field) {
+        field.style.opacity = enabled ? "" : "0.4";
+        field.style.pointerEvents = enabled ? "" : "none";
+      }
+      if (!enabled && clear) input.value = "";
+    }
+
+    function apply(clear) {
+      var rule = rules[sel.value] || { months: true, days: true, limit: true };
+      toggle(months, rule.months, clear);
+      toggle(days,   rule.days,   clear);
+      toggle(limit,  rule.limit,  clear);
+    }
+
+    sel.addEventListener("change", function() { apply(true); });
+    apply(false);
+  })();
+</script>

@@ -45,27 +45,6 @@
           <% end %>
         </div>
 
-        <%!-- Drop-in fee (optional) --%>
-        <div class="field">
-          <label for="booking_paid_cents">Drop-in Fee (MXN, optional)</label>
-          <div style="position: relative;">
-            <span style="position: absolute; left: 0.75rem; top: 50%; transform: translateY(-50%); color: var(--text-muted); font-weight: 500;">$</span>
-            <input
-              id="booking_paid_cents"
-              type="number"
-              name="booking[paid_cents]"
-              step="0.01"
-              min="0"
-              value="0"
-              style="padding-left: 1.75rem;"
-              class="form-input"
-            />
-          </div>
-          <span style="font-size: 0.75rem; color: var(--text-muted);">
-            Leave at 0 if the class is covered by the subscription.
-          </span>
-        </div>
-
       </div>
 
       <div style="display: flex; gap: 0.75rem;">

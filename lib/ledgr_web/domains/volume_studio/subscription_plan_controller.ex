@@ -5,9 +5,11 @@ defmodule LedgrWeb.Domains.VolumeStudio.SubscriptionPlanController do
   alias Ledgr.Domains.VolumeStudio.SubscriptionPlans.SubscriptionPlan
   alias LedgrWeb.Helpers.MoneyHelper
 
-  def index(conn, _params) do
-    plans = SubscriptionPlans.list_subscription_plans()
-    render(conn, :index, plans: plans)
+  def index(conn, params) do
+    current_plan_type = params["type"]
+    db_plan_type = if current_plan_type == "extras", do: "extra", else: nil
+    plans = SubscriptionPlans.list_subscription_plans(plan_type: db_plan_type)
+    render(conn, :index, plans: plans, current_plan_type: current_plan_type)
   end
 
   def new(conn, _params) do

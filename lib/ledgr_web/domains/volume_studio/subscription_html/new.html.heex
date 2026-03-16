@@ -13,54 +13,69 @@
     <div class="form-section">
       <div class="sub-section-header">
         <h3 class="section-title">Member</h3>
-        <div class="mode-toggle" role="group">
-          <button type="button"
-            class={"mode-toggle-btn #{if @mode != "new", do: "active"}"}
-            id="btn-existing"
-            onclick="setMemberMode('existing')">Existing</button>
-          <button type="button"
-            class={"mode-toggle-btn #{if @mode == "new", do: "active"}"}
-            id="btn-new"
-            onclick="setMemberMode('new')">+ New Member</button>
-        </div>
+        <%= if is_nil(@preselected_customer_id) do %>
+          <div class="mode-toggle" role="group">
+            <button type="button"
+              class={"mode-toggle-btn #{if @mode != "new", do: "active"}"}
+              id="btn-existing"
+              onclick="setMemberMode('existing')">Existing</button>
+            <button type="button"
+              class={"mode-toggle-btn #{if @mode == "new", do: "active"}"}
+              id="btn-new"
+              onclick="setMemberMode('new')">+ New Member</button>
+          </div>
+        <% end %>
       </div>
 
-      <div id="section-existing" style={if @mode == "new", do: "display:none"}>
+      <%= if @preselected_customer_id do %>
+        <%
+          {customer_label, _} = Enum.find(@customers, {"", @preselected_customer_id}, fn {_l, id} ->
+            to_string(id) == to_string(@preselected_customer_id)
+          end)
+        %>
+        <input type="hidden" name="subscription[customer_id]" value={@preselected_customer_id} />
         <div class="field">
-          <label>Select Member *</label>
-          <.input type="select" field={f[:customer_id]}
-            options={[{"Search member...", ""} | @customers]} />
+          <label>Member</label>
+          <input class="input" type="text" value={customer_label} disabled />
         </div>
-      </div>
+      <% else %>
+        <div id="section-existing" style={if @mode == "new", do: "display:none"}>
+          <div class="field">
+            <label>Select Member *</label>
+            <.input type="select" field={f[:customer_id]}
+              options={[{"Search member...", ""} | @customers]} />
+          </div>
+        </div>
 
-      <div id="section-new" style={if @mode != "new", do: "display:none"}>
-        <div class="form-block" style="gap: 0.75rem 1rem;">
-          <div class="field" style="flex: 1 1 200px;">
-            <label>Full Name *</label>
-            <input class="input" type="text"
-              name="subscription[new_customer][name]"
-              placeholder="e.g. María García"
-              value={Ecto.Changeset.get_field(@customer_changeset, :name)} />
-            <%= if e = @customer_changeset.errors[:name] do %><span class="phx-field-error"><%= elem(e, 0) %></span><% end %>
-          </div>
-          <div class="field" style="flex: 1 1 160px;">
-            <label>Phone *</label>
-            <input class="input" type="tel"
-              name="subscription[new_customer][phone]"
-              placeholder="+52 55 1234 5678"
-              value={Ecto.Changeset.get_field(@customer_changeset, :phone)} />
-            <%= if e = @customer_changeset.errors[:phone] do %><span class="phx-field-error"><%= elem(e, 0) %></span><% end %>
-          </div>
-          <div class="field" style="flex: 1 1 200px;">
-            <label>Email <small style="font-weight:normal;">(optional)</small></label>
-            <input class="input" type="email"
-              name="subscription[new_customer][email]"
-              placeholder="email@example.com"
-              value={Ecto.Changeset.get_field(@customer_changeset, :email)} />
-            <%= if e = @customer_changeset.errors[:email] do %><span class="phx-field-error"><%= elem(e, 0) %></span><% end %>
+        <div id="section-new" style={if @mode != "new", do: "display:none"}>
+          <div class="form-block" style="gap: 0.75rem 1rem;">
+            <div class="field" style="flex: 1 1 200px;">
+              <label>Full Name *</label>
+              <input class="input" type="text"
+                name="subscription[new_customer][name]"
+                placeholder="e.g. María García"
+                value={Ecto.Changeset.get_field(@customer_changeset, :name)} />
+              <%= if e = @customer_changeset.errors[:name] do %><span class="phx-field-error"><%= elem(e, 0) %></span><% end %>
+            </div>
+            <div class="field" style="flex: 1 1 160px;">
+              <label>Phone *</label>
+              <input class="input" type="tel"
+                name="subscription[new_customer][phone]"
+                placeholder="+52 55 1234 5678"
+                value={Ecto.Changeset.get_field(@customer_changeset, :phone)} />
+              <%= if e = @customer_changeset.errors[:phone] do %><span class="phx-field-error"><%= elem(e, 0) %></span><% end %>
+            </div>
+            <div class="field" style="flex: 1 1 200px;">
+              <label>Email <small style="font-weight:normal;">(optional)</small></label>
+              <input class="input" type="email"
+                name="subscription[new_customer][email]"
+                placeholder="email@example.com"
+                value={Ecto.Changeset.get_field(@customer_changeset, :email)} />
+              <%= if e = @customer_changeset.errors[:email] do %><span class="phx-field-error"><%= elem(e, 0) %></span><% end %>
+            </div>
           </div>
         </div>
-      </div>
+      <% end %>
     </div>
 
     <%!-- ── Plan ──────────────────────────────────────────── --%>

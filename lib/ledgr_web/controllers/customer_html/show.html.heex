@@ -56,7 +56,7 @@
     <section class="card" style="margin-top: 1.5rem;">
       <div class="card-header">
         <h3 class="card-title" style="font-size: 1rem;">Subscriptions</h3>
-        <.link navigate={dp(@domain_path_prefix, "/subscriptions/new")} class="btn primary" style="font-size: 0.85rem;">
+        <.link navigate={dp(@domain_path_prefix, "/subscriptions/new?customer_id=#{@customer.id}")} class="btn primary" style="font-size: 0.85rem;">
           + New Subscription
         </.link>
       </div>

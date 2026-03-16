@@ -111,6 +111,12 @@ defmodule LedgrWeb.Router do
     resources "/ingredients", Domains.MrMunchMe.IngredientController, only: [:index, :new, :create, :edit, :update, :delete]
     resources "/recipes", Domains.MrMunchMe.RecipeController, only: [:index, :new, :create, :show, :edit, :delete]
     post "/recipes/new_version/:id", Domains.MrMunchMe.RecipeController, :create_new_version
+
+    # Inventory reconciliation (MrMunchMe-specific)
+    get "/reconciliation/inventory", ReconciliationController, :inventory_index
+    post "/reconciliation/inventory/adjust", ReconciliationController, :inventory_adjust
+    post "/reconciliation/inventory/reconcile_all", ReconciliationController, :inventory_reconcile_all
+    post "/reconciliation/inventory/quick_transfer", ReconciliationController, :inventory_quick_transfer
   end
 
   # ── Viaxe: public auth routes ──────────────────────────────────────
@@ -183,7 +189,9 @@ defmodule LedgrWeb.Router do
     post "/class-sessions/:id/checkin/:booking_id", Domains.VolumeStudio.ClassSessionController, :checkin
     get  "/class-sessions/:id/bookings/new",        Domains.VolumeStudio.ClassSessionController, :new_booking
     post "/class-sessions/:id/bookings",            Domains.VolumeStudio.ClassSessionController, :create_booking
-    post "/class-sessions/:id/bookings/:booking_id/cancel", Domains.VolumeStudio.ClassSessionController, :cancel_booking
+    post "/class-sessions/:id/bookings/:booking_id/cancel",     Domains.VolumeStudio.ClassSessionController, :cancel_booking
+    post "/class-sessions/:id/bookings/:booking_id/attendance", Domains.VolumeStudio.ClassSessionController, :mark_attendance
+    post "/class-sessions/:id/status",                          Domains.VolumeStudio.ClassSessionController, :update_status
 
     # Instructors
     resources "/instructors", Domains.VolumeStudio.InstructorController, only: [:index, :new, :create, :edit, :update, :delete]
@@ -200,16 +208,24 @@ defmodule LedgrWeb.Router do
     delete "/subscriptions/:id/payment/:entry_id", Domains.VolumeStudio.SubscriptionController, :delete_payment
     get  "/subscriptions/:id/cancel", Domains.VolumeStudio.SubscriptionController, :new_cancel
     post "/subscriptions/:id/cancel", Domains.VolumeStudio.SubscriptionController, :cancel
+    post "/subscriptions/:id/status", Domains.VolumeStudio.SubscriptionController, :update_status
+    post "/subscriptions/:id/redeem", Domains.VolumeStudio.SubscriptionController, :redeem
 
     # Diet consultations
     resources "/consultations", Domains.VolumeStudio.ConsultationController, only: [:index, :show, :new, :create, :edit, :update]
-    post "/consultations/:id/payment", Domains.VolumeStudio.ConsultationController, :record_payment
+    post "/consultations/:id/status",      Domains.VolumeStudio.ConsultationController, :update_status
+    get  "/consultations/:id/payment/new", Domains.VolumeStudio.ConsultationController, :new_payment
+    post "/consultations/:id/payment",     Domains.VolumeStudio.ConsultationController, :record_payment
 
     # Studio spaces & rental agreements
     resources "/spaces", Domains.VolumeStudio.SpaceController, only: [:index, :new, :create, :edit, :update, :delete]
     resources "/space-rentals", Domains.VolumeStudio.SpaceRentalController, only: [:index, :show, :new, :create, :edit, :update]
     get  "/space-rentals/:id/payment/new", Domains.VolumeStudio.SpaceRentalController, :new_payment
     post "/space-rentals/:id/payment",     Domains.VolumeStudio.SpaceRentalController, :record_payment
+
+    # Quick Sale (extra / one-time items — step 1: create subscription)
+    get  "/quick-sale/new", Domains.VolumeStudio.QuickSaleController, :new
+    post "/quick-sale",     Domains.VolumeStudio.QuickSaleController, :create
   end
 
   # ── API endpoints (core) ─────────────────────────────────────────────

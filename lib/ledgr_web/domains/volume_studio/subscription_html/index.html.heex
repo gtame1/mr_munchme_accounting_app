@@ -14,7 +14,16 @@
     <%= for {label, value} <- [{"All", nil}, {"Active", "active"}, {"Paused", "paused"}, {"Cancelled", "cancelled"}, {"Expired", "expired"}] do %>
       <.link
         navigate={dp(@domain_path_prefix, if(value, do: "/subscriptions?status=#{value}", else: "/subscriptions"))}
-        class={"tab-item#{if @current_status == value, do: " active", else: ""}"}
+        class={"tab-item#{if is_nil(@current_plan_type) and @current_status == value, do: " active", else: ""}"}
+      >
+        <%= label %>
+      </.link>
+    <% end %>
+    <span class="tab-divider" style="margin: 0 0.25rem; color: var(--border-strong);">|</span>
+    <%= for {label, pt} <- [{"Memberships", "membership"}, {"Packages", "package"}, {"Promos", "promo"}, {"Extras", "extra"}] do %>
+      <.link
+        navigate={dp(@domain_path_prefix, "/subscriptions?plan_type=#{pt}")}
+        class={"tab-item#{if @current_plan_type == pt, do: " active", else: ""}"}
       >
         <%= label %>
       </.link>
@@ -28,7 +37,9 @@
           <th>Member</th>
           <th>Plan</th>
           <th>Period</th>
-          <th>Classes Used</th>
+          <%= if @current_plan_type != "extra" do %>
+            <th>Classes Used</th>
+          <% end %>
           <th>Deferred</th>
           <th>Status</th>
           <th>Actions</th>
@@ -37,7 +48,7 @@
       <tbody>
         <%= if Enum.empty?(@subscriptions) do %>
           <tr>
-            <td colspan="7">No subscriptions found.</td>
+            <td colspan={if @current_plan_type == "extra", do: "6", else: "7"}>No subscriptions found.</td>
           </tr>
         <% else %>
           <%= for sub <- @subscriptions do %>
@@ -47,12 +58,14 @@
               <td style="white-space: nowrap;">
                 <%= sub.starts_on %> → <%= sub.ends_on %>
               </td>
-              <td>
-                <%= sub.classes_used %>
-                <%= if sub.subscription_plan.class_limit do %>
-                  / <%= sub.subscription_plan.class_limit %>
-                <% end %>
-              </td>
+              <%= if @current_plan_type != "extra" do %>
+                <td>
+                  <%= sub.classes_used %>
+                  <%= if sub.subscription_plan.class_limit do %>
+                    / <%= sub.subscription_plan.class_limit %>
+                  <% end %>
+                </td>
+              <% end %>
               <td><%= format_currency(sub.deferred_revenue_cents) %></td>
               <td>
                 <span class={"status-badge #{status_class(sub.status)}"}>

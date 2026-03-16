@@ -83,8 +83,8 @@
           <label for="refund_account">Pay Refund From</label>
           <select id="refund_account" name="refund[account_id]" class="form-input">
             <option value="">— No refund / skip —</option>
-            <%= for a <- @accounts do %>
-              <option value={a.id}><%= a.code %> <%= a.name %></option>
+            <%= for {label, account_id} <- @accounts do %>
+              <option value={account_id}><%= label %></option>
             <% end %>
           </select>
           <span style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.25rem; display: block;">

@@ -5,10 +5,10 @@
       <div>
         <h2 class="card-title">Record Payment</h2>
         <p class="card-subtitle">
-          <%= @subscription.customer.name %> ·
-          <%= @subscription.subscription_plan.name %> ·
-          <span class={"status-badge #{status_class(@subscription.status)}"}>
-            <%= String.capitalize(@subscription.status) %>
+          <%= @consultation.customer.name %> ·
+          <%= @consultation.instructor.name %> ·
+          <span class={"status-badge #{status_class(@consultation.status)}"}>
+            <%= String.capitalize(@consultation.status) %>
           </span>
         </p>
       </div>

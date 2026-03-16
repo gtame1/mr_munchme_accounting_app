@@ -6,12 +6,10 @@ defmodule Ledgr.Domains.VolumeStudio do
   subscription memberships, and studio space rental to nutritionists.
 
   Revenue streams:
-  - Subscriptions: multi-tier plans with class limits (deferred revenue → monthly recognition)
-  - Classes: drop-in / one-off class payments
+  - Subscriptions: multi-tier plans with class limits (deferred revenue → monthly/per-class recognition)
   - Consultations: diet consultation appointments (one-off)
   - Space rentals: studio space rented out to nutritionists
-
-  This is a stub implementation — domain-specific features will be added in Phase 2.
+  - Partner fees: per-session fees collected from partners/instructors (account 4040)
   """
 
   @behaviour Ledgr.Domain.DomainConfig
@@ -75,13 +73,14 @@ defmodule Ledgr.Domains.VolumeStudio do
       iva_receivable: "1400",
       iva_payable: "2100",
       deferred_subscription_revenue: "2200",
+      owed_change_payable: "2300",
       owners_equity: "3000",
       retained_earnings: "3050",
       owners_drawings: "3100",
       subscription_revenue: "4000",
-      class_revenue: "4010",
       consultation_revenue: "4020",
-      rental_revenue: "4030"
+      rental_revenue: "4030",
+      partner_fee_revenue: "4040"
     }
   end
 
@@ -89,10 +88,18 @@ defmodule Ledgr.Domains.VolumeStudio do
   def journal_entry_types do
     [
       {"Subscription Payment", "subscription_payment"},
+      {"Subscription Payment Reversal", "subscription_payment_reversal"},
       {"Subscription Revenue Recognition", "subscription_revenue_recognition"},
-      {"Class Payment", "class_payment"},
+      {"Subscription Refund", "subscription_refund"},
+      {"Owed Change AP", "owed_change_ap"},
+      {"Change Given", "change_given"},
       {"Consultation Payment", "consultation_payment"},
-      {"Space Rental Payment", "space_rental_payment"}
+      {"Consultation Owed Change AP", "consultation_owed_change_ap"},
+      {"Consultation Change Given", "consultation_change_given"},
+      {"Space Rental Payment", "space_rental_payment"},
+      {"Rental Owed Change AP", "rental_owed_change_ap"},
+      {"Rental Change Given", "rental_change_given"},
+      {"Partner Fee", "partner_fee"}
     ]
   end
 
@@ -102,20 +109,22 @@ defmodule Ledgr.Domains.VolumeStudio do
 
     [
       %{group: "Main Menu", items: [
-        %{label: "Dashboard",      path: prefix,                         icon: :dashboard},
-        %{label: "Customers",      path: "#{prefix}/customers",          icon: :customers},
-        %{label: "Subscriptions",  path: "#{prefix}/subscriptions",      icon: :subscriptions},
-        %{label: "Class Sessions", path: "#{prefix}/class-sessions",     icon: :bookings}
+        %{label: "Dashboard",      path: prefix,                       icon: :dashboard},
+        %{label: "Class Sessions", path: "#{prefix}/class-sessions",   icon: :bookings},
+        %{label: "Class Calendar", path: "#{prefix}/class-sessions/calendar", icon: :bookings},
+        %{label: "Customers",      path: "#{prefix}/customers",        icon: :customers},
+        %{label: "Subscriptions",  path: "#{prefix}/subscriptions",    icon: :subscriptions}
       ]},
-      %{group: "Studio", items: [
-        %{label: "Instructors",    path: "#{prefix}/instructors",        icon: :users},
-        %{label: "Consultations",  path: "#{prefix}/consultations",      icon: :documents}
-      ]},
-      %{group: "Spaces", items: [
-        %{label: "Spaces & Rentals", path: "#{prefix}/spaces", icon: :services}
+      %{group: "Studio & Spaces", items: [
+        %{label: "Instructors",         path: "#{prefix}/instructors",         icon: :users},
+        %{label: "Consultations",       path: "#{prefix}/consultations",       icon: :documents},
+        %{label: "Subscription Plans",  path: "#{prefix}/subscription-plans",  icon: :services},
+        %{label: "Quick Sale",          path: "#{prefix}/quick-sale/new",      icon: :receipt},
+        %{label: "Spaces",              path: "#{prefix}/spaces",              icon: :services},
+        %{label: "Rentals",             path: "#{prefix}/space-rentals",       icon: :receipt}
       ]},
       %{group: "Finance", items: [
-        %{label: "Expenses", path: "#{prefix}/expenses", icon: :expenses},
+        %{label: "Expenses",     path: "#{prefix}/expenses",     icon: :expenses},
         %{label: "Transactions", path: "#{prefix}/transactions", icon: :transactions}
       ]}
     ]
@@ -141,22 +150,47 @@ defmodule Ledgr.Domains.VolumeStudio do
   @impl Ledgr.Domain.RevenueHandler
   def cogs_breakdown(_start_date, _end_date), do: []
 
-  # ── DashboardProvider callbacks (stubs) ───────────────────────────
+  # ── DashboardProvider callbacks ────────────────────────────────────
 
   @impl Ledgr.Domain.DashboardProvider
   def dashboard_metrics(start_date, end_date) do
+    alias Ledgr.Domains.VolumeStudio.{ClassSessions, Subscriptions}
+
     pnl = Ledgr.Core.Accounting.profit_and_loss(start_date, end_date)
 
+    today        = Date.utc_today()
+    next_7_days  = Date.add(today, 7)
+    next_30_days = Date.add(today, 30)
+
+    from_dt        = DateTime.new!(today, ~T[00:00:00], "Etc/UTC")
+    to_7_dt        = DateTime.new!(next_7_days, ~T[23:59:59], "Etc/UTC")
+    period_from_dt = DateTime.new!(start_date, ~T[00:00:00], "Etc/UTC")
+    period_to_dt   = DateTime.new!(end_date, ~T[23:59:59], "Etc/UTC")
+
+    upcoming_sessions = ClassSessions.list_class_sessions(from: from_dt, to: to_7_dt, status: "scheduled")
+    period_sessions   = ClassSessions.list_class_sessions(from: period_from_dt, to: period_to_dt)
+
+    active_subs = Subscriptions.list_subscriptions(status: "active")
+
+    expiring_soon_count =
+      Enum.count(active_subs, fn sub ->
+        sub.ends_on &&
+          Date.compare(sub.ends_on, today) != :lt &&
+          Date.compare(sub.ends_on, next_30_days) != :gt
+      end)
+
+    sessions_by_status =
+      period_sessions
+      |> Enum.group_by(& &1.status)
+      |> Map.new(fn {k, v} -> {k, length(v)} end)
+
     %{
-      total_orders: 0,
-      total_units: 0,
-      delivered_orders: 0,
-      orders_by_status: %{},
-      orders_by_product: [],
-      revenue_cents: 0,
-      avg_order_value_cents: 0,
-      inventory_summary: %{total_value_cents: 0, total_items: 0, by_type: []},
-      pnl: pnl
+      pnl: pnl,
+      upcoming_sessions: upcoming_sessions,
+      active_subscriptions_count: length(active_subs),
+      expiring_soon_count: expiring_soon_count,
+      period_sessions_count: length(period_sessions),
+      sessions_by_status: sessions_by_status
     }
   end
 

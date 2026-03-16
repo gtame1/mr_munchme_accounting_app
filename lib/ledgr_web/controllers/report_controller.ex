@@ -12,7 +12,9 @@ defmodule LedgrWeb.ReportController do
 
     metrics = domain.dashboard_metrics(start_date, end_date)
 
-    render(conn, :dashboard,
+    template = if domain == Ledgr.Domains.VolumeStudio, do: :volume_studio_dashboard, else: :dashboard
+
+    render(conn, template,
       metrics: metrics,
       start_date: start_date,
       end_date: end_date,

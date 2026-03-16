@@ -11,9 +11,17 @@ defmodule LedgrWeb.Domains.VolumeStudio.SubscriptionController do
   alias Ledgr.Core.Customers.Customer
 
   def index(conn, params) do
-    status = params["status"]
-    subscriptions = Subscriptions.list_subscriptions(status: status)
-    render(conn, :index, subscriptions: subscriptions, current_status: status)
+    current_plan_type = params["plan_type"]
+    db_plan_type = if current_plan_type in ["membership", "package", "promo", "extra"],
+      do: current_plan_type, else: nil
+    status = if current_plan_type, do: nil, else: params["status"]
+
+    subscriptions = Subscriptions.list_subscriptions(status: status, plan_type: db_plan_type)
+    render(conn, :index,
+      subscriptions: subscriptions,
+      current_status: status,
+      current_plan_type: current_plan_type
+    )
   end
 
   def show(conn, %{"id" => id}) do
@@ -31,17 +39,29 @@ defmodule LedgrWeb.Domains.VolumeStudio.SubscriptionController do
 
   def new(conn, params) do
     mode = Map.get(params, "mode", "existing")
-    changeset = Subscriptions.change_subscription(%Subscription{starts_on: Date.utc_today()})
+    preselected_customer_id = params["customer_id"]
+
+    changeset =
+      if preselected_customer_id do
+        Subscriptions.change_subscription(%Subscription{}, %{
+          "customer_id" => preselected_customer_id,
+          "starts_on"   => Date.utc_today()
+        })
+      else
+        Subscriptions.change_subscription(%Subscription{starts_on: Date.utc_today()})
+      end
+
     customer_changeset = Customers.change_customer(%Customer{})
     customers = customer_options()
     plans = SubscriptionPlans.list_active_subscription_plans()
     render(conn, :new,
-      changeset: changeset,
-      customer_changeset: customer_changeset,
-      customers: customers,
-      plans: plans,
-      mode: mode,
-      action: dp(conn, "/subscriptions")
+      changeset:               changeset,
+      customer_changeset:      customer_changeset,
+      customers:               customers,
+      plans:                   plans,
+      mode:                    mode,
+      preselected_customer_id: preselected_customer_id,
+      action:                  dp(conn, "/subscriptions")
     )
   end
 
@@ -145,41 +165,75 @@ defmodule LedgrWeb.Domains.VolumeStudio.SubscriptionController do
   def create_booking(conn, %{"id" => id, "booking" => params}) do
     subscription = Subscriptions.get_subscription!(id)
 
-    paid_cents =
-      case Float.parse(params["paid_cents"] || "0") do
-        {v, _} -> round(v * 100)
-        :error  -> 0
-      end
-
-    attrs = %{
-      class_session_id: params["class_session_id"],
-      customer_id:      subscription.customer_id,
-      subscription_id:  subscription.id,
-      paid_cents:       max(0, paid_cents),
-      status:           "booked"
-    }
-
-    case ClassSessions.create_booking(attrs) do
-      {:ok, _booking} ->
+    case Subscriptions.get_soonest_expiring_subscription(subscription.customer_id) do
+      nil ->
         conn
-        |> put_flash(:info, "Booking created successfully.")
+        |> put_flash(:error, "No active subscription with available classes found for this member.")
         |> redirect(to: dp(conn, "/subscriptions/#{id}"))
 
-      {:error, _changeset} ->
-        conn
-        |> put_flash(:error, "Could not create booking. The member may already be booked for this session.")
-        |> redirect(to: dp(conn, "/subscriptions/#{id}/bookings/new"))
+      target_sub ->
+        attrs = %{
+          class_session_id: params["class_session_id"],
+          customer_id:      subscription.customer_id,
+          subscription_id:  target_sub.id,
+          status:           "booked"
+        }
+
+        case ClassSessions.create_booking(attrs) do
+          {:ok, _booking} ->
+            conn
+            |> put_flash(:info, "Booking created and counted under \"#{target_sub.subscription_plan.name}\" (expires #{target_sub.ends_on}).")
+            |> redirect(to: dp(conn, "/subscriptions/#{id}"))
+
+          {:error, _changeset} ->
+            conn
+            |> put_flash(:error, "Could not create booking. The member may already be booked for this session.")
+            |> redirect(to: dp(conn, "/subscriptions/#{id}/bookings/new"))
+        end
     end
   end
 
   def new_payment(conn, %{"id" => id}) do
-    subscription      = Subscriptions.get_subscription!(id)
-    summary           = Subscriptions.payment_summary(subscription)
+    subscription = Subscriptions.get_subscription!(id)
+    summary      = Subscriptions.payment_summary(subscription)
+    plan         = subscription.subscription_plan
+
+    discount_rows =
+      if summary.discount_cents > 0 do
+        [
+          %{label: "Discount",  value_cents: summary.discount_cents, style: :discount},
+          %{label: "Subtotal",  value_cents: summary.effective_price, style: :normal}
+        ]
+      else
+        []
+      end
+
+    totals_row =
+      if summary.discount_cents > 0 or summary.iva_cents > 0 do
+        [%{label: "Total", value_cents: summary.total_cents, style: :total_row}]
+      else
+        []
+      end
+
+    summary_rows =
+      [%{label: "Plan Price", value_cents: plan.price_cents, style: :normal}] ++
+      discount_rows ++
+      [%{label: "IVA (16%)", value_cents: summary.iva_cents, style: :normal}] ++
+      totals_row ++
+      [
+        %{label: "Already Paid",  value_cents: summary.total_paid, style: :normal},
+        %{label: "Outstanding",   value_cents: summary.outstanding_cents,
+          style: if(summary.outstanding_cents > 0, do: :danger, else: :success)}
+      ]
+
     render(conn, :new_payment,
-      subscription:      subscription,
-      outstanding_cents: summary.outstanding_cents,
-      change_accounts:   Accounting.cash_or_bank_account_options(),
-      action:            dp(conn, "/subscriptions/#{id}/payment")
+      subscription:        subscription,
+      summary_rows:        summary_rows,
+      outstanding_cents:   summary.outstanding_cents,
+      default_amount_cents: summary.outstanding_cents,
+      change_accounts:     Accounting.cash_or_bank_account_options(),
+      action:              dp(conn, "/subscriptions/#{id}/payment"),
+      back_path:           dp(conn, "/subscriptions/#{id}")
     )
   end
 
@@ -325,6 +379,42 @@ defmodule LedgrWeb.Domains.VolumeStudio.SubscriptionController do
     end
   end
 
+  def update_status(conn, %{"id" => id, "status" => status}) do
+    subscription = Subscriptions.get_subscription!(id)
+
+    case Subscriptions.update_subscription(subscription, %{status: status}) do
+      {:ok, _} ->
+        conn
+        |> put_flash(:info, "Subscription marked as #{status}.")
+        |> redirect(to: dp(conn, "/subscriptions/#{id}"))
+
+      {:error, _} ->
+        conn
+        |> put_flash(:error, "Could not update subscription status.")
+        |> redirect(to: dp(conn, "/subscriptions/#{id}"))
+    end
+  end
+
+  def redeem(conn, %{"id" => id}) do
+    subscription = Subscriptions.get_subscription!(id)
+
+    case Subscriptions.redeem_extra(subscription) do
+      {:ok, _} ->
+        had_deferred = subscription.deferred_revenue_cents > 0
+        msg = if had_deferred,
+          do: "Marked as used — revenue recognized.",
+          else: "Marked as used. Revenue will be recognized once payment is recorded."
+        conn
+        |> put_flash(:info, msg)
+        |> redirect(to: dp(conn, "/subscriptions/#{id}"))
+
+      {:error, reason} ->
+        conn
+        |> put_flash(:error, "Could not mark as used: #{inspect(reason)}")
+        |> redirect(to: dp(conn, "/subscriptions/#{id}"))
+    end
+  end
+
   def new_cancel(conn, %{"id" => id}) do
     subscription = Subscriptions.get_subscription!(id)
     summary      = Subscriptions.payment_summary(subscription)
@@ -393,6 +483,7 @@ end
 
 defmodule LedgrWeb.Domains.VolumeStudio.SubscriptionHTML do
   use LedgrWeb, :html
+  import LedgrWeb.Domains.VolumeStudio.PaymentFormComponent
 
   embed_templates "subscription_html/*"
 

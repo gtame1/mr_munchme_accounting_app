@@ -37,7 +37,7 @@ defmodule Ledgr.Domains.VolumeStudio.ClassSessions do
   @doc "Gets a single class session with instructor and bookings preloaded. Raises if not found."
   def get_class_session!(id) do
     ClassSession
-    |> preload([:instructor, class_bookings: [:customer, :subscription]])
+    |> preload([:instructor, class_bookings: [:customer, subscription: :subscription_plan]])
     |> Repo.get!(id)
   end
 
@@ -93,7 +93,8 @@ defmodule Ledgr.Domains.VolumeStudio.ClassSessions do
   In a transaction:
     1. Updates booking.status → "checked_in"
     2. If booking.subscription_id present → increments subscription.classes_used
-    3. If booking.paid_cents > 0 → creates class payment journal entry
+       - Extra plans: recognizes all deferred revenue immediately
+       - Package plans (class_limit > 0): recognizes deferred ÷ classes remaining
   """
   def checkin(%ClassBooking{} = booking) do
     Repo.transaction(fn ->
@@ -102,18 +103,76 @@ defmodule Ledgr.Domains.VolumeStudio.ClassSessions do
         |> ClassBooking.changeset(%{status: "checked_in"})
         |> Repo.update!()
 
-      # Increment classes_used on subscription if applicable
       if updated.subscription_id do
-        sub = Repo.get!(Subscription, updated.subscription_id)
+        sub  = Repo.get!(Subscription, updated.subscription_id) |> Repo.preload(:subscription_plan)
+        plan = sub.subscription_plan
 
-        sub
-        |> Ecto.Changeset.change(classes_used: sub.classes_used + 1)
-        |> Repo.update!()
+        if plan.class_limit && sub.classes_used >= plan.class_limit do
+          Repo.rollback(:class_limit_reached)
+        else
+          classes_before = sub.classes_used
+
+          updated_sub =
+            sub
+            |> Ecto.Changeset.change(classes_used: classes_before + 1)
+            |> Repo.update!()
+
+          recognize_on_checkin(updated_sub, updated, plan, classes_before)
+        end
       end
 
-      # Record class payment journal entry if a fee was paid
-      if updated.paid_cents > 0 do
-        VolumeStudioAccounting.record_class_payment(updated)
+      updated
+    end)
+  end
+
+  @doc """
+  Marks a booking as attended (checked_in) or no_show.
+
+  Handles subscription classes_used counter in both directions:
+    - Not checked_in → checked_in: increments classes_used (enforcing plan limit)
+    - Was checked_in → no_show:    decrements classes_used
+  """
+  def mark_attendance(%ClassBooking{} = booking, attended) when is_boolean(attended) do
+    new_status = if attended, do: "checked_in", else: "no_show"
+
+    Repo.transaction(fn ->
+      updated =
+        booking
+        |> ClassBooking.changeset(%{status: new_status})
+        |> Repo.update!()
+
+      cond do
+        # Transitioning TO checked_in from something other than checked_in
+        attended && booking.status != "checked_in" && booking.subscription_id ->
+          sub =
+            Repo.get!(Subscription, booking.subscription_id)
+            |> Repo.preload(:subscription_plan)
+
+          plan = sub.subscription_plan
+
+          if plan.class_limit && sub.classes_used >= plan.class_limit do
+            Repo.rollback(:class_limit_reached)
+          else
+            classes_before = sub.classes_used
+
+            updated_sub =
+              sub
+              |> Ecto.Changeset.change(classes_used: classes_before + 1)
+              |> Repo.update!()
+
+            recognize_on_checkin(updated_sub, updated, plan, classes_before)
+          end
+
+        # Transitioning FROM checked_in to no_show
+        !attended && booking.status == "checked_in" && booking.subscription_id ->
+          sub = Repo.get!(Subscription, booking.subscription_id)
+
+          sub
+          |> Ecto.Changeset.change(classes_used: max(sub.classes_used - 1, 0))
+          |> Repo.update!()
+
+        true ->
+          :ok
       end
 
       updated
@@ -200,6 +259,49 @@ defmodule Ledgr.Domains.VolumeStudio.ClassSessions do
   end
 
   # ── Private helpers ──────────────────────────────────────────────────
+
+  # Handles revenue recognition at check-in time based on plan type:
+  #
+  #   extra plans   → recognize all remaining deferred revenue at once
+  #   package plans → recognize deferred ÷ classes remaining before this check-in
+  #   other plans   → time-based only; no recognition on check-in
+  #
+  # `sub` is the subscription AFTER classes_used was incremented.
+  # `classes_before` is the classes_used value BEFORE the increment.
+  defp recognize_on_checkin(sub, booking, plan, classes_before) do
+    cond do
+      plan.plan_type == "extra" && sub.deferred_revenue_cents > 0 ->
+        to_recognize = sub.deferred_revenue_cents
+
+        sub
+        |> Ecto.Changeset.change(
+          deferred_revenue_cents:   0,
+          recognized_revenue_cents: sub.recognized_revenue_cents + to_recognize
+        )
+        |> Repo.update!()
+
+        VolumeStudioAccounting.recognize_subscription_revenue(sub, to_recognize)
+
+      plan.class_limit && plan.class_limit > 0 &&
+          plan.plan_type != "extra" && sub.deferred_revenue_cents > 0 ->
+        classes_remaining = max(plan.class_limit - classes_before, 1)
+        to_recognize = round(sub.deferred_revenue_cents / classes_remaining)
+
+        if to_recognize > 0 do
+          sub
+          |> Ecto.Changeset.change(
+            deferred_revenue_cents:   sub.deferred_revenue_cents - to_recognize,
+            recognized_revenue_cents: sub.recognized_revenue_cents + to_recognize
+          )
+          |> Repo.update!()
+
+          VolumeStudioAccounting.recognize_subscription_revenue_for_booking(sub, booking, to_recognize)
+        end
+
+      true ->
+        :ok
+    end
+  end
 
   defp maybe_filter_status(query, nil), do: query
   defp maybe_filter_status(query, status), do: where(query, status: ^status)

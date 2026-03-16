@@ -48,15 +48,36 @@
               <td><%= s.instructor.name %></td>
               <td style="white-space: nowrap;"><%= format_datetime(s.scheduled_at) %></td>
               <td><%= s.duration_minutes %> min</td>
-              <td>
+              <td style="vertical-align: middle;">
                 <span class={"status-badge #{status_class(s.status)}"}>
                   <%= String.capitalize(s.status) %>
                 </span>
               </td>
-              <td>
-                <.link navigate={dp(@domain_path_prefix, "/class-sessions/#{s.id}")} class="btn btn-sm">
-                  View
-                </.link>
+              <td style="vertical-align: middle;">
+                <div class="row-actions" style="display: flex; align-items: center; gap: 0.4rem; flex-wrap: nowrap;">
+                  <.link navigate={dp(@domain_path_prefix, "/class-sessions/#{s.id}")} class="btn btn-sm">
+                    View
+                  </.link>
+                  <%= if s.status == "scheduled" do %>
+                    <form action={dp(@domain_path_prefix, "/class-sessions/#{s.id}/status")} method="post" style="display:contents;">
+                      <input type="hidden" name="_csrf_token" value={Phoenix.Controller.get_csrf_token()} />
+                      <input type="hidden" name="status" value="completed" />
+                      <button type="submit" class="btn btn-sm primary" onclick="return confirm('Mark this session as completed?')">Complete</button>
+                    </form>
+                    <form action={dp(@domain_path_prefix, "/class-sessions/#{s.id}/status")} method="post" style="display:contents;">
+                      <input type="hidden" name="_csrf_token" value={Phoenix.Controller.get_csrf_token()} />
+                      <input type="hidden" name="status" value="cancelled" />
+                      <button type="submit" class="btn btn-sm danger" onclick="return confirm('Cancel this session?')">Cancel</button>
+                    </form>
+                  <% end %>
+                  <%= if s.status in ["completed", "cancelled"] do %>
+                    <form action={dp(@domain_path_prefix, "/class-sessions/#{s.id}/status")} method="post" style="display:contents;">
+                      <input type="hidden" name="_csrf_token" value={Phoenix.Controller.get_csrf_token()} />
+                      <input type="hidden" name="status" value="scheduled" />
+                      <button type="submit" class="btn btn-sm" onclick="return confirm('Reopen this session as scheduled?')">Reopen</button>
+                    </form>
+                  <% end %>
+                </div>
               </td>
             </tr>
           <% end %>

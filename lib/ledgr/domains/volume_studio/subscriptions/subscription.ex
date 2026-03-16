@@ -16,13 +16,15 @@ defmodule Ledgr.Domains.VolumeStudio.Subscriptions.Subscription do
     field :deferred_revenue_cents, :integer, default: 0
     field :recognized_revenue_cents, :integer, default: 0
     field :discount_cents, :integer, default: 0
+    field :iva_cents, :integer, default: 0
+    field :paid_cents, :integer, default: 0
     field :notes, :string
 
     timestamps(type: :utc_datetime)
   end
 
   @required_fields [:customer_id, :subscription_plan_id, :starts_on, :ends_on]
-  @optional_fields [:status, :classes_used, :deferred_revenue_cents, :recognized_revenue_cents, :discount_cents, :notes]
+  @optional_fields [:status, :classes_used, :deferred_revenue_cents, :recognized_revenue_cents, :discount_cents, :iva_cents, :paid_cents, :notes]
 
   @valid_statuses ~w(active paused cancelled expired)
 

@@ -98,12 +98,57 @@ defmodule LedgrWeb.Domains.VolumeStudio.SpaceRentalController do
   def new_payment(conn, %{"id" => id}) do
     rental  = Spaces.get_space_rental!(id)
     summary = Spaces.payment_summary(rental)
+
+    total_label = if summary.discount_cents > 0, do: "Effective Total", else: "Total Due"
+
+    discount_rows =
+      if summary.discount_cents > 0 do
+        [%{label: "Discount", value_cents: summary.discount_cents, style: :discount}]
+      else
+        []
+      end
+
+    fmt_dt = fn
+      nil -> "—"
+      %DateTime{} = dt -> Calendar.strftime(dt, "%b %-d, %Y · %-I:%M %p")
+      %NaiveDateTime{} = ndt -> Calendar.strftime(ndt, "%b %-d, %Y · %-I:%M %p")
+      other -> to_string(other)
+    end
+
+    period_rows =
+      if rental.starts_at || rental.ends_at do
+        [%{
+          label: "Period",
+          value_cents: nil,
+          style: :muted,
+          text: "#{fmt_dt.(rental.starts_at)} → #{fmt_dt.(rental.ends_at)}"
+        }]
+      else
+        []
+      end
+
+    summary_rows =
+      [
+        %{label: "Base Amount", value_cents: summary.base_cents, style: :normal},
+        %{label: "IVA (16%)",   value_cents: summary.iva_cents,  style: :normal}
+      ] ++
+      discount_rows ++
+      [%{label: total_label, value_cents: summary.total_cents, style: :total_row}] ++
+      [
+        %{label: "Already Paid", value_cents: summary.paid_cents,        style: :normal},
+        %{label: "Outstanding",  value_cents: summary.outstanding_cents,
+          style: if(summary.outstanding_cents > 0, do: :danger, else: :success)}
+      ] ++
+      period_rows
+
     render(conn, :new_payment,
-      rental:            rental,
-      summary:           summary,
-      outstanding_cents: summary.outstanding_cents,
-      change_accounts:   Accounting.cash_or_bank_account_options(),
-      action:            dp(conn, "/space-rentals/#{id}/payment")
+      rental:              rental,
+      summary_rows:        summary_rows,
+      outstanding_cents:   summary.outstanding_cents,
+      default_amount_cents: summary.outstanding_cents,
+      change_accounts:     Accounting.cash_or_bank_account_options(),
+      action:              dp(conn, "/space-rentals/#{id}/payment"),
+      back_path:           dp(conn, "/space-rentals/#{id}")
     )
   end
 
@@ -190,6 +235,7 @@ end
 
 defmodule LedgrWeb.Domains.VolumeStudio.SpaceRentalHTML do
   use LedgrWeb, :html
+  import LedgrWeb.Domains.VolumeStudio.PaymentFormComponent
 
   embed_templates "space_rental_html/*"
 

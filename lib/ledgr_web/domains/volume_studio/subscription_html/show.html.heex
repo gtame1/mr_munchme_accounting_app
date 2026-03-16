@@ -16,10 +16,48 @@
     </div>
 
     <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
-      <%= if @subscription.status != "cancelled" && @subscription.status != "expired" do %>
+      <%= if @subscription.status == "active" do %>
+        <%= if @subscription.subscription_plan.plan_type == "extra" do %>
+          <form action={dp(@domain_path_prefix, "/subscriptions/#{@subscription.id}/redeem")} method="post" style="display:inline;">
+            <input type="hidden" name="_csrf_token" value={Phoenix.Controller.get_csrf_token()} />
+            <button type="submit" class="btn primary" onclick="return confirm('Mark this item as used/delivered?')">✓ Mark as Used</button>
+          </form>
+        <% end %>
+        <form action={dp(@domain_path_prefix, "/subscriptions/#{@subscription.id}/status")} method="post" style="display:inline;">
+          <input type="hidden" name="_csrf_token" value={Phoenix.Controller.get_csrf_token()} />
+          <input type="hidden" name="status" value="paused" />
+          <button type="submit" class="btn" onclick="return confirm('Pause this subscription?')">Pause</button>
+        </form>
+        <form action={dp(@domain_path_prefix, "/subscriptions/#{@subscription.id}/status")} method="post" style="display:inline;">
+          <input type="hidden" name="_csrf_token" value={Phoenix.Controller.get_csrf_token()} />
+          <input type="hidden" name="status" value="expired" />
+          <button type="submit" class="btn" onclick="return confirm('Mark this subscription as expired?')">Mark Expired</button>
+        </form>
         <.link navigate={dp(@domain_path_prefix, "/subscriptions/#{@subscription.id}/cancel")} class="btn danger">
           Cancel Subscription
         </.link>
+      <% end %>
+      <%= if @subscription.status == "paused" do %>
+        <form action={dp(@domain_path_prefix, "/subscriptions/#{@subscription.id}/status")} method="post" style="display:inline;">
+          <input type="hidden" name="_csrf_token" value={Phoenix.Controller.get_csrf_token()} />
+          <input type="hidden" name="status" value="active" />
+          <button type="submit" class="btn primary" onclick="return confirm('Reactivate this subscription?')">Reactivate</button>
+        </form>
+        <form action={dp(@domain_path_prefix, "/subscriptions/#{@subscription.id}/status")} method="post" style="display:inline;">
+          <input type="hidden" name="_csrf_token" value={Phoenix.Controller.get_csrf_token()} />
+          <input type="hidden" name="status" value="expired" />
+          <button type="submit" class="btn" onclick="return confirm('Mark this subscription as expired?')">Mark Expired</button>
+        </form>
+        <.link navigate={dp(@domain_path_prefix, "/subscriptions/#{@subscription.id}/cancel")} class="btn danger">
+          Cancel Subscription
+        </.link>
+      <% end %>
+      <%= if @subscription.status == "expired" do %>
+        <form action={dp(@domain_path_prefix, "/subscriptions/#{@subscription.id}/status")} method="post" style="display:inline;">
+          <input type="hidden" name="_csrf_token" value={Phoenix.Controller.get_csrf_token()} />
+          <input type="hidden" name="status" value="active" />
+          <button type="submit" class="btn primary" onclick="return confirm('Reactivate this subscription?')">Reactivate</button>
+        </form>
       <% end %>
       <.link navigate={dp(@domain_path_prefix, "/subscriptions/#{@subscription.id}/edit")} class="btn">
         Edit
@@ -30,50 +68,55 @@
     </div>
   </div>
 
-  <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 1rem; margin-top: 1rem;">
-    <div class="metric-card">
-      <span class="metric-label">Period</span>
-      <span class="metric-value" style="font-size: 0.9rem;">
-        <%= @subscription.starts_on %> → <%= @subscription.ends_on %>
-      </span>
-    </div>
-    <div class="metric-card">
-      <span class="metric-label">Classes Used</span>
-      <span class="metric-value">
-        <%= @subscription.classes_used %>
-        <%= if @subscription.subscription_plan.class_limit do %>
-          / <%= @subscription.subscription_plan.class_limit %>
-        <% else %>
-          (∞)
-        <% end %>
-      </span>
-    </div>
-    <div class="metric-card">
-      <span class="metric-label">Plan Price</span>
-      <span class="metric-value"><%= format_currency(@subscription.subscription_plan.price_cents) %></span>
-    </div>
-    <%= if @subscription.discount_cents > 0 do %>
-      <div class="metric-card">
-        <span class="metric-label">Discount</span>
-        <span class="metric-value" style="color: var(--green, #16a34a);">
-          − <%= format_currency(@subscription.discount_cents) %>
-        </span>
-      </div>
-      <div class="metric-card">
-        <span class="metric-label">Effective Price</span>
-        <span class="metric-value"><%= format_currency(@summary.effective_price) %></span>
-      </div>
-    <% end %>
-    <div class="metric-card">
-      <span class="metric-label">Outstanding</span>
-      <span class={"metric-value #{if @summary.outstanding_cents > 0, do: "text-danger", else: ""}"}>
-        <%= format_currency(@summary.outstanding_cents) %>
-      </span>
-    </div>
+  <div style="margin-top: 1rem; overflow-x: auto;">
+    <table class="table" style="width: 100%;">
+      <thead>
+        <tr>
+          <th>Period</th>
+          <%= if @subscription.subscription_plan.plan_type != "extra" do %>
+            <th style="text-align: center;">Classes Used</th>
+          <% end %>
+          <th style="text-align: right;">Plan Price</th>
+          <%= if @subscription.discount_cents > 0 do %>
+            <th style="text-align: right;">Discount</th>
+            <th style="text-align: right;">Effective Price</th>
+          <% end %>
+          <th style="text-align: right;">Outstanding</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td style="white-space: nowrap; font-size: 0.875rem;">
+            <%= @subscription.starts_on %> → <%= @subscription.ends_on %>
+          </td>
+          <%= if @subscription.subscription_plan.plan_type != "extra" do %>
+            <td style="text-align: center;">
+              <%= @subscription.classes_used %>
+              <%= if @subscription.subscription_plan.class_limit do %>
+                / <%= @subscription.subscription_plan.class_limit %>
+              <% else %>
+                / ∞
+              <% end %>
+            </td>
+          <% end %>
+          <td style="text-align: right;"><%= format_currency(@subscription.subscription_plan.price_cents) %></td>
+          <%= if @subscription.discount_cents > 0 do %>
+            <td style="text-align: right; color: var(--green, #16a34a);">
+              − <%= format_currency(@subscription.discount_cents) %>
+            </td>
+            <td style="text-align: right;"><%= format_currency(@summary.effective_price) %></td>
+          <% end %>
+          <td style={"text-align: right; font-weight: 600; #{if @summary.outstanding_cents > 0, do: "color: var(--danger, #dc2626);", else: ""}"}>
+            <%= format_currency(@summary.outstanding_cents) %>
+          </td>
+        </tr>
+      </tbody>
+    </table>
   </div>
 </section>
 
 <%!-- ── Classes Taken ────────────────────────────────────────────────── --%>
+<%= if @subscription.subscription_plan.plan_type != "extra" do %>
 <section class="card" style="margin-bottom: 1.5rem;">
   <div class="card-header">
     <h3 class="card-title" style="font-size: 1rem;">Classes Taken</h3>
@@ -101,7 +144,6 @@
             <th>Class</th>
             <th>Instructor</th>
             <th style="text-align: center;">Status</th>
-            <th style="text-align: right;">Fee Paid</th>
           </tr>
         </thead>
         <tbody>
@@ -133,13 +175,6 @@
                   <%= String.capitalize(booking.status) %>
                 </span>
               </td>
-              <td style="text-align: right; font-size: 0.875rem;">
-                <%= if booking.paid_cents > 0 do %>
-                  <%= format_currency(booking.paid_cents) %>
-                <% else %>
-                  <span style="color: var(--text-muted);">—</span>
-                <% end %>
-              </td>
             </tr>
           <% end %>
         </tbody>
@@ -147,6 +182,7 @@
     </div>
   <% end %>
 </section>
+<% end %>
 
 <%!-- ── Revenue Summary ─────────────────────────────────────────────── --%>
 <section class="card" style="margin-bottom: 1.5rem;">
@@ -157,6 +193,10 @@
     <div class="summary-item">
       <span class="summary-label">Total Paid</span>
       <span class="summary-value"><%= format_currency(@summary.total_paid) %></span>
+    </div>
+    <div class="summary-item">
+      <span class="summary-label">IVA (16%)</span>
+      <span class="summary-value"><%= format_currency(@summary.iva_cents) %></span>
     </div>
     <div class="summary-item">
       <span class="summary-label">Deferred Revenue</span>
@@ -203,26 +243,29 @@
       <table class="table" style="width: 100%;">
         <thead>
           <tr>
-            <th>Date</th>
-            <th>Description</th>
-            <th style="text-align: right;">Amount</th>
-            <th style="text-align: center; width: 100px;">Actions</th>
+            <th style="white-space: nowrap;">Date</th>
+            <th style="text-align: right; white-space: nowrap;">Amount</th>
+            <th style="white-space: nowrap;">Note</th>
+            <th style="text-align: center; width: 120px;"></th>
           </tr>
         </thead>
         <tbody>
           <%= for entry <- @payments do %>
             <%
-              amount_cents = entry.journal_lines
-                |> Enum.find(&(&1.debit_cents > 0))
-                |> case do
-                  nil -> 0
-                  line -> line.debit_cents
+              cash_line = entry.journal_lines |> Enum.find(&(&1.debit_cents > 0))
+              amount_cents = if cash_line, do: cash_line.debit_cents, else: 0
+              note =
+                case cash_line do
+                  nil -> nil
+                  line ->
+                    desc = line.description || ""
+                    if String.starts_with?(desc, "Cash received") or String.starts_with?(desc, "Subscription payment"), do: nil, else: desc
                 end
             %>
             <tr>
-              <td style="white-space: nowrap;"><%= entry.date %></td>
-              <td style="color: var(--text-muted); font-size: 0.875rem;"><%= entry.description %></td>
+              <td style="white-space: nowrap; font-size: 0.875rem;"><%= entry.date %></td>
               <td style="text-align: right; font-weight: 600;"><%= format_currency(amount_cents) %></td>
+              <td style="color: var(--text-muted); font-size: 0.875rem;"><%= note || "—" %></td>
               <td style="text-align: center;">
                 <div style="display: flex; gap: 0.4rem; justify-content: center;">
                   <.link navigate={dp(@domain_path_prefix, "/subscriptions/#{@subscription.id}/payment/#{entry.id}/edit")} class="btn" style="font-size: 0.75rem; padding: 0.2rem 0.6rem;">

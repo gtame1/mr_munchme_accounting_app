@@ -11,16 +11,27 @@
     </div>
 
     <div class="actions">
+      <%= if @session.status == "scheduled" do %>
+        <form action={dp(@domain_path_prefix, "/class-sessions/#{@session.id}/status")} method="post" style="display:inline;">
+          <input type="hidden" name="_csrf_token" value={Phoenix.Controller.get_csrf_token()} />
+          <input type="hidden" name="status" value="completed" />
+          <button type="submit" class="btn primary" onclick="return confirm('Mark this session as completed?')">Mark Completed</button>
+        </form>
+        <form action={dp(@domain_path_prefix, "/class-sessions/#{@session.id}/status")} method="post" style="display:inline;">
+          <input type="hidden" name="_csrf_token" value={Phoenix.Controller.get_csrf_token()} />
+          <input type="hidden" name="status" value="cancelled" />
+          <button type="submit" class="btn danger" onclick="return confirm('Cancel this session?')">Cancel Session</button>
+        </form>
+      <% end %>
+      <%= if @session.status in ["completed", "cancelled"] do %>
+        <form action={dp(@domain_path_prefix, "/class-sessions/#{@session.id}/status")} method="post" style="display:inline;">
+          <input type="hidden" name="_csrf_token" value={Phoenix.Controller.get_csrf_token()} />
+          <input type="hidden" name="status" value="scheduled" />
+          <button type="submit" class="btn" onclick="return confirm('Reopen this session as scheduled?')">Reopen</button>
+        </form>
+      <% end %>
       <.link navigate={dp(@domain_path_prefix, "/class-sessions/#{@session.id}/edit")} class="btn">
         Edit
-      </.link>
-      <.link
-        href={dp(@domain_path_prefix, "/class-sessions/#{@session.id}")}
-        method="delete"
-        data-confirm="Delete this class session?"
-        class="btn danger"
-      >
-        Delete
       </.link>
       <.link navigate={dp(@domain_path_prefix, "/class-sessions")} class="btn">
         ← Back
@@ -89,46 +100,57 @@
           <thead>
             <tr>
               <th>Member</th>
+              <th>Subscription</th>
+              <th style="text-align: center;">Attended?</th>
               <th>Status</th>
-              <th>Paid</th>
-              <th>Actions</th>
+              <th></th>
             </tr>
           </thead>
           <tbody>
             <%= if Enum.empty?(@session.class_bookings) do %>
               <tr>
-                <td colspan="4">No bookings yet.</td>
+                <td colspan="5">No bookings yet.</td>
               </tr>
             <% else %>
               <%= for booking <- @session.class_bookings do %>
                 <tr>
-                  <td><%= booking.customer.name %></td>
-                  <td>
+                  <td style="vertical-align: middle;"><%= booking.customer.name %></td>
+                  <td style="vertical-align: middle; color: var(--text-muted); font-size: 0.875rem;">
+                    <%= if booking.subscription, do: booking.subscription.subscription_plan.name, else: "Drop-in" %>
+                  </td>
+                  <td style="text-align: center; vertical-align: middle;">
+                    <%= if booking.status != "cancelled" do %>
+                      <form
+                        action={dp(@domain_path_prefix, "/class-sessions/#{@session.id}/bookings/#{booking.id}/attendance")}
+                        method="post"
+                      >
+                        <input type="hidden" name="_csrf_token" value={Phoenix.Controller.get_csrf_token()} />
+                        <input type="hidden" name="attended" id={"attended-val-#{booking.id}"}
+                          value={if booking.status == "checked_in", do: "false", else: "true"} />
+                        <input
+                          type="checkbox"
+                          checked={booking.status == "checked_in"}
+                          onchange={"document.getElementById('attended-val-#{booking.id}').value = this.checked ? 'true' : 'false'; this.form.submit();"}
+                          style="width: 1.1rem; height: 1.1rem; cursor: pointer; accent-color: var(--color-success, #16a34a);"
+                        />
+                      </form>
+                    <% end %>
+                  </td>
+                  <td style="vertical-align: middle;">
                     <span class={"status-badge #{booking_status_class(booking.status)}"}>
-                      <%= String.capitalize(booking.status) %>
+                      <%= humanize_booking_status(booking.status) %>
                     </span>
                   </td>
-                  <td><%= format_currency(booking.paid_cents) %></td>
-                  <td>
-                    <%= if booking.status == "booked" do %>
-                      <div class="row-actions">
-                        <.link
-                          href={dp(@domain_path_prefix, "/class-sessions/#{@session.id}/checkin/#{booking.id}")}
-                          method="post"
-                          data-confirm={"Check in #{booking.customer.name}?"}
-                          class="btn primary sm"
-                        >
-                          Check In
-                        </.link>
-                        <.link
-                          href={dp(@domain_path_prefix, "/class-sessions/#{@session.id}/bookings/#{booking.id}/cancel")}
-                          method="post"
-                          data-confirm={"Cancel booking for #{booking.customer.name}?"}
-                          class="btn danger sm"
-                        >
-                          Cancel
-                        </.link>
-                      </div>
+                  <td style="vertical-align: middle; text-align: right;">
+                    <%= if booking.status != "cancelled" do %>
+                      <.link
+                        href={dp(@domain_path_prefix, "/class-sessions/#{@session.id}/bookings/#{booking.id}/cancel")}
+                        method="post"
+                        data-confirm={"Cancel booking for #{booking.customer.name}?"}
+                        class="btn danger sm"
+                      >
+                        Cancel
+                      </.link>
                     <% end %>
                   </td>
                 </tr>

@@ -8,15 +8,21 @@ defmodule Ledgr.Domains.VolumeStudio.SubscriptionPlans do
   alias Ledgr.Repo
   alias Ledgr.Domains.VolumeStudio.SubscriptionPlans.SubscriptionPlan
 
-  @doc "Returns all subscription plans, ordered by type then price."
-  def list_subscription_plans do
+  @doc "Returns all subscription plans, ordered by type then price. Pass `plan_type:` opt to filter by type."
+  def list_subscription_plans(opts \\ []) do
+    plan_type = Keyword.get(opts, :plan_type)
+
     SubscriptionPlan
+    |> maybe_filter_plan_type(plan_type)
     |> order_by([sp], [
       asc: fragment("CASE ? WHEN 'package' THEN 0 WHEN 'promo' THEN 1 WHEN 'membership' THEN 2 ELSE 3 END", sp.plan_type),
       asc: sp.price_cents
     ])
     |> Repo.all()
   end
+
+  defp maybe_filter_plan_type(query, nil), do: query
+  defp maybe_filter_plan_type(query, type), do: where(query, plan_type: ^type)
 
   @doc "Returns only active subscription plans. Useful for select dropdowns."
   def list_active_subscription_plans do
@@ -26,6 +32,14 @@ defmodule Ledgr.Domains.VolumeStudio.SubscriptionPlans do
       asc: fragment("CASE ? WHEN 'package' THEN 0 WHEN 'promo' THEN 1 WHEN 'membership' THEN 2 ELSE 3 END", sp.plan_type),
       asc: sp.price_cents
     ])
+    |> Repo.all()
+  end
+
+  @doc "Returns only active extra-type plans, ordered by price. Used by Quick Sale."
+  def list_active_extra_plans do
+    SubscriptionPlan
+    |> where(active: true, plan_type: "extra")
+    |> order_by([sp], asc: sp.price_cents)
     |> Repo.all()
   end
 

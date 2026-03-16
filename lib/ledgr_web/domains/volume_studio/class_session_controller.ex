@@ -101,48 +101,39 @@ defmodule LedgrWeb.Domains.VolumeStudio.ClassSessionController do
       Customers.list_customers()
       |> Enum.map(&{"#{&1.name} (#{&1.phone})", &1.id})
 
-    subs_by_customer =
-      Subscriptions.list_subscriptions(status: "active")
-      |> Enum.group_by(&to_string(&1.customer_id))
-      |> Map.new(fn {cid, subs} ->
-        {cid, Enum.map(subs, &%{id: &1.id, name: &1.subscription_plan.name})}
-      end)
-
     render(conn, :new_booking,
-      session:           session,
-      customers:         customers,
-      subs_by_customer:  subs_by_customer,
-      action:            dp(conn, "/class-sessions/#{session_id}/bookings")
+      session:   session,
+      customers: customers,
+      action:    dp(conn, "/class-sessions/#{session_id}/bookings")
     )
   end
 
   def create_booking(conn, %{"id" => session_id, "booking" => params}) do
-    session = ClassSessions.get_class_session!(session_id)
+    session     = ClassSessions.get_class_session!(session_id)
+    customer_id = params["customer_id"]
 
-    paid_cents =
-      case Float.parse(params["paid_cents"] || "0") do
-        {v, _} -> round(v * 100)
-        :error  -> 0
-      end
-
-    subscription_id =
-      case params["subscription_id"] do
-        "" -> nil
-        id -> id
-      end
+    # Auto-assign the subscription closest to expiring that still has classes available.
+    # A subscription is required — all class attendance is subscription-based.
+    target_sub = Subscriptions.get_soonest_expiring_subscription(customer_id)
 
     attrs = %{
       class_session_id: session.id,
-      customer_id:      params["customer_id"],
-      subscription_id:  subscription_id,
-      paid_cents:       max(0, paid_cents),
+      customer_id:      customer_id,
+      subscription_id:  target_sub && target_sub.id,
       status:           "booked"
     }
 
     case ClassSessions.create_booking(attrs) do
       {:ok, _booking} ->
+        msg =
+          if target_sub do
+            "Member booked and counted under \"#{target_sub.subscription_plan.name}\" (expires #{target_sub.ends_on})."
+          else
+            "Member booked (no active subscription found — assign one before check-in)."
+          end
+
         conn
-        |> put_flash(:info, "Member booked successfully.")
+        |> put_flash(:info, msg)
         |> redirect(to: dp(conn, "/class-sessions/#{session_id}"))
 
       {:error, _changeset} ->
@@ -168,6 +159,22 @@ defmodule LedgrWeb.Domains.VolumeStudio.ClassSessionController do
         conn
         |> put_flash(:error, "Could not cancel booking.")
         |> redirect(to: dp(conn, "/class-sessions/#{session_id}"))
+    end
+  end
+
+  def update_status(conn, %{"id" => id, "status" => status}) do
+    session = ClassSessions.get_class_session!(id)
+
+    case ClassSessions.update_class_session(session, %{status: status}) do
+      {:ok, _} ->
+        conn
+        |> put_flash(:info, "Session marked as #{status}.")
+        |> redirect(to: dp(conn, "/class-sessions/#{id}"))
+
+      {:error, _} ->
+        conn
+        |> put_flash(:error, "Could not update session status.")
+        |> redirect(to: dp(conn, "/class-sessions/#{id}"))
     end
   end
 
@@ -212,6 +219,37 @@ defmodule LedgrWeb.Domains.VolumeStudio.ClassSessionController do
     )
   end
 
+  def mark_attendance(conn, %{"id" => session_id, "booking_id" => booking_id, "attended" => attended_str}) do
+    session = ClassSessions.get_class_session!(session_id)
+    booking = Enum.find(session.class_bookings, &(to_string(&1.id) == booking_id))
+    attended = attended_str == "true"
+
+    if booking do
+      case ClassSessions.mark_attendance(booking, attended) do
+        {:ok, _} ->
+          label = if attended, do: "checked in", else: "marked as no-show"
+
+          conn
+          |> put_flash(:info, "#{booking.customer.name} #{label}.")
+          |> redirect(to: dp(conn, "/class-sessions/#{session_id}"))
+
+        {:error, :class_limit_reached} ->
+          conn
+          |> put_flash(:error, "Class limit reached for this subscription.")
+          |> redirect(to: dp(conn, "/class-sessions/#{session_id}"))
+
+        {:error, reason} ->
+          conn
+          |> put_flash(:error, "Could not update attendance: #{inspect(reason)}")
+          |> redirect(to: dp(conn, "/class-sessions/#{session_id}"))
+      end
+    else
+      conn
+      |> put_flash(:error, "Booking not found.")
+      |> redirect(to: dp(conn, "/class-sessions/#{session_id}"))
+    end
+  end
+
   def checkin(conn, %{"id" => session_id, "booking_id" => booking_id}) do
     session = ClassSessions.get_class_session!(session_id)
     booking = Enum.find(session.class_bookings, &(to_string(&1.id) == booking_id))
@@ -221,6 +259,11 @@ defmodule LedgrWeb.Domains.VolumeStudio.ClassSessionController do
         {:ok, _} ->
           conn
           |> put_flash(:info, "Checked in successfully.")
+          |> redirect(to: dp(conn, "/class-sessions/#{session_id}"))
+
+        {:error, :class_limit_reached} ->
+          conn
+          |> put_flash(:error, "Class limit reached for this subscription.")
           |> redirect(to: dp(conn, "/class-sessions/#{session_id}"))
 
         {:error, reason} ->
@@ -251,6 +294,10 @@ defmodule LedgrWeb.Domains.VolumeStudio.ClassSessionHTML do
   def booking_status_class("no_show"), do: "status-unpaid"
   def booking_status_class("cancelled"), do: "status-unpaid"
   def booking_status_class(_), do: ""
+
+  def humanize_booking_status("checked_in"), do: "Checked In"
+  def humanize_booking_status("no_show"), do: "No Show"
+  def humanize_booking_status(s), do: String.capitalize(s)
 
   def prev_month(year, month) do
     if month == 1, do: %{year: year - 1, month: 12}, else: %{year: year, month: month - 1}
