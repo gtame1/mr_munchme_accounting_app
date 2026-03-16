@@ -7,7 +7,7 @@ defmodule Ledgr.Domains.VolumeStudio.SubscriptionPlans.SubscriptionPlan do
     field :description, :string
     field :price_cents, :integer
     field :plan_type, :string, default: "membership"  # package | membership | promo | extra
-    field :duration_months, :integer, default: 1
+    field :duration_months, :integer
     field :duration_days, :integer  # nil = not used; overrides duration_months for packages/promos
     field :class_limit, :integer    # nil = unlimited
     field :active, :boolean, default: true

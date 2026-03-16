@@ -68,8 +68,13 @@ defmodule Ledgr.Domains.VolumeStudio.SubscriptionPlans do
     |> Repo.update()
   end
 
-  @doc "Deletes a subscription plan."
+  @doc "Deletes a subscription plan. Returns {:error, changeset} if subscriptions reference it."
   def delete_subscription_plan(%SubscriptionPlan{} = plan) do
-    Repo.delete(plan)
+    plan
+    |> Ecto.Changeset.change()
+    |> Ecto.Changeset.foreign_key_constraint(:id,
+        name: "subscriptions_subscription_plan_id_fkey",
+        message: "Cannot delete — active subscriptions reference this plan.")
+    |> Repo.delete()
   end
 end

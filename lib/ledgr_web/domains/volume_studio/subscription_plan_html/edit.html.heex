@@ -28,8 +28,20 @@
           <.input type="number" field={f[:duration_months]} min="1" />
         </div>
 
+        <div class="field" id="duration-toggle-row" style="display:none;">
+          <label>Duration type</label>
+          <div style="display:flex;gap:16px;margin-top:4px;">
+            <label style="font-weight:normal;cursor:pointer;display:flex;align-items:center;gap:6px;">
+              <input type="radio" id="dur-radio-months" name="dur_type" value="months" checked> Months
+            </label>
+            <label style="font-weight:normal;cursor:pointer;display:flex;align-items:center;gap:6px;">
+              <input type="radio" id="dur-radio-days" name="dur_type" value="days"> Days
+            </label>
+          </div>
+        </div>
+
         <div class="field">
-          <label>Expiry (days) <small style="font-weight:normal;">(for packages — overrides months)</small></label>
+          <label>Expiry (days) <small style="font-weight:normal;">(for packages)</small></label>
           <.input type="number" field={f[:duration_days]} min="1" />
         </div>
 
@@ -59,17 +71,13 @@
 
 <script>
   (function() {
-    var sel    = document.getElementById("subscription_plan_plan_type");
-    var months = document.getElementById("subscription_plan_duration_months");
-    var days   = document.getElementById("subscription_plan_duration_days");
-    var limit  = document.getElementById("subscription_plan_class_limit");
-
-    var rules = {
-      membership: { months: true,  days: false, limit: false },
-      package:    { months: false, days: true,  limit: true  },
-      promo:      { months: true,  days: true,  limit: true  },
-      extra:      { months: false, days: false, limit: false }
-    };
+    var sel         = document.getElementById("subscription_plan_plan_type");
+    var months      = document.getElementById("subscription_plan_duration_months");
+    var days        = document.getElementById("subscription_plan_duration_days");
+    var limit       = document.getElementById("subscription_plan_class_limit");
+    var toggleRow   = document.getElementById("duration-toggle-row");
+    var radioMonths = document.getElementById("dur-radio-months");
+    var radioDays   = document.getElementById("dur-radio-days");
 
     function toggle(input, enabled, clear) {
       if (!input) return;
@@ -82,14 +90,53 @@
       if (!enabled && clear) input.value = "";
     }
 
-    function apply(clear) {
-      var rule = rules[sel.value] || { months: true, days: true, limit: true };
-      toggle(months, rule.months, clear);
-      toggle(days,   rule.days,   clear);
-      toggle(limit,  rule.limit,  clear);
+    function currentDurType() {
+      return radioDays && radioDays.checked ? "days" : "months";
     }
 
-    sel.addEventListener("change", function() { apply(true); });
+    function applyPromo(clear) {
+      var durType = currentDurType();
+      toggle(months, durType === "months", clear);
+      toggle(days,   durType === "days",   clear);
+      toggle(limit,  true, false);
+      toggleRow.style.display = "";
+    }
+
+    function apply(clear) {
+      var pt = sel.value;
+      toggleRow.style.display = "none";
+
+      if (pt === "membership") {
+        toggle(months, true,  clear);
+        toggle(days,   false, clear);
+        toggle(limit,  true,  false);
+      } else if (pt === "package") {
+        toggle(months, false, clear);
+        toggle(days,   true,  clear);
+        toggle(limit,  true,  false);
+      } else if (pt === "promo") {
+        applyPromo(clear);
+      } else {
+        toggle(months, false, clear);
+        toggle(days,   false, clear);
+        toggle(limit,  false, clear);
+      }
+    }
+
+    // Pre-select correct radio for existing promo plans
+    if (sel.value === "promo") {
+      if (days.value && days.value !== "") {
+        radioDays.checked   = true;
+        radioMonths.checked = false;
+      } else {
+        radioMonths.checked = true;
+        radioDays.checked   = false;
+      }
+    }
+
+    radioMonths.addEventListener("change", function() { applyPromo(true); });
+    radioDays.addEventListener("change",   function() { applyPromo(true); });
+    sel.addEventListener("change",         function() { apply(true); });
     apply(false);
   })();
 </script>

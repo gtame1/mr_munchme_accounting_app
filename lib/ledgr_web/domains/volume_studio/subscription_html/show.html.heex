@@ -68,51 +68,6 @@
     </div>
   </div>
 
-  <div style="margin-top: 1rem; overflow-x: auto;">
-    <table class="table" style="width: 100%;">
-      <thead>
-        <tr>
-          <th>Period</th>
-          <%= if @subscription.subscription_plan.plan_type != "extra" do %>
-            <th style="text-align: center;">Classes Used</th>
-          <% end %>
-          <th style="text-align: right;">Plan Price</th>
-          <%= if @subscription.discount_cents > 0 do %>
-            <th style="text-align: right;">Discount</th>
-            <th style="text-align: right;">Effective Price</th>
-          <% end %>
-          <th style="text-align: right;">Outstanding</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr>
-          <td style="white-space: nowrap; font-size: 0.875rem;">
-            <%= @subscription.starts_on %> → <%= @subscription.ends_on %>
-          </td>
-          <%= if @subscription.subscription_plan.plan_type != "extra" do %>
-            <td style="text-align: center;">
-              <%= @subscription.classes_used %>
-              <%= if @subscription.subscription_plan.class_limit do %>
-                / <%= @subscription.subscription_plan.class_limit %>
-              <% else %>
-                / ∞
-              <% end %>
-            </td>
-          <% end %>
-          <td style="text-align: right;"><%= format_currency(@subscription.subscription_plan.price_cents) %></td>
-          <%= if @subscription.discount_cents > 0 do %>
-            <td style="text-align: right; color: var(--green, #16a34a);">
-              − <%= format_currency(@subscription.discount_cents) %>
-            </td>
-            <td style="text-align: right;"><%= format_currency(@summary.effective_price) %></td>
-          <% end %>
-          <td style={"text-align: right; font-weight: 600; #{if @summary.outstanding_cents > 0, do: "color: var(--danger, #dc2626);", else: ""}"}>
-            <%= format_currency(@summary.outstanding_cents) %>
-          </td>
-        </tr>
-      </tbody>
-    </table>
-  </div>
 </section>
 
 <%!-- ── Classes Taken ────────────────────────────────────────────────── --%>
@@ -184,34 +139,99 @@
 </section>
 <% end %>
 
-<%!-- ── Revenue Summary ─────────────────────────────────────────────── --%>
+<%!-- ── Plan Details (billing + recognition) ───────────────────────── --%>
 <section class="card" style="margin-bottom: 1.5rem;">
   <div class="card-header">
-    <h3 class="card-title" style="font-size: 1rem;">Revenue Summary</h3>
+    <h3 class="card-title" style="font-size: 1rem;">Plan Details</h3>
   </div>
-  <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 0.75rem; margin-top: 0.75rem;">
-    <div class="summary-item">
-      <span class="summary-label">Total Paid</span>
-      <span class="summary-value"><%= format_currency(@summary.total_paid) %></span>
+
+  <%!-- Period + classes metadata row --%>
+  <div style="display: flex; flex-wrap: wrap; gap: 1.5rem; margin-top: 0.75rem; padding-bottom: 0.75rem; border-bottom: 1px solid var(--border); font-size: 0.875rem;">
+    <div>
+      <span style="color: var(--text-muted); margin-right: 0.4rem;">Period</span>
+      <span style="font-weight: 500;"><%= @subscription.starts_on %> → <%= @subscription.ends_on %></span>
     </div>
-    <div class="summary-item">
-      <span class="summary-label">IVA (16%)</span>
-      <span class="summary-value"><%= format_currency(@summary.iva_cents) %></span>
+    <%= if @subscription.subscription_plan.plan_type != "extra" do %>
+      <div>
+        <span style="color: var(--text-muted); margin-right: 0.4rem;">Classes Used</span>
+        <span style="font-weight: 500;">
+          <%= @subscription.classes_used %>
+          <%= if @subscription.subscription_plan.class_limit do %>
+            / <%= @subscription.subscription_plan.class_limit %>
+          <% else %>
+            / ∞
+          <% end %>
+        </span>
+      </div>
+    <% end %>
+  </div>
+
+  <%!-- Billing + Recognition columns --%>
+  <% billing_cols = if @subscription.subscription_plan.plan_type != "extra", do: "1fr 1fr", else: "1fr" %>
+  <div style={"margin-top: 0.75rem; display: grid; grid-template-columns: #{billing_cols}; gap: 1.5rem;"}>
+
+    <div>
+      <p style="font-size: 0.7rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-muted); margin-bottom: 0.5rem;">Billing</p>
+      <table style="width: 100%; border-collapse: collapse; font-size: 0.875rem;">
+        <tbody>
+          <tr>
+            <td style="padding: 0.3rem 0; color: var(--text-muted);">Plan Price</td>
+            <td style="padding: 0.3rem 0; text-align: right;"><%= format_currency(@summary.base_cents) %></td>
+          </tr>
+          <%= if @summary.discount_cents > 0 do %>
+            <tr>
+              <td style="padding: 0.3rem 0; color: var(--text-muted);">Discount</td>
+              <td style="padding: 0.3rem 0; text-align: right; color: var(--green, #16a34a);">− <%= format_currency(@summary.discount_cents) %></td>
+            </tr>
+            <tr>
+              <td style="padding: 0.3rem 0; color: var(--text-muted);">Subtotal</td>
+              <td style="padding: 0.3rem 0; text-align: right;"><%= format_currency(@summary.effective_price) %></td>
+            </tr>
+          <% end %>
+          <%= if @summary.iva_cents > 0 do %>
+            <tr>
+              <td style="padding: 0.3rem 0; color: var(--text-muted);">IVA (16%)</td>
+              <td style="padding: 0.3rem 0; text-align: right; color: var(--text-muted);"><%= format_currency(@summary.iva_cents) %></td>
+            </tr>
+          <% end %>
+          <tr style="border-top: 1px solid var(--border); font-weight: 600;">
+            <td style="padding: 0.4rem 0 0.3rem;">Total Due</td>
+            <td style="padding: 0.4rem 0 0.3rem; text-align: right;"><%= format_currency(@summary.total_cents) %></td>
+          </tr>
+          <tr>
+            <td style="padding: 0.3rem 0; color: var(--text-muted);">Paid</td>
+            <td style="padding: 0.3rem 0; text-align: right; color: var(--green, #16a34a);"><%= format_currency(@summary.total_paid) %></td>
+          </tr>
+          <tr style="border-top: 1px solid var(--border); font-weight: 600;">
+            <td style={"padding: 0.4rem 0 0; #{if @summary.outstanding_cents > 0, do: "color: var(--danger, #dc2626);", else: ""}"}>Outstanding</td>
+            <td style={"padding: 0.4rem 0 0; text-align: right; #{if @summary.outstanding_cents > 0, do: "color: var(--danger, #dc2626);", else: ""}"}><%= format_currency(@summary.outstanding_cents) %></td>
+          </tr>
+        </tbody>
+      </table>
     </div>
-    <div class="summary-item">
-      <span class="summary-label">Deferred Revenue</span>
-      <span class="summary-value"><%= format_currency(@summary.deferred) %></span>
-    </div>
-    <div class="summary-item">
-      <span class="summary-label">Recognized Revenue</span>
-      <span class="summary-value"><%= format_currency(@summary.recognized) %></span>
-    </div>
-    <div class="summary-item">
-      <span class={"summary-label #{if @summary.outstanding_cents > 0, do: "text-danger", else: ""}"}>Outstanding</span>
-      <span class={"summary-value #{if @summary.outstanding_cents > 0, do: "text-danger", else: ""}"}>
-        <%= format_currency(@summary.outstanding_cents) %>
-      </span>
-    </div>
+
+    <%= if @subscription.subscription_plan.plan_type != "extra" do %>
+      <div>
+        <p style="font-size: 0.7rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-muted); margin-bottom: 0.5rem;">Recognition</p>
+        <table style="width: 100%; border-collapse: collapse; font-size: 0.875rem;">
+          <tbody>
+            <tr>
+              <td style="padding: 0.3rem 0; color: var(--text-muted);">Deferred</td>
+              <td style="padding: 0.3rem 0; text-align: right;"><%= format_currency(@summary.deferred) %></td>
+            </tr>
+            <tr>
+              <td style="padding: 0.3rem 0; color: var(--text-muted);">Recognized</td>
+              <td style="padding: 0.3rem 0; text-align: right; color: var(--green, #16a34a);"><%= format_currency(@summary.recognized) %></td>
+            </tr>
+            <tr style="border-top: 1px solid var(--border); font-weight: 600;">
+              <td style="padding: 0.4rem 0 0; color: var(--text-muted);">Remaining Deferred</td>
+              <td style="padding: 0.4rem 0 0; text-align: right;"><%= format_currency(@summary.remaining) %></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    <% end %>
+
   </div>
 </section>
 
