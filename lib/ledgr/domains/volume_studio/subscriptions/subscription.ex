@@ -27,7 +27,7 @@ defmodule Ledgr.Domains.VolumeStudio.Subscriptions.Subscription do
   @required_fields [:customer_id, :subscription_plan_id, :starts_on, :ends_on]
   @optional_fields [:status, :classes_used, :deferred_revenue_cents, :recognized_revenue_cents, :discount_cents, :iva_cents, :paid_cents, :notes]
 
-  @valid_statuses ~w(active paused cancelled expired)
+  @valid_statuses ~w(active paused cancelled expired completed)
 
   def changeset(subscription, attrs) do
     subscription

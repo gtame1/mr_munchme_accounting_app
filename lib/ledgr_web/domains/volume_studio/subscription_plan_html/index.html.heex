@@ -11,19 +11,14 @@
   </div>
 
   <div class="tab-bar" style="margin-bottom: 1rem;">
-    <.link
-      navigate={dp(@domain_path_prefix, "/subscription-plans")}
-      class={"tab-item#{if is_nil(@current_plan_type), do: " active", else: ""}"}
-    >
-      All Plans
-    </.link>
-    <span class="tab-divider" style="margin: 0 0.25rem; color: var(--border-strong);">|</span>
-    <.link
-      navigate={dp(@domain_path_prefix, "/subscription-plans?type=extras")}
-      class={"tab-item#{if @current_plan_type == "extras", do: " active", else: ""}"}
-    >
-      Extras
-    </.link>
+    <%= for {label, value} <- [{"All", nil}, {"Packages", "package"}, {"Promos", "promo"}, {"Memberships", "membership"}, {"Extras", "extra"}] do %>
+      <.link
+        navigate={dp(@domain_path_prefix, if(value, do: "/subscription-plans?type=#{value}", else: "/subscription-plans"))}
+        class={"tab-item#{if @current_plan_type == value, do: " active", else: ""}"}
+      >
+        <%= label %>
+      </.link>
+    <% end %>
   </div>
 
   <div class="table-wrapper">

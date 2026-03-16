@@ -114,7 +114,11 @@
             <% else %>
               <%= for booking <- @session.class_bookings do %>
                 <tr>
-                  <td style="vertical-align: middle;"><%= booking.customer.name %></td>
+                  <td style="vertical-align: middle;">
+                    <.link navigate={dp(@domain_path_prefix, "/customers/#{booking.customer.id}")} style="text-decoration: underline; text-underline-offset: 2px;">
+                      <%= booking.customer.name %>
+                    </.link>
+                  </td>
                   <td style="vertical-align: middle; color: var(--text-muted); font-size: 0.875rem;">
                     <%= if booking.subscription, do: booking.subscription.subscription_plan.name, else: "Drop-in" %>
                   </td>

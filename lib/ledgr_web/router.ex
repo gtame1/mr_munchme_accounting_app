@@ -210,6 +210,8 @@ defmodule LedgrWeb.Router do
     post "/subscriptions/:id/cancel", Domains.VolumeStudio.SubscriptionController, :cancel
     post "/subscriptions/:id/status", Domains.VolumeStudio.SubscriptionController, :update_status
     post "/subscriptions/:id/redeem", Domains.VolumeStudio.SubscriptionController, :redeem
+    get  "/subscriptions/:id/reactivate", Domains.VolumeStudio.SubscriptionController, :new_reactivate
+    post "/subscriptions/:id/reactivate", Domains.VolumeStudio.SubscriptionController, :reactivate
 
     # Diet consultations
     resources "/consultations", Domains.VolumeStudio.ConsultationController, only: [:index, :show, :new, :create, :edit, :update]

@@ -5,10 +5,11 @@ defmodule LedgrWeb.Domains.VolumeStudio.SubscriptionPlanController do
   alias Ledgr.Domains.VolumeStudio.SubscriptionPlans.SubscriptionPlan
   alias LedgrWeb.Helpers.MoneyHelper
 
+  @valid_plan_types ~w(package promo membership extra)
+
   def index(conn, params) do
-    current_plan_type = params["type"]
-    db_plan_type = if current_plan_type == "extras", do: "extra", else: nil
-    plans = SubscriptionPlans.list_subscription_plans(plan_type: db_plan_type)
+    current_plan_type = if params["type"] in @valid_plan_types, do: params["type"], else: nil
+    plans = SubscriptionPlans.list_subscription_plans(plan_type: current_plan_type)
     render(conn, :index, plans: plans, current_plan_type: current_plan_type)
   end
 
@@ -83,9 +84,9 @@ defmodule LedgrWeb.Domains.VolumeStudio.SubscriptionPlanHTML do
 
   embed_templates "subscription_plan_html/*"
 
-  def plan_type_class("package"), do: "status-partial"
-  def plan_type_class("promo"), do: "status-partial"
+  def plan_type_class("package"),    do: "status-partial"
+  def plan_type_class("promo"),      do: "status-promo"
   def plan_type_class("membership"), do: "status-paid"
-  def plan_type_class("extra"), do: ""
-  def plan_type_class(_), do: ""
+  def plan_type_class("extra"),      do: "status-extra"
+  def plan_type_class(_),            do: ""
 end

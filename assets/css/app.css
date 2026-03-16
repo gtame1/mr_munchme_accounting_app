@@ -1266,6 +1266,111 @@
     border-color: #fecaca;
   }
 
+  .status-badge.status-promo {
+    background-color: #f3e8ff;    /* purple-100 */
+    color: #6b21a8;               /* purple-800 */
+    border-color: #d8b4fe;        /* purple-300 */
+  }
+
+  .status-badge.status-extra {
+    background-color: #e0f2fe;    /* sky-100 */
+    color: #075985;               /* sky-800 */
+    border-color: #bae6fd;        /* sky-300 */
+  }
+
+  /* -------------------------
+   Action dropdown
+   ------------------------- */
+
+  .action-dropdown {
+    position: relative;
+    display: inline-block;
+  }
+
+  .action-dropdown > summary {
+    display: inline-flex !important;
+    align-items: center;
+    list-style: none;
+    cursor: pointer;
+    user-select: none;
+    white-space: nowrap;
+  }
+
+  .action-dropdown > summary::-webkit-details-marker {
+    display: none;
+  }
+
+  /* Rotate chevron when open */
+  .action-dropdown > summary .chevron {
+    transition: transform 0.18s ease;
+    flex-shrink: 0;
+  }
+  .action-dropdown[open] > summary .chevron {
+    transform: rotate(180deg);
+  }
+
+  .action-dropdown-menu {
+    position: absolute;
+    right: 0;
+    top: calc(100% + 0.4rem);
+    z-index: 50;
+    min-width: 200px;
+    background: var(--bg-surface);
+    border: 1px solid var(--border-strong);
+    border-radius: 0.625rem;
+    box-shadow: 0 8px 24px rgba(var(--shadow-color), 0.13), 0 2px 6px rgba(var(--shadow-color), 0.07);
+    overflow: hidden;
+    animation: dropdown-in 0.12s ease;
+  }
+
+  @keyframes dropdown-in {
+    from { opacity: 0; transform: translateY(-4px) scale(0.98); }
+    to   { opacity: 1; transform: translateY(0)   scale(1); }
+  }
+
+  .action-menu-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    width: 100%;
+    padding: 0.6rem 1rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    text-align: left;
+    background: none;
+    border: none;
+    border-bottom: 1px solid var(--border-subtle);
+    color: var(--text-main);
+    cursor: pointer;
+    text-decoration: none;
+    font-family: inherit;
+    transition: background 0.1s ease;
+    line-height: 1.4;
+  }
+
+  .action-menu-item:last-child {
+    border-bottom: none;
+  }
+
+  .action-menu-item:hover {
+    background: var(--btn-secondary-bg);
+  }
+
+  /* Divider before destructive actions */
+  .action-menu-divider {
+    height: 1px;
+    background: var(--border-strong);
+    margin: 0;
+  }
+
+  .action-menu-item.danger {
+    color: #c0392b;
+  }
+
+  .action-menu-item.danger:hover {
+    background: #fff1f1;
+  }
+
   /* -------------------------
    Location badges
    ------------------------- */

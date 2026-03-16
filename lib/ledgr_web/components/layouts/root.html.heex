@@ -188,8 +188,19 @@
 
           <nav class="nav">
             <!-- Domain-specific menu groups -->
+            <% req_path = @conn.request_path %>
             <%= for group <- domain.menu_items() do %>
-              <div class="nav-dropdown" data-default-open={if group.group in ["Main Menu", "Travel"], do: "true"}>
+              <%
+                group_active = Enum.any?(group.items, fn item ->
+                  item_path = item.path |> String.split("?") |> hd()
+                  if item_path == prefix do
+                    req_path == prefix
+                  else
+                    String.starts_with?(req_path, item_path)
+                  end
+                end)
+              %>
+              <div class="nav-dropdown" data-default-open={if group_active, do: "true"}>
                 <button type="button" class="nav-dropdown-toggle" onclick="toggleDropdown(this)">
                   <span><%= group.group %></span>
                   <.icon name="hero-chevron-down" class="dropdown-icon" />
@@ -203,7 +214,7 @@
             <% end %>
 
             <!-- Core menu groups (shared across all domains) -->
-            <div class="nav-dropdown">
+            <div class="nav-dropdown" data-default-open={if String.contains?(req_path, "/reports/") or String.contains?(req_path, "/account-transactions"), do: "true"}>
               <button type="button" class="nav-dropdown-toggle" onclick="toggleDropdown(this)">
                 <span>Reports</span>
                 <.icon name="hero-chevron-down" class="dropdown-icon" />
@@ -219,7 +230,7 @@
               </div>
             </div>
 
-            <div class="nav-dropdown">
+            <div class="nav-dropdown" data-default-open={if String.contains?(req_path, "/reconciliation/"), do: "true"}>
               <button type="button" class="nav-dropdown-toggle" onclick="toggleDropdown(this)">
                 <span>Reconciliation Tools</span>
                 <.icon name="hero-chevron-down" class="dropdown-icon" />
@@ -233,7 +244,8 @@
             </div>
 
             <% domain_has_customers = domain.menu_items() |> Enum.flat_map(& &1.items) |> Enum.any?(& &1.path == "#{prefix}/customers") %>
-            <div class="nav-dropdown">
+            <% other_active = String.starts_with?(req_path, "#{prefix}/investments") or String.starts_with?(req_path, "#{prefix}/transfers") or (String.starts_with?(req_path, "#{prefix}/transactions") and not String.contains?(req_path, "account-transactions")) or (not domain_has_customers and String.starts_with?(req_path, "#{prefix}/customers")) %>
+            <div class="nav-dropdown" data-default-open={if other_active, do: "true"}>
               <button type="button" class="nav-dropdown-toggle" onclick="toggleDropdown(this)">
                 <span>Other</span>
                 <.icon name="hero-chevron-down" class="dropdown-icon" />

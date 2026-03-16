@@ -434,6 +434,13 @@ window.toggleDropdown = function(button) {
   }
 }
 
+// Close action dropdowns (<details>) when clicking outside
+document.addEventListener("click", function(e) {
+  document.querySelectorAll("details.action-dropdown[open]").forEach(function(el) {
+    if (!el.contains(e.target)) el.removeAttribute("open")
+  })
+})
+
 // Initialize dropdowns without animation
 const initializeDropdowns = () => {
   const dropdowns = document.querySelectorAll('.nav-dropdown')

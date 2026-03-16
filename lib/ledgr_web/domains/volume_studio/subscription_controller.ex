@@ -454,6 +454,40 @@ defmodule LedgrWeb.Domains.VolumeStudio.SubscriptionController do
     end
   end
 
+  def new_reactivate(conn, %{"id" => id}) do
+    subscription = Subscriptions.get_subscription!(id)
+    render(conn, :reactivate,
+      subscription: subscription,
+      action:       dp(conn, "/subscriptions/#{id}/reactivate"),
+      back_path:    dp(conn, "/subscriptions/#{id}")
+    )
+  end
+
+  def reactivate(conn, %{"id" => id, "subscription" => params}) do
+    subscription = Subscriptions.get_subscription!(id)
+    ends_on_str  = Map.get(params, "ends_on", "")
+
+    case Date.from_iso8601(ends_on_str) do
+      {:ok, ends_on} ->
+        case Subscriptions.update_subscription(subscription, %{status: "active", ends_on: ends_on}) do
+          {:ok, _} ->
+            conn
+            |> put_flash(:info, "Subscription reactivated through #{ends_on}.")
+            |> redirect(to: dp(conn, "/subscriptions/#{id}"))
+
+          {:error, _} ->
+            conn
+            |> put_flash(:error, "Could not reactivate subscription.")
+            |> redirect(to: dp(conn, "/subscriptions/#{id}/reactivate"))
+        end
+
+      :error ->
+        conn
+        |> put_flash(:error, "Invalid date. Please select a valid expiration date.")
+        |> redirect(to: dp(conn, "/subscriptions/#{id}/reactivate"))
+    end
+  end
+
   def new_cancel(conn, %{"id" => id}) do
     subscription = Subscriptions.get_subscription!(id)
     summary      = Subscriptions.payment_summary(subscription)
