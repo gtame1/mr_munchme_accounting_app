@@ -234,6 +234,42 @@ defmodule Ledgr.Domains.VolumeStudio.Subscriptions do
   end
 
   @doc """
+  Finalizes a subscription by setting its status to `new_status` ("completed" or
+  "expired") and immediately recognizing any remaining deferred revenue.
+
+  Mirrors the behaviour of `cancel/1` — the studio has delivered (or is owed)
+  the full value of whatever was prepaid, so nothing stays deferred once the
+  subscription is done.
+
+  In a transaction:
+    1. Updates status → new_status
+    2. If any deferred_revenue_cents remain, recognizes them as Subscription Revenue (4000).
+  """
+  def finalize(%Subscription{} = sub, new_status) when new_status in ["completed", "expired"] do
+    Repo.transaction(fn ->
+      updated =
+        sub
+        |> Subscription.changeset(%{status: new_status})
+        |> Repo.update!()
+
+      if updated.deferred_revenue_cents > 0 do
+        amount = updated.deferred_revenue_cents
+
+        updated
+        |> Subscription.changeset(%{
+          deferred_revenue_cents:   0,
+          recognized_revenue_cents: updated.recognized_revenue_cents + amount
+        })
+        |> Repo.update!()
+
+        VolumeStudioAccounting.recognize_subscription_revenue(updated, amount)
+      end
+
+      updated
+    end)
+  end
+
+  @doc """
   Returns a payment summary map for a subscription.
 
   Keys: :deferred, :recognized, :total_paid, :remaining, :discount_cents, :effective_price, :outstanding_cents

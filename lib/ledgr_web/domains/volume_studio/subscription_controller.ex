@@ -52,7 +52,7 @@ defmodule LedgrWeb.Domains.VolumeStudio.SubscriptionController do
       end
 
     if new_status do
-      case Subscriptions.update_subscription(sub, %{status: new_status}) do
+      case Subscriptions.finalize(sub, new_status) do
         {:ok, updated} -> updated
         _              -> sub
       end
@@ -411,7 +411,17 @@ defmodule LedgrWeb.Domains.VolumeStudio.SubscriptionController do
   def update_status(conn, %{"id" => id, "status" => status}) do
     subscription = Subscriptions.get_subscription!(id)
 
-    case Subscriptions.update_subscription(subscription, %{status: status}) do
+    result =
+      case status do
+        s when s in ["completed", "expired"] ->
+          Subscriptions.finalize(subscription, s)
+        "cancelled" ->
+          Subscriptions.cancel(subscription)
+        _ ->
+          Subscriptions.update_subscription(subscription, %{status: status})
+      end
+
+    case result do
       {:ok, _} ->
         conn
         |> put_flash(:info, "Subscription marked as #{status}.")

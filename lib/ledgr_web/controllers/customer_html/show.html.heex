@@ -81,8 +81,8 @@
               <%= for sub <- @subscriptions do %>
                 <% plan = sub.subscription_plan
                    effective_price = max(plan.price_cents - (sub.discount_cents || 0), 0)
-                   total_paid      = sub.deferred_revenue_cents + sub.recognized_revenue_cents
-                   outstanding     = max(effective_price - total_paid, 0)
+                   total_paid      = sub.paid_cents || 0
+                   outstanding     = max(effective_price + (sub.iva_cents || 0) - total_paid, 0)
                    status_css      = case sub.status do
                      "active" -> "status-paid"
                      "paused" -> "status-partial"
