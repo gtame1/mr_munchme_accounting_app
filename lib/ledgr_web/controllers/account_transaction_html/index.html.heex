@@ -135,68 +135,70 @@
               </tr>
             </thead>
             <tbody>
-              <%= if Enum.empty?(@transactions) do %>
+              <%= if Enum.empty?(@all_items) do %>
                 <tr>
                   <td colspan="7">No transactions found for this account.</td>
                 </tr>
               <% else %>
-                <%= for transaction <- @transactions do %>
-                  <% je = transaction.line.journal_entry
-                     info = Map.get(@expense_info, je.id) %>
-                  <tr>
-                    <td>{je.date}</td>
-                    <td>
-                      <%= if info do %>
-                        {info.description}
-                      <% else %>
-                        {je.description || transaction.line.description}
-                      <% end %>
-                    </td>
-                    <td>
-                      <%= if info && info.category do %>
-                        <span style="font-size: 0.75rem; color: var(--text-muted); background: var(--primary-soft); padding: 0.15rem 0.4rem; border-radius: 0.25rem;">
-                          {info.category}
-                        </span>
-                      <% else %>
-                        <span style="font-size: 0.75rem; color: var(--text-muted);">
-                          {je.entry_type |> String.replace("_", " ") |> String.capitalize()}
-                        </span>
-                      <% end %>
-                    </td>
-                    <td class="numeric">
-                      <%= if transaction.line.debit_cents > 0 do %>
-                        {Ledgr.Core.Accounting.format_cents(transaction.line.debit_cents)}
-                      <% else %>
-                        -
-                      <% end %>
-                    </td>
-                    <td class="numeric">
-                      <%= if transaction.line.credit_cents > 0 do %>
-                        {Ledgr.Core.Accounting.format_cents(transaction.line.credit_cents)}
-                      <% else %>
-                        -
-                      <% end %>
-                    </td>
-                    <td class="numeric" style="font-weight: 600;">
-                      {Ledgr.Core.Accounting.format_cents(transaction.balance)}
-                    </td>
-                    <td>
-                      <.link
-                        navigate={dp(@domain_path_prefix, "/transactions/#{je.id}")}
-                        class="btn btn-sm"
-                      >
-                        View
-                      </.link>
-                    </td>
-                  </tr>
-                  <%!-- Reconciliation cutoff divider --%>
-                  <%= if je.entry_type == "reconciliation" do %>
+                <%= for item <- @all_items do %>
+                  <%= if item.kind == :checkpoint do %>
+                    <%!-- Reconciliation checkpoint divider --%>
                     <tr style="background: linear-gradient(to right, var(--primary-soft), transparent); border-top: 2px solid var(--primary); border-bottom: 2px solid var(--primary);">
                       <td
                         colspan="7"
                         style="padding: 0.5rem 1rem; font-weight: 600; font-size: 0.85rem; color: var(--primary);"
                       >
-                        Reconciled on {je.date}
+                        ✓ Reconciled on {item.data.date}
+                      </td>
+                    </tr>
+                  <% else %>
+                    <% tx = item.data
+                       je = tx.line.journal_entry
+                       info = Map.get(@expense_info, je.id) %>
+                    <tr>
+                      <td>{je.date}</td>
+                      <td>
+                        <%= if info do %>
+                          {info.description}
+                        <% else %>
+                          {je.description || tx.line.description}
+                        <% end %>
+                      </td>
+                      <td>
+                        <%= if info && info.category do %>
+                          <span style="font-size: 0.75rem; color: var(--text-muted); background: var(--primary-soft); padding: 0.15rem 0.4rem; border-radius: 0.25rem;">
+                            {info.category}
+                          </span>
+                        <% else %>
+                          <span style="font-size: 0.75rem; color: var(--text-muted);">
+                            {je.entry_type |> String.replace("_", " ") |> String.capitalize()}
+                          </span>
+                        <% end %>
+                      </td>
+                      <td class="numeric">
+                        <%= if tx.line.debit_cents > 0 do %>
+                          {Ledgr.Core.Accounting.format_cents(tx.line.debit_cents)}
+                        <% else %>
+                          -
+                        <% end %>
+                      </td>
+                      <td class="numeric">
+                        <%= if tx.line.credit_cents > 0 do %>
+                          {Ledgr.Core.Accounting.format_cents(tx.line.credit_cents)}
+                        <% else %>
+                          -
+                        <% end %>
+                      </td>
+                      <td class="numeric" style="font-weight: 600;">
+                        {Ledgr.Core.Accounting.format_cents(tx.balance)}
+                      </td>
+                      <td>
+                        <.link
+                          navigate={dp(@domain_path_prefix, "/transactions/#{je.id}")}
+                          class="btn btn-sm"
+                        >
+                          View
+                        </.link>
                       </td>
                     </tr>
                   <% end %>

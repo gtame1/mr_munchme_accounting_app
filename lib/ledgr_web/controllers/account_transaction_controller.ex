@@ -31,13 +31,22 @@ defmodule LedgrWeb.AccountTransactionController do
           {account, transactions_with_balance, running_balance}
       end
 
+    # Load reconciliation checkpoints (line-less journal entries) and merge
+    # with regular transactions into a single sorted display list.
+    checkpoints =
+      case selected_account do
+        nil -> []
+        account -> load_reconciliation_checkpoints(account)
+      end
+
+    all_items = merge_with_checkpoints(transactions, checkpoints)
     expense_info = build_expense_info(transactions)
     {earliest_date, latest_date} = Accounting.journal_entry_date_range()
 
     render(conn, :index,
       accounts: accounts,
       selected_account: selected_account,
-      transactions: transactions,
+      all_items: all_items,
       running_balance: running_balance,
       filters: filters,
       earliest_date: earliest_date,
@@ -144,6 +153,43 @@ defmodule LedgrWeb.AccountTransactionController do
       end)
 
     {newest_first, running_balance}
+  end
+
+  # Load reconciliation journal entries (no lines) keyed to this account's code.
+  defp load_reconciliation_checkpoints(account) do
+    alias Ledgr.Core.Accounting.JournalEntry
+
+    Ledgr.Repo.all(
+      from je in JournalEntry,
+        where:
+          je.entry_type == "reconciliation" and
+            je.reference == ^"Reconcile #{account.code}",
+        order_by: [desc: je.date, desc: je.inserted_at]
+    )
+  end
+
+  # Merge regular transactions and reconciliation checkpoints into a single
+  # newest-first list.  On the same date, transactions appear before the
+  # checkpoint divider (priority 1 > 0 in descending sort).
+  defp merge_with_checkpoints(transactions, checkpoints) do
+    tx_items =
+      Enum.map(transactions, fn tx ->
+        %{kind: :tx, date: tx.line.journal_entry.date, data: tx}
+      end)
+
+    cp_items =
+      Enum.map(checkpoints, fn entry ->
+        %{kind: :checkpoint, date: entry.date, data: entry}
+      end)
+
+    (tx_items ++ cp_items)
+    |> Enum.sort_by(
+      fn
+        %{kind: :tx, date: date} -> {Date.to_gregorian_days(date), 1}
+        %{kind: :checkpoint, date: date} -> {Date.to_gregorian_days(date), 0}
+      end,
+      :desc
+    )
   end
 
   defp build_filters(params, account_id) do
