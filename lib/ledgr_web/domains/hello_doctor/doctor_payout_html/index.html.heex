@@ -1,36 +1,47 @@
-<div class="hd-page-container">
+<div class="hd-page">
   <%!-- ── Header ── --%>
-  <div class="flex items-center justify-between mb-6">
-    <div>
-      <h1 class="text-2xl font-bold" style="color: var(--text-main);">Doctor Payouts</h1>
-      <p class="text-sm mt-1" style="color: var(--text-muted);">
-        What HelloDoctor owes each doctor for the selected period.
-      </p>
-    </div>
+  <div class="mb-8">
+    <div class="mb-4 flex flex-wrap items-start justify-between gap-4">
+      <div>
+        <h1 class="text-2xl font-bold" style="color: var(--text-main);">Doctor Payouts</h1>
+        <p class="text-sm mt-2" style="color: var(--text-muted); max-width: 60ch;">
+          What HelloDoctor owes each doctor for the selected period.
+        </p>
+      </div>
 
-    <%!-- Date range filter --%>
-    <form method="get" class="flex items-center gap-2">
-      <input
-        type="date"
-        name="start_date"
-        value={@start_date}
-        class="hd-input text-sm"
-        style="padding: 0.35rem 0.6rem;"
-      />
-      <span style="color: var(--text-muted);">→</span>
-      <input
-        type="date"
-        name="end_date"
-        value={@end_date}
-        class="hd-input text-sm"
-        style="padding: 0.35rem 0.6rem;"
-      />
-      <button type="submit" class="hd-btn-sm">Filter</button>
-    </form>
+      <div class="flex flex-wrap items-center gap-3">
+        <a
+          href={dp(@domain_path_prefix, "/doctor-payouts/bulk-upload")}
+          class="hd-btn-secondary text-sm"
+          style="padding: 0.5rem 0.95rem;"
+        >
+          ⬆ Bulk upload CSV
+        </a>
+
+        <form method="get" class="flex items-center gap-2">
+          <input
+            type="date"
+            name="start_date"
+            value={@start_date}
+            class="hd-input text-sm"
+            style="padding: 0.4rem 0.65rem;"
+          />
+          <span style="color: var(--text-muted);">→</span>
+          <input
+            type="date"
+            name="end_date"
+            value={@end_date}
+            class="hd-input text-sm"
+            style="padding: 0.4rem 0.65rem;"
+          />
+          <button type="submit" class="hd-btn-sm">Filter</button>
+        </form>
+      </div>
+    </div>
   </div>
 
   <%!-- ── Summary KPIs ── --%>
-  <div class="hd-kpi-grid mb-6">
+  <div class="hd-kpi-grid mb-8" style="gap: 1.5rem;">
     <div class="hd-kpi">
       <div class="hd-kpi-label">Total Billed</div>
       <div class="hd-kpi-value">

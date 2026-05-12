@@ -1,0 +1,178 @@
+<div class="hd-page">
+  <div class="mb-8">
+    <div class="flex flex-wrap items-start justify-between gap-4 mb-4">
+      <div>
+        <h1 class="text-2xl font-bold" style="color: var(--text-main);">
+          Bulk upload doctor payouts
+        </h1>
+        <p class="text-sm mt-2" style="color: var(--text-muted); max-width: 60ch;">
+          Upload a CSV to record multiple doctor payouts at once. Each row
+          creates a journal entry: DEBIT 2000 Doctor Payable / CREDIT 1010 Bank — MXN.
+          All rows are committed in a single transaction — if any row fails,
+          nothing is saved.
+        </p>
+      </div>
+
+      <a
+        href={dp(@domain_path_prefix, "/doctor-payouts")}
+        class="hd-btn-secondary text-sm"
+        style="padding: 0.5rem 0.95rem;"
+      >
+        ← Back to payouts
+      </a>
+    </div>
+  </div>
+
+  <%!-- ── Template download ── --%>
+  <div class="hd-card mb-6" style="padding: 1.25rem;">
+    <h2 class="text-base font-semibold mb-2" style="color: var(--text-main);">
+      Need a starting point?
+    </h2>
+    <p class="text-sm mb-3" style="color: var(--text-muted);">
+      Download a CSV pre-filled with what HelloDoctor currently owes each doctor
+      for the current month. Edit amounts and dates as needed, then upload below.
+    </p>
+    <a
+      href={dp(@domain_path_prefix, "/doctor-payouts/bulk-template")}
+      class="hd-btn-sm"
+      style="padding: 0.45rem 0.85rem;"
+    >
+      ⬇ Download pre-filled template
+    </a>
+  </div>
+
+  <%!-- ── Format reference ── --%>
+  <div class="hd-card mb-6" style="padding: 1.25rem;">
+    <h2 class="text-base font-semibold mb-3" style="color: var(--text-main);">CSV format</h2>
+    <table class="w-full text-sm">
+      <thead>
+        <tr style="border-bottom: 1px solid var(--border-subtle);">
+          <th class="text-left p-2 text-xs font-semibold uppercase" style="color: var(--text-muted);">
+            Column
+          </th>
+          <th class="text-left p-2 text-xs font-semibold uppercase" style="color: var(--text-muted);">
+            Required
+          </th>
+          <th class="text-left p-2 text-xs font-semibold uppercase" style="color: var(--text-muted);">
+            Notes
+          </th>
+        </tr>
+      </thead>
+      <tbody style="font-size: 0.85rem;">
+        <tr style="border-bottom: 1px solid var(--border-subtle);">
+          <td class="p-2 font-mono">doctor_id</td>
+          <td class="p-2"><strong>yes</strong></td>
+          <td class="p-2" style="color: var(--text-muted);">Must match an existing Doctor.id.</td>
+        </tr>
+        <tr style="border-bottom: 1px solid var(--border-subtle);">
+          <td class="p-2 font-mono">amount</td>
+          <td class="p-2"><strong>yes</strong></td>
+          <td class="p-2" style="color: var(--text-muted);">MXN pesos, e.g. <code>100.00</code>.</td>
+        </tr>
+        <tr style="border-bottom: 1px solid var(--border-subtle);">
+          <td class="p-2 font-mono">date</td>
+          <td class="p-2" style="color: var(--text-muted);">no</td>
+          <td class="p-2" style="color: var(--text-muted);">
+            ISO format <code>YYYY-MM-DD</code>; defaults to today.
+          </td>
+        </tr>
+        <tr style="border-bottom: 1px solid var(--border-subtle);">
+          <td class="p-2 font-mono">description</td>
+          <td class="p-2" style="color: var(--text-muted);">no</td>
+          <td class="p-2" style="color: var(--text-muted);">
+            Defaults to "Doctor payout — &lt;name&gt;".
+          </td>
+        </tr>
+        <tr>
+          <td class="p-2 font-mono">doctor_name</td>
+          <td class="p-2" style="color: var(--text-muted);">no</td>
+          <td class="p-2" style="color: var(--text-muted);">
+            Informational only (used as the journal entry payee).
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <%!-- ── Errors ── --%>
+  <%= if @errors && @errors != [] do %>
+    <div
+      class="hd-card mb-6"
+      style="padding: 1.25rem; border-color: #fecaca; background: #fef2f2;"
+    >
+      <h2 class="text-base font-semibold mb-2" style="color: #b91c1c;">
+        Found {length(@errors)} issue(s) — nothing was saved
+      </h2>
+      <ul style="font-size: 0.85rem; color: #991b1b; list-style: disc; padding-left: 1.25rem;">
+        <%= for {row_num, msg} <- @errors do %>
+          <li><strong>Row {row_num}:</strong> {msg}</li>
+        <% end %>
+      </ul>
+    </div>
+  <% end %>
+
+  <%!-- ── Preview of parsed rows ── --%>
+  <%= if @rows && @rows != [] do %>
+    <div class="hd-card mb-6" style="padding: 0; overflow: hidden;">
+      <div style="padding: 1rem 1.25rem; border-bottom: 1px solid var(--border-subtle);">
+        <h2 class="text-base font-semibold" style="color: var(--text-main);">
+          Preview ({length(@rows)} valid row(s))
+        </h2>
+      </div>
+      <table class="w-full text-sm">
+        <thead>
+          <tr style="background: var(--bg-secondary); border-bottom: 1px solid var(--border-subtle);">
+            <th class="text-left p-3 text-xs font-semibold uppercase" style="color: var(--text-muted);">
+              Doctor
+            </th>
+            <th class="text-left p-3 text-xs font-semibold uppercase" style="color: var(--text-muted);">
+              Date
+            </th>
+            <th class="text-right p-3 text-xs font-semibold uppercase" style="color: var(--text-muted);">
+              Amount
+            </th>
+            <th class="text-left p-3 text-xs font-semibold uppercase" style="color: var(--text-muted);">
+              Description
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          <%= for row <- @rows do %>
+            <tr style="border-bottom: 1px solid var(--border-subtle);">
+              <td class="p-3 font-medium" style="color: var(--text-main);">{row.doctor_name}</td>
+              <td class="p-3" style="color: var(--text-muted);">{row.date}</td>
+              <td class="p-3 text-right font-semibold">
+                ${:erlang.float_to_binary(row.amount + 0.0, decimals: 2)}
+              </td>
+              <td class="p-3" style="color: var(--text-muted);">{row.description}</td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  <% end %>
+
+  <%!-- ── Upload form ── --%>
+  <div class="hd-card" style="padding: 1.25rem;">
+    <h2 class="text-base font-semibold mb-3" style="color: var(--text-main);">Upload CSV</h2>
+    <form
+      action={dp(@domain_path_prefix, "/doctor-payouts/bulk-upload")}
+      method="post"
+      enctype="multipart/form-data"
+      class="flex flex-wrap items-center gap-3"
+    >
+      <input type="hidden" name="_csrf_token" value={Phoenix.Controller.get_csrf_token()} />
+      <input
+        type="file"
+        name="upload[file]"
+        accept=".csv,text/csv"
+        required
+        class="hd-input text-sm"
+        style="padding: 0.4rem 0.5rem;"
+      />
+      <button type="submit" class="hd-btn-primary" style="padding: 0.5rem 1rem;">
+        Process & record payouts
+      </button>
+    </form>
+  </div>
+</div>

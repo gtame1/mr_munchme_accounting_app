@@ -502,9 +502,27 @@ defmodule LedgrWeb.Router do
     # Doctor payout report
     get "/doctor-payouts", Domains.HelloDoctor.DoctorPayoutController, :index
 
+    # Bulk CSV upload — must come BEFORE :doctor_id route so the literal
+    # path segment isn't captured as a doctor_id.
+    get "/doctor-payouts/bulk-upload",
+        Domains.HelloDoctor.DoctorPayoutController,
+        :bulk_upload_form
+
+    post "/doctor-payouts/bulk-upload",
+         Domains.HelloDoctor.DoctorPayoutController,
+         :bulk_upload_submit
+
+    get "/doctor-payouts/bulk-template",
+        Domains.HelloDoctor.DoctorPayoutController,
+        :bulk_template
+
     post "/doctor-payouts/:doctor_id/record-payout",
          Domains.HelloDoctor.DoctorPayoutController,
          :record_payout
+
+    # Weekly consultations & payout report
+    get "/reports/weekly", Domains.HelloDoctor.WeeklyReportController, :index
+    get "/reports/weekly/download", Domains.HelloDoctor.WeeklyReportController, :download
   end
 
   # ── Aumenta Mi Pensión: public auth routes ─────────────────────────
