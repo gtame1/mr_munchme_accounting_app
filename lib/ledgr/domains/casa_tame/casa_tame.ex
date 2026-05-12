@@ -138,7 +138,8 @@ defmodule Ledgr.Domains.CasaTame do
       {"Investment Withdrawal", "investment_withdrawal"},
       {"Debt Payment", "debt_payment"},
       {"Internal Transfer", "internal_transfer"},
-      {"Reconciliation", "reconciliation"}
+      {"Reconciliation", "reconciliation"},
+      {"Card Credit", "card_credit"}
     ]
   end
 

@@ -220,7 +220,7 @@ defmodule LedgrWeb.Domains.CasaTame.BillController do
     conn |> put_flash(:info, "Bill deleted.") |> redirect(to: dp(conn, "/bills"))
   end
 
-  def mark_paid(conn, %{"id" => id}) do
+  def mark_paid(conn, %{"id" => id} = params) do
     bill = Bills.get_bill!(id)
 
     case Bills.mark_paid(bill) do
@@ -230,8 +230,8 @@ defmodule LedgrWeb.Domains.CasaTame.BillController do
             do: "Bill marked as paid and archived.",
             else: "Bill marked as paid. Next due: #{Bills.advance_due_date(bill)}."
 
-        # Redirect to expense form with bill data prefilled
-        if bill.amount_cents do
+        # Redirect to expense form with bill data prefilled (unless register_expense == "false")
+        if bill.amount_cents && params["register_expense"] != "false" do
           expense_account_id = bill_category_to_expense_account(bill.category)
           amount_pesos = bill.amount_cents / 100
 

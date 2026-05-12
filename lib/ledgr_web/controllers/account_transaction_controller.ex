@@ -2,22 +2,15 @@ defmodule LedgrWeb.AccountTransactionController do
   use LedgrWeb, :controller
 
   alias Ledgr.Core.Accounting
+  import Ecto.Query
 
   def index(conn, params) do
-    # Get all accounts
-    accounts = Accounting.list_accounts()
-
-    # Get selected account ID from params
+    accounts = Accounting.list_asset_liability_accounts()
     account_id = params["account_id"]
-
-    # Build filters (handle all_dates override)
     filters = build_filters(params, account_id)
-
-    # Parse resolved date filters
     date_from = parse_date(filters.date_from)
     date_to = parse_date(filters.date_to)
 
-    # If account is selected, get transactions for that account
     {selected_account, transactions, running_balance} =
       case parse_account_id(account_id) do
         nil ->
@@ -38,6 +31,7 @@ defmodule LedgrWeb.AccountTransactionController do
           {account, transactions_with_balance, running_balance}
       end
 
+    expense_info = build_expense_info(transactions)
     {earliest_date, latest_date} = Accounting.journal_entry_date_range()
 
     render(conn, :index,
@@ -47,18 +41,93 @@ defmodule LedgrWeb.AccountTransactionController do
       running_balance: running_balance,
       filters: filters,
       earliest_date: earliest_date,
-      latest_date: latest_date
+      latest_date: latest_date,
+      expense_info: expense_info
     )
   end
 
-  # Compute running balance by processing oldest-first, then returning newest-first
+  def reconcile(conn, %{"account_id" => account_id}) do
+    account = Accounting.get_account!(account_id)
+
+    entry_attrs = %{
+      date: Date.utc_today(),
+      description: "Reconciled",
+      entry_type: "reconciliation",
+      reference: "Reconcile #{account.code}"
+    }
+
+    lines = [%{account_id: account.id, debit_cents: 0, credit_cents: 0, description: "Reconciliation marker"}]
+
+    case Accounting.create_journal_entry_with_lines(entry_attrs, lines) do
+      {:ok, _} ->
+        conn
+        |> put_flash(:info, "Account marked as reconciled.")
+        |> redirect(to: dp(conn, "/account-transactions?account_id=#{account_id}"))
+
+      {:error, _} ->
+        conn
+        |> put_flash(:error, "Could not record reconciliation.")
+        |> redirect(to: dp(conn, "/account-transactions?account_id=#{account_id}"))
+    end
+  end
+
+  # ── Private ────────────────────────────────────────────────
+
+  defp build_expense_info([]), do: %{}
+
+  defp build_expense_info(transactions) do
+    # Extract journal entry IDs that have references like "Expense #123"
+    je_refs =
+      transactions
+      |> Enum.map(& &1.line.journal_entry)
+      |> Enum.uniq_by(& &1.id)
+      |> Enum.filter(&(&1.reference && String.starts_with?(&1.reference, "Expense #")))
+
+    expense_ids =
+      Enum.flat_map(je_refs, fn je ->
+        case Integer.parse(String.replace_prefix(je.reference, "Expense #", "")) do
+          {id, ""} -> [id]
+          _ -> []
+        end
+      end)
+
+    if Enum.empty?(expense_ids) do
+      %{}
+    else
+      alias Ledgr.Domains.CasaTame.Expenses.CasaTameExpense
+      alias Ledgr.Core.Accounting.Account
+
+      expenses =
+        Ledgr.Repo.all(
+          from e in CasaTameExpense,
+            where: e.id in ^expense_ids,
+            join: a in Account,
+            on: a.id == e.expense_account_id,
+            preload: [expense_account: a]
+        )
+
+      expense_map = Map.new(expenses, &{&1.id, &1})
+
+      Enum.reduce(je_refs, %{}, fn je, acc ->
+        case Integer.parse(String.replace_prefix(je.reference, "Expense #", "")) do
+          {expense_id, ""} ->
+            case Map.get(expense_map, expense_id) do
+              nil -> acc
+              expense ->
+                Map.put(acc, je.id, %{
+                  description: expense.description,
+                  category: expense.expense_account && expense.expense_account.name
+                })
+            end
+          _ -> acc
+        end
+      end)
+    end
+  end
+
   defp compute_running_balances(journal_lines, account) do
-    # journal_lines come from the query in desc order (newest first).
-    # Reverse to oldest-first so we can accumulate the running balance correctly.
     oldest_first = Enum.reverse(journal_lines)
 
-    # Accumulate running balance from oldest to newest.
-    # Prepending [row | acc] builds the list in reverse (newest first).
     {running_balance, newest_first} =
       Enum.reduce(oldest_first, {0, []}, fn line, {current_balance, acc} ->
         new_balance =
@@ -68,11 +137,7 @@ defmodule LedgrWeb.AccountTransactionController do
             current_balance + line.credit_cents - line.debit_cents
           end
 
-        row = %{
-          line: line,
-          balance: new_balance
-        }
-
+        row = %{line: line, balance: new_balance}
         {new_balance, [row | acc]}
       end)
 
@@ -82,7 +147,6 @@ defmodule LedgrWeb.AccountTransactionController do
   defp build_filters(params, account_id) do
     if params["all_dates"] == "true" do
       {earliest, latest} = Accounting.journal_entry_date_range()
-
       %{
         account_id: account_id || "",
         date_from: if(earliest, do: Date.to_iso8601(earliest), else: ""),
@@ -99,7 +163,6 @@ defmodule LedgrWeb.AccountTransactionController do
 
   defp parse_account_id(nil), do: nil
   defp parse_account_id(""), do: nil
-
   defp parse_account_id(id_str) do
     case Integer.parse(id_str) do
       {id, _} -> id
@@ -114,6 +177,5 @@ end
 
 defmodule LedgrWeb.AccountTransactionHTML do
   use LedgrWeb, :html
-
   embed_templates "account_transaction_html/*"
 end

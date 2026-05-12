@@ -84,7 +84,7 @@
           Normal Balance: {String.capitalize(@selected_account.normal_balance)}
         </p>
 
-        <div style="margin-top: 1rem;">
+        <div style="margin-top: 1rem; display: flex; align-items: center; flex-wrap: wrap; gap: 0.5rem;">
           <div style="display: inline-block; padding: 0.75rem 1.25rem; background: var(--primary-soft); border-radius: var(--radius-md);">
             <div style="font-size: 0.875rem; color: var(--text-muted); margin-bottom: 0.25rem;">
               Current Balance
@@ -93,10 +93,26 @@
               {Ledgr.Core.Accounting.format_cents(@running_balance)}
             </div>
           </div>
+
+          <form method="post" action={dp(@domain_path_prefix, "/account-transactions/reconcile")} style="display: inline; margin-left: 1rem;">
+            <input type="hidden" name="_csrf_token" value={Phoenix.Controller.get_csrf_token()} />
+            <input type="hidden" name="account_id" value={@selected_account.id} />
+            <button type="submit" class="btn" style="font-size: 0.85rem;">✓ Mark Reconciled</button>
+          </form>
+
+          <%= if @selected_account.type == "liability" && String.starts_with?(@selected_account.code, "2") do %>
+            <.link
+              navigate={dp(@domain_path_prefix, "/card-credits/new?account_id=#{@selected_account.id}")}
+              class="btn"
+              style="font-size: 0.85rem;"
+            >
+              + Record Credit
+            </.link>
+          <% end %>
         </div>
       </section>
-      
-<!-- Transactions Table -->
+
+      <!-- Transactions Table -->
       <section class="card">
         <h2 class="card-title">Transactions</h2>
         <p class="card-subtitle">
@@ -110,8 +126,8 @@
             <thead>
               <tr>
                 <th>Date</th>
-                <th>Transaction</th>
                 <th>Description</th>
+                <th>Category</th>
                 <th class="numeric">Debit</th>
                 <th class="numeric">Credit</th>
                 <th class="numeric">Balance</th>
@@ -125,23 +141,27 @@
                 </tr>
               <% else %>
                 <%= for transaction <- @transactions do %>
+                  <% je = transaction.line.journal_entry
+                     info = Map.get(@expense_info, je.id) %>
                   <tr>
-                    <td>{transaction.line.journal_entry.date}</td>
+                    <td>{je.date}</td>
                     <td>
-                      <.link
-                        navigate={
-                          dp(
-                            @domain_path_prefix,
-                            "/transactions/#{transaction.line.journal_entry.id}"
-                          )
-                        }
-                        class="link-text"
-                      >
-                        #{transaction.line.journal_entry.id} - {transaction.line.journal_entry.entry_type}
-                      </.link>
+                      <%= if info do %>
+                        {info.description}
+                      <% else %>
+                        {je.description || transaction.line.description}
+                      <% end %>
                     </td>
                     <td>
-                      {transaction.line.description || transaction.line.journal_entry.description}
+                      <%= if info && info.category do %>
+                        <span style="font-size: 0.75rem; color: var(--text-muted); background: var(--primary-soft); padding: 0.15rem 0.4rem; border-radius: 0.25rem;">
+                          {info.category}
+                        </span>
+                      <% else %>
+                        <span style="font-size: 0.75rem; color: var(--text-muted);">
+                          {je.entry_type |> String.replace("_", " ") |> String.capitalize()}
+                        </span>
+                      <% end %>
                     </td>
                     <td class="numeric">
                       <%= if transaction.line.debit_cents > 0 do %>
@@ -162,12 +182,7 @@
                     </td>
                     <td>
                       <.link
-                        navigate={
-                          dp(
-                            @domain_path_prefix,
-                            "/transactions/#{transaction.line.journal_entry.id}"
-                          )
-                        }
+                        navigate={dp(@domain_path_prefix, "/transactions/#{je.id}")}
                         class="btn btn-sm"
                       >
                         View
@@ -175,13 +190,13 @@
                     </td>
                   </tr>
                   <%!-- Reconciliation cutoff divider --%>
-                  <%= if transaction.line.journal_entry.entry_type == "reconciliation" do %>
+                  <%= if je.entry_type == "reconciliation" do %>
                     <tr style="background: linear-gradient(to right, var(--primary-soft), transparent); border-top: 2px solid var(--primary); border-bottom: 2px solid var(--primary);">
                       <td
                         colspan="7"
                         style="padding: 0.5rem 1rem; font-weight: 600; font-size: 0.85rem; color: var(--primary);"
                       >
-                        Reconciled on {transaction.line.journal_entry.date}
+                        Reconciled on {je.date}
                       </td>
                     </tr>
                   <% end %>

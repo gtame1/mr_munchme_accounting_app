@@ -412,6 +412,10 @@ defmodule Ledgr.Core.Accounting do
     Repo.all(from a in Account, order_by: [asc: a.code])
   end
 
+  def list_asset_liability_accounts do
+    Repo.all(from a in Account, where: a.type in ["asset", "liability"], order_by: [asc: a.code])
+  end
+
   @doc """
   Returns the earliest and latest dates from journal entries.
   Returns {earliest_date, latest_date} or {nil, nil} if no entries exist.

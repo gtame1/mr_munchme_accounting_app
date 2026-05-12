@@ -418,6 +418,10 @@ defmodule LedgrWeb.Router do
 
     post "/bills/:id/mark-paid", Domains.CasaTame.BillController, :mark_paid
 
+    # Card Credits (cashback, rewards, bank credits)
+    get "/card-credits/new", Domains.CasaTame.CardCreditController, :new
+    post "/card-credits", Domains.CasaTame.CardCreditController, :create
+
     # FX Transfers (cross-currency)
     get "/fx-transfers/new", Domains.CasaTame.FxTransferController, :new
     post "/fx-transfers", Domains.CasaTame.FxTransferController, :create

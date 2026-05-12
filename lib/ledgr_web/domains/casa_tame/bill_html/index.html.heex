@@ -133,17 +133,31 @@ end %>
                   action={dp(@domain_path_prefix, "/bills/#{bill.id}/mark-paid")}
                   style="display: inline; margin: 0;"
                 >
-                  <input
-                    type="hidden"
-                    name="_csrf_token"
-                    value={Phoenix.Controller.get_csrf_token()}
-                  />
+                  <input type="hidden" name="_csrf_token" value={Phoenix.Controller.get_csrf_token()} />
+                  <input type="hidden" name="register_expense" value="true" />
                   <button
                     type="submit"
                     class="ct-quick-pill"
                     style="font-size: 0.6rem; padding: 0.2rem 0.5rem; background: #3d7a5a; color: white;"
+                    title="Mark paid and record expense"
                   >
-                    Paid
+                    ✓ + Expense
+                  </button>
+                </form>
+                <form
+                  method="post"
+                  action={dp(@domain_path_prefix, "/bills/#{bill.id}/mark-paid")}
+                  style="display: inline; margin: 0; margin-left: 0.15rem;"
+                >
+                  <input type="hidden" name="_csrf_token" value={Phoenix.Controller.get_csrf_token()} />
+                  <input type="hidden" name="register_expense" value="false" />
+                  <button
+                    type="submit"
+                    class="ct-quick-pill"
+                    style="font-size: 0.6rem; padding: 0.2rem 0.5rem; background: #5a7a6a; color: white;"
+                    title="Mark paid only"
+                  >
+                    ✓ Only
                   </button>
                 </form>
               </div>
@@ -195,17 +209,31 @@ end %>
                   action={dp(@domain_path_prefix, "/bills/#{bill.id}/mark-paid")}
                   style="display: inline; margin: 0;"
                 >
-                  <input
-                    type="hidden"
-                    name="_csrf_token"
-                    value={Phoenix.Controller.get_csrf_token()}
-                  />
+                  <input type="hidden" name="_csrf_token" value={Phoenix.Controller.get_csrf_token()} />
+                  <input type="hidden" name="register_expense" value="true" />
                   <button
                     type="submit"
                     class="ct-quick-pill"
                     style="font-size: 0.6rem; padding: 0.2rem 0.5rem; background: #3d7a5a; color: white;"
+                    title="Mark paid and record expense"
                   >
-                    Paid
+                    ✓ + Expense
+                  </button>
+                </form>
+                <form
+                  method="post"
+                  action={dp(@domain_path_prefix, "/bills/#{bill.id}/mark-paid")}
+                  style="display: inline; margin: 0; margin-left: 0.15rem;"
+                >
+                  <input type="hidden" name="_csrf_token" value={Phoenix.Controller.get_csrf_token()} />
+                  <input type="hidden" name="register_expense" value="false" />
+                  <button
+                    type="submit"
+                    class="ct-quick-pill"
+                    style="font-size: 0.6rem; padding: 0.2rem 0.5rem; background: #5a7a6a; color: white;"
+                    title="Mark paid only"
+                  >
+                    ✓ Only
                   </button>
                 </form>
               </div>
@@ -213,7 +241,7 @@ end %>
           <% end %>
         </div>
       <% end %>
-      
+
 <!-- Upcoming -->
       <%= if @upcoming_bills != [] do %>
         <div class="card" style="padding: 1rem;">
@@ -261,17 +289,31 @@ end %>
                   action={dp(@domain_path_prefix, "/bills/#{bill.id}/mark-paid")}
                   style="display: inline; margin: 0;"
                 >
-                  <input
-                    type="hidden"
-                    name="_csrf_token"
-                    value={Phoenix.Controller.get_csrf_token()}
-                  />
+                  <input type="hidden" name="_csrf_token" value={Phoenix.Controller.get_csrf_token()} />
+                  <input type="hidden" name="register_expense" value="true" />
                   <button
                     type="submit"
                     class="ct-quick-pill"
                     style="font-size: 0.6rem; padding: 0.2rem 0.5rem; background: #3d7a5a; color: white;"
+                    title="Mark paid and record expense"
                   >
-                    Paid
+                    ✓ + Expense
+                  </button>
+                </form>
+                <form
+                  method="post"
+                  action={dp(@domain_path_prefix, "/bills/#{bill.id}/mark-paid")}
+                  style="display: inline; margin: 0; margin-left: 0.15rem;"
+                >
+                  <input type="hidden" name="_csrf_token" value={Phoenix.Controller.get_csrf_token()} />
+                  <input type="hidden" name="register_expense" value="false" />
+                  <button
+                    type="submit"
+                    class="ct-quick-pill"
+                    style="font-size: 0.6rem; padding: 0.2rem 0.5rem; background: #5a7a6a; color: white;"
+                    title="Mark paid only"
+                  >
+                    ✓ Only
                   </button>
                 </form>
               </div>
