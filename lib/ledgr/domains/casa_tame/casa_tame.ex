@@ -105,18 +105,26 @@ defmodule Ledgr.Domains.CasaTame do
       investment_returns: "4030",
       rental_income: "4040",
       other_income: "4050",
-      # Expenses
-      housing_expense: "6000",
-      food_expense: "6010",
-      transport_expense: "6020",
-      healthcare_expense: "6030",
-      entertainment_expense: "6040",
-      personal_expense: "6050",
-      financial_expense: "6060",
-      pets_expense: "6070",
-      travel_expense: "6080",
-      subscriptions_expense: "6090",
-      other_expense: "6099"
+      # Expenses (top-level group parents)
+      auto_expense: "6000",
+      servicios_expense: "6010",
+      casa_expense: "6020",
+      educacion_expense: "6040",
+      entretenimiento_expense: "6050",
+      comida_expense: "6060",
+      salud_expense: "6070",
+      seguro_medico_expense: "6080",
+      cuidado_personal_expense: "6090",
+      hijos_expense: "6100",
+      shopping_expense: "6110",
+      viajes_expense: "6120",
+      mascota_expense: "6130",
+      intereses_expense: "6140",
+      fees_expense: "6150",
+      financieros_expense: "6160",
+      regalos_expense: "6170",
+      impuestos_expense: "6180",
+      otros_expense: "6190"
     }
   end
 

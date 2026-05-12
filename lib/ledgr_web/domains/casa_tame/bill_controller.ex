@@ -263,17 +263,17 @@ defmodule LedgrWeb.Domains.CasaTame.BillController do
     code =
       case category do
         # Financial
-        "credit_card" -> "6060"
-        # Utilities
-        "utility" -> "6020"
-        # Financial
-        "loan" -> "6060"
-        # Health & Personal Care
-        "insurance" -> "6070"
-        # Entertainment
-        "subscription" -> "6050"
+        "credit_card" -> "6152"
+        # Utilities (Servicios)
+        "utility" -> "6010"
+        # Intereses / Loans
+        "loan" -> "6140"
+        # Seguro Medico
+        "insurance" -> "6080"
+        # Entretenimiento / Streaming
+        "subscription" -> "6014"
         # Other
-        _ -> "6099"
+        _ -> "6192"
       end
 
     case Ledgr.Core.Accounting.get_account_by_code(code) do

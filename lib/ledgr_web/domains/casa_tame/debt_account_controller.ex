@@ -142,7 +142,7 @@ defmodule LedgrWeb.Domains.CasaTame.DebtAccountController do
 
         "interest" ->
           # Interest accrual: DR interest expense, CR liability
-          expense = Accounting.get_account_by_code!("6098")
+          expense = Accounting.get_account_by_code!("6152")
 
           [
             %{
@@ -161,7 +161,7 @@ defmodule LedgrWeb.Domains.CasaTame.DebtAccountController do
 
         "fee" ->
           # Fee: DR financial expense, CR liability
-          expense = Accounting.get_account_by_code!("6098")
+          expense = Accounting.get_account_by_code!("6152")
 
           [
             %{

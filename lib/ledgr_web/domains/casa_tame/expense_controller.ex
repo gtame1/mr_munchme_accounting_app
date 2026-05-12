@@ -165,21 +165,29 @@ defmodule LedgrWeb.Domains.CasaTame.ExpenseController do
     ]
   end
 
-  # Expense account category groups — maps code ranges to parent labels
+  # Expense account category groups — maps code ranges to section labels
+  # Each group label is shown as a non-selectable optgroup header in the dropdown.
+  # The first account in each range is the catch-all parent (shown as "General / Other").
   @expense_groups [
-    {"Auto & Transportation", "6000", "6009"},
-    {"Housekeeper & Drivers", "6010", "6019"},
-    {"Utilities", "6020", "6029"},
-    {"Home & Furniture", "6030", "6039"},
-    {"Education", "6040", "6049"},
-    {"Entertainment", "6050", "6059"},
-    {"Food & Dining", "6060", "6069"},
-    {"Health & Personal Care", "6070", "6079"},
-    {"Kids", "6080", "6084"},
-    {"Shopping", "6085", "6089"},
-    {"Travel", "6090", "6094"},
-    {"Pets", "6095", "6097"},
-    {"Financial & Other", "6098", "6105"}
+    {"Auto y Transporte", "6000", "6008"},
+    {"Servicios", "6010", "6018"},
+    {"Casa", "6020", "6031"},
+    {"Educacion", "6040", "6042"},
+    {"Entretenimiento", "6050", "6055"},
+    {"Comida y Restaurantes", "6060", "6065"},
+    {"Salud y Deportes", "6070", "6075"},
+    {"Seguro Medico", "6080", "6083"},
+    {"Cuidado Personal", "6090", "6093"},
+    {"Hijos", "6100", "6105"},
+    {"Shopping", "6110", "6116"},
+    {"Viajes", "6120", "6124"},
+    {"Mascota", "6130", "6134"},
+    {"Intereses", "6140", "6144"},
+    {"Fees & Charges", "6150", "6156"},
+    {"Financieros", "6160", "6162"},
+    {"Regalos y Donaciones", "6170", "6172"},
+    {"Impuestos", "6180", "6182"},
+    {"Otros", "6190", "6192"}
   ]
 
   defp grouped_expense_account_options do
@@ -203,8 +211,7 @@ defmodule LedgrWeb.Domains.CasaTame.ExpenseController do
           [{"#{group_label} > #{single.name}", single.id}]
 
         items ->
-          # The first account in each group may be the "parent/general" account
-          # (e.g., 6000 "Auto & Transportation" is the catch-all for 600x)
+          # The first account in each group is the catch-all parent
           parent = Enum.find(items, &(&1.code == from_code))
 
           Enum.map(items, fn a ->

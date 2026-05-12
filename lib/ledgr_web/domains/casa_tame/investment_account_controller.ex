@@ -191,7 +191,7 @@ defmodule LedgrWeb.Domains.CasaTame.InvestmentAccountController do
 
         "fee" ->
           # Fee charged: DR expense, CR investment
-          expense = Accounting.get_account_by_code!("6098")
+          expense = Accounting.get_account_by_code!("6152")
 
           [
             %{
