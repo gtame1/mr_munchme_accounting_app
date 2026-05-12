@@ -56,7 +56,9 @@ defmodule LedgrWeb.AccountTransactionController do
       reference: "Reconcile #{account.code}"
     }
 
-    lines = [%{account_id: account.id, debit_cents: 0, credit_cents: 0, description: "Reconciliation marker"}]
+    # Pass empty lines — validate_balanced allows 0==0, and validate_non_zero
+    # only fires on actual line changesets, so an empty list passes cleanly.
+    lines = []
 
     case Accounting.create_journal_entry_with_lines(entry_attrs, lines) do
       {:ok, _} ->
