@@ -10,7 +10,7 @@ defmodule Ledgr.Domains.MrMunchMe.Notifications do
   ## Configuration
 
       config :ledgr, :mr_munch_me,
-        alert_phone: System.get_env("MR_MUNCH_ME_ALERT_PHONE") || "525543417149"
+        alert_phone: System.get_env("MR_MUNCH_ME_ALERT_PHONE") || "5215543417149"
 
   Defaults to the public MrMunchMe business number.
   """
@@ -19,7 +19,12 @@ defmodule Ledgr.Domains.MrMunchMe.Notifications do
 
   alias Ledgr.Notifications.CallMeBot
 
-  @default_phone "525543417149"
+  # Mexico WhatsApp numbers carry a leading `1` after the country code
+  # (i.e. 52*1*555…). Don't confuse with the wa.me link in
+  # checkout_controller.ex (525543417149) which WhatsApp's deep-link
+  # handler normalizes; the CallMeBot API requires the exact registered
+  # number, including the 1.
+  @default_phone "5215543417149"
 
   @doc """
   Fire-and-forget alert when a new order (or set of orders from one

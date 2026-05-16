@@ -196,7 +196,8 @@ config :ledgr, :callmebot,
 
 # MrMunchMe alert recipient (E.164, with or without leading +). Must be
 # the same phone that authorized the CallMeBot API key above. Defaults
-# to the public business number 525543417149 if unset.
+# to the public MrMunchMe business number 5215543417149 if unset
+# (Mexico WhatsApp numbers include the "1" after the country code).
 if phone = System.get_env("MR_MUNCH_ME_ALERT_PHONE") do
   config :ledgr, :mr_munch_me, alert_phone: phone
 end
