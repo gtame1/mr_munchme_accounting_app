@@ -40,7 +40,7 @@ defmodule LedgrWeb.AccountTransactionController do
       end
 
     all_items = merge_with_checkpoints(transactions, checkpoints)
-    expense_info = build_expense_info(transactions)
+    expense_info = build_expense_info(transactions, conn.assigns[:current_domain])
     {earliest_date, latest_date} = Accounting.journal_entry_date_range()
 
     render(conn, :index,
@@ -84,9 +84,9 @@ defmodule LedgrWeb.AccountTransactionController do
 
   # ── Private ────────────────────────────────────────────────
 
-  defp build_expense_info([]), do: %{}
+  defp build_expense_info([], _domain), do: %{}
 
-  defp build_expense_info(transactions) do
+  defp build_expense_info(transactions, domain) do
     # Extract journal entry IDs that have references like "Expense #123"
     je_refs =
       transactions
@@ -105,12 +105,22 @@ defmodule LedgrWeb.AccountTransactionController do
     if Enum.empty?(expense_ids) do
       %{}
     else
-      alias Ledgr.Domains.CasaTame.Expenses.CasaTameExpense
       alias Ledgr.Core.Accounting.Account
+
+      # Casa Tame has its own expense schema (with currency/hierarchical
+      # categories). Every other domain uses the generic Core.Expenses.Expense
+      # schema; querying CasaTameExpense against another repo blows up on
+      # the missing `currency` column.
+      expense_schema =
+        if domain == Ledgr.Domains.CasaTame do
+          Ledgr.Domains.CasaTame.Expenses.CasaTameExpense
+        else
+          Ledgr.Core.Expenses.Expense
+        end
 
       expenses =
         Ledgr.Repo.all(
-          from e in CasaTameExpense,
+          from e in expense_schema,
             where: e.id in ^expense_ids,
             join: a in Account,
             on: a.id == e.expense_account_id,
