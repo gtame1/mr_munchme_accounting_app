@@ -20,6 +20,22 @@ defmodule Ledgr.Domains.HelloDoctor.StripeSync do
   alias Ledgr.Domains.HelloDoctor.StripeRefunds
   alias Ledgr.Core.Accounting
 
+  # Stripe product IDs that belong to HelloDoctor. The bot's payment links
+  # are bound to prod_UM2NWeVCm0EJEG (created earlier, now archived in the
+  # Stripe dashboard but still active for existing payment links). The "new"
+  # prod_UHpGzvMsR5pRZb is the visible canonical product but not yet used by
+  # the bot. Keep both so we capture payments either way.
+  # Override at runtime by setting :hello_doctor_stripe_product_ids in config.
+  @default_hellodoctor_product_ids [
+    "prod_UM2NWeVCm0EJEG",
+    "prod_UHpGzvMsR5pRZb"
+  ]
+
+  defp hellodoctor_product_ids do
+    Application.get_env(:ledgr, :hello_doctor_stripe_product_ids) ||
+      @default_hellodoctor_product_ids
+  end
+
   @doc """
   Fetches recent completed checkout sessions from Stripe and upserts them
   into the local stripe_payments table. Returns {:ok, count_synced}.
@@ -27,9 +43,6 @@ defmodule Ledgr.Domains.HelloDoctor.StripeSync do
   Only sessions that contain a HelloDoctor product (matched by product ID) are
   stored — everything else from the shared Stripe account is silently skipped.
   """
-  # Stripe product IDs that belong to HelloDoctor
-  @hellodoctor_product_ids ["prod_UHpGzvMsR5pRZb"]
-
   def sync_recent_payments(opts \\ []) do
     api_key = Application.get_env(:ledgr, :hello_doctor_stripe_api_key)
 
@@ -277,7 +290,7 @@ defmodule Ledgr.Domains.HelloDoctor.StripeSync do
           end)
         else
           Logger.warning(
-            "[HelloDoctor StripeSync] Skipping session #{session.id} — product_ids=#{inspect(line_item_product_ids)} did not match #{inspect(@hellodoctor_product_ids)}"
+            "[HelloDoctor StripeSync] Skipping session #{session.id} — product_ids=#{inspect(line_item_product_ids)} did not match #{inspect(hellodoctor_product_ids())}"
           )
 
           {:ok, :skipped}
@@ -580,7 +593,8 @@ defmodule Ledgr.Domains.HelloDoctor.StripeSync do
   end
 
   defp hellodoctor_session?(product_ids) do
-    Enum.any?(product_ids, &(&1 in @hellodoctor_product_ids))
+    allowlist = hellodoctor_product_ids()
+    Enum.any?(product_ids, &(&1 in allowlist))
   end
 
   defp find_consultation_by_conversation(conversation_id) do
