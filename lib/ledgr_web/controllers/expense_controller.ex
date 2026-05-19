@@ -7,9 +7,56 @@ defmodule LedgrWeb.ExpenseController do
   alias LedgrWeb.Helpers.MoneyHelper
 
   def index(conn, _params) do
-    expenses = Expenses.list_expenses()
+    manual = Expenses.list_expenses() |> Enum.map(&normalize_manual/1)
+    auto = load_auto_synced_costs() |> Enum.map(&normalize_auto/1)
 
-    render(conn, :index, expenses: expenses)
+    # Merge + sort by date descending.
+    rows = (manual ++ auto) |> Enum.sort_by(& &1.date, {:desc, Date})
+
+    render(conn, :index, rows: rows)
+  end
+
+  # Manual expenses (Ledgr.Core.Expenses.Expense) → unified row
+  defp normalize_manual(expense) do
+    %{
+      source: :manual,
+      id: expense.id,
+      date: expense.date,
+      description: expense.description,
+      category: expense.category,
+      expense_account_name: expense.expense_account && expense.expense_account.name,
+      paid_from_name: expense.paid_from_account && expense.paid_from_account.name,
+      amount_cents: expense.amount_cents
+    }
+  end
+
+  # Auto-synced ExternalCost → unified row. Uses amount_mxn_cents when posted;
+  # falls back to amount_usd * 100 (rough) for unposted rows so they still appear.
+  defp normalize_auto(cost) do
+    %{
+      source: :auto,
+      id: cost.id,
+      date: cost.date,
+      description:
+        String.capitalize(cost.service) <>
+          if(cost.model, do: " (#{cost.model})", else: ""),
+      category: "Tech services",
+      expense_account_name: nil,
+      paid_from_name: nil,
+      amount_cents: cost.amount_mxn_cents || round((cost.amount_usd || 0) * 100)
+    }
+  end
+
+  # If the current domain has an external_cost module (HelloDoctor today, others
+  # may add it later), pull its rows. Otherwise return [].
+  defp load_auto_synced_costs do
+    case Ledgr.Domain.current() do
+      Ledgr.Domains.HelloDoctor ->
+        Ledgr.Domains.HelloDoctor.ExternalCostAccounting.list_all_costs()
+
+      _ ->
+        []
+    end
   end
 
   def new(conn, _params) do

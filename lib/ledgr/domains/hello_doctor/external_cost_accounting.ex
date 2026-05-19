@@ -161,4 +161,14 @@ defmodule Ledgr.Domains.HelloDoctor.ExternalCostAccounting do
     |> order_by([c], desc: :date, asc: :service)
     |> Repo.all()
   end
+
+  @doc """
+  Returns ALL external_costs (posted and unposted), most recent first.
+  Used by the Expenses page to show auto-synced costs alongside manual ones.
+  """
+  def list_all_costs do
+    ExternalCost
+    |> order_by([c], desc: :date, asc: :service)
+    |> Repo.all()
+  end
 end
