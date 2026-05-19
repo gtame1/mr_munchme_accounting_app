@@ -270,7 +270,11 @@ defmodule Ledgr.Domains.HelloDoctor.BillingSync do
     case :httpc.request(:get, {String.to_charlist(url), http_headers}, [], []) do
       {:ok, {{_, 200, _}, _, body}} ->
         case Jason.decode!(List.to_string(body)) do
-          %{"results" => meetings, "nextCursor" => cursor} when is_binary(cursor) ->
+          # Whereby returns "cursor" (not "nextCursor") for pagination. The field
+          # is present even on the last page (with no more results), so cap at
+          # 1000 meetings as a safety net and stop when "results" is empty.
+          %{"results" => meetings, "cursor" => cursor}
+          when is_binary(cursor) and meetings != [] and length(acc) < 1000 ->
             next_url = "#{url}&cursor=#{URI.encode(cursor)}"
             fetch_whereby_meetings(next_url, headers, acc ++ meetings)
 
@@ -295,11 +299,13 @@ defmodule Ledgr.Domains.HelloDoctor.BillingSync do
   defp upsert_whereby_by_day(meetings) do
     now = DateTime.utc_now() |> DateTime.truncate(:second)
 
-    # Group meetings by the date they were created; estimate duration
+    # Group meetings by the date they were created. Whereby's response uses
+    # `startDate` (the room's start time) — NOT `createdAt`, which doesn't exist
+    # in their meetings endpoint.
     by_day =
       meetings
       |> Enum.group_by(fn m ->
-        case DateTime.from_iso8601(m["createdAt"] || "") do
+        case DateTime.from_iso8601(m["startDate"] || "") do
           {:ok, dt, _} -> DateTime.to_date(dt)
           _ -> nil
         end
@@ -307,13 +313,10 @@ defmodule Ledgr.Domains.HelloDoctor.BillingSync do
       |> Map.delete(nil)
 
     Enum.reduce(by_day, 0, fn {day, day_meetings}, count ->
-      # Whereby rooms don't always expose session duration; we estimate from
-      # endDate - startDate where available, else use a 30-minute default.
-      total_minutes =
-        Enum.reduce(day_meetings, 0, fn m, acc ->
-          duration = estimated_meeting_duration_minutes(m)
-          acc + duration
-        end)
+      # `endDate` is the ROOM EXPIRY (often days/months in the future), NOT the
+      # session end, so we can't use it to compute call duration. Estimate a
+      # fixed 30 minutes per meeting until Whereby exposes real session length.
+      total_minutes = length(day_meetings) * 30
 
       amount_usd = total_minutes * @whereby_cost_per_minute
 
@@ -327,31 +330,14 @@ defmodule Ledgr.Domains.HelloDoctor.BillingSync do
         raw_response: %{
           "meeting_count" => length(day_meetings),
           "total_minutes" => total_minutes,
-          "cost_per_minute" => @whereby_cost_per_minute
+          "cost_per_minute" => @whereby_cost_per_minute,
+          "duration_source" => "30min_default"
         },
         synced_at: now
       })
 
       count + 1
     end)
-  end
-
-  defp estimated_meeting_duration_minutes(meeting) do
-    start_dt = meeting["startDate"] || meeting["createdAt"]
-    end_dt = meeting["endDate"]
-
-    cond do
-      is_binary(start_dt) and is_binary(end_dt) ->
-        with {:ok, s, _} <- DateTime.from_iso8601(start_dt),
-             {:ok, e, _} <- DateTime.from_iso8601(end_dt) do
-          max(DateTime.diff(e, s) |> div(60), 1)
-        else
-          _ -> 30
-        end
-
-      true ->
-        30
-    end
   end
 
   # ── Evolution API ──────────────────────────────────────────────
@@ -402,7 +388,10 @@ defmodule Ledgr.Domains.HelloDoctor.BillingSync do
     endpoint = "https://#{host}/"
     region = "us-east-1"
     service = "ce"
-    action = "CostExplorer_20170110.GetCostAndUsage"
+    # The X-Amz-Target header for Cost Explorer uses the internal service name
+    # "AWSInsightsIndexService", not "CostExplorer_<version>". Sending the
+    # latter results in UnknownOperationException.
+    action = "AWSInsightsIndexService.GetCostAndUsage"
 
     case aws_post(endpoint, host, region, service, action, body, access_key_id, secret_access_key) do
       {:ok, response_body} ->
