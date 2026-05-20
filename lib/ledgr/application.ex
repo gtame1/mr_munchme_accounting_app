@@ -100,7 +100,10 @@ defmodule Ledgr.Application do
           else: []
         ) ++
         if(@mix_env != :test and Ledgr.Repos.HelloDoctor in optional_repos,
-          do: [Ledgr.Domains.HelloDoctor.BillingSyncWorker],
+          do: [
+            Ledgr.Domains.HelloDoctor.BillingSyncWorker,
+            Ledgr.Domains.HelloDoctor.ExchangeRateWorker
+          ],
           else: []
         ) ++
         [

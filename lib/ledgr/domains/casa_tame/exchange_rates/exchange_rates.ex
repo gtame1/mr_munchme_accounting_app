@@ -52,7 +52,7 @@ defmodule Ledgr.Domains.CasaTame.ExchangeRates do
 
   @doc "Fetch USD→MXN rate from frankfurter.app and cache it."
   def fetch_and_cache_rate do
-    case Req.get("https://api.frankfurter.app/latest?from=USD&to=MXN") do
+    case Req.get("https://api.frankfurter.dev/v1/latest?from=USD&to=MXN") do
       {:ok, %{status: 200, body: %{"rates" => %{"MXN" => rate}}}} ->
         Logger.info("[CasaTame] Fetched exchange rate: 1 USD = #{rate} MXN")
 
